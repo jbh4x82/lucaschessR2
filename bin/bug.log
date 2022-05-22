@@ -1,1 +1,5 @@
 Version R 2.01c2
+Traceback (most recent call last):
+  File "D:\Dropbox\Documents\GitHub\lucaschessR2\bin\Code\MainWindow\MainWindow.py", line 183, in changeEvent
+    def changeEvent(self, event):
+KeyboardInterrupt

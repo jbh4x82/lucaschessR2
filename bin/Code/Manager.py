@@ -11,6 +11,7 @@ from Code import Util
 from Code import XRun
 from Code.Analysis import Analysis, AnalysisGame, AnalysisIndexes, Histogram, WindowAnalysisGraph
 from Code.Base import Game, Move, Position
+from Code.ForcingMoves import ForcingMoves
 from Code.Base.Constantes import (
     GT_ALONE,
     ST_ENDGAME,
@@ -1456,6 +1457,10 @@ class Manager:
             menu.separador()
             menu.opcion("arbol", _("Moves tree"), Iconos.Arbol())
 
+        # Hints
+        menu.separador()
+        menu.opcion("hints", _("Find forcing moves"), Iconos.Thinking())
+
         # Mas Opciones
         if liMasOpciones:
             menu.separador()
@@ -1510,6 +1515,9 @@ class Manager:
 
         elif resp == "arbol":
             self.arbol()
+
+        elif resp == "hints":
+            self.forcingMoves()
 
         elif resp.startswith("vol"):
             accion = resp[3:]
@@ -1674,6 +1682,24 @@ class Manager:
         num_moves, nj, row, is_white = self.jugadaActual()
         w = WindowArbol.WindowArbol(self.main_window, self.game, nj, self.procesador)
         w.exec_()
+
+    def forcingMoves(self):
+        fen = self.board.last_position.fen()
+        num_moves, nj, row, is_white = self.jugadaActual()
+        if num_moves and num_moves >= nj:
+            move = self.game.move(nj+1)
+            fen = self.board.last_position.fen()
+            if move.analysis:
+                mrm, pos = move.analysis
+                forcingMoves = ForcingMoves.ForcingMoves(self.board, mrm, self.main_window)
+                forcingMoves.fm_show_checklist()
+                return
+
+        self.main_window.pensando_tutor(True)
+        mrm = self.xtutor.analiza(fen)
+        self.main_window.pensando_tutor(False)
+        forcingMoves = ForcingMoves.ForcingMoves(self.board, mrm, self.main_window)
+        forcingMoves.fm_show_checklist()
 
     def control0(self):
         row, column = self.main_window.pgnPosActual()

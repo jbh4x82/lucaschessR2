@@ -4,6 +4,7 @@ from PySide2 import QtCore
 
 import Code
 from Code.TrainBMT import BMT
+from Code.ForcingMoves import ForcingMoves
 
 Code.BMT = BMT
 from Code import ControlPGN
@@ -179,6 +180,7 @@ class WTrainBMT(LCDialog.LCDialog):
             (_("Start"), Iconos.Empezar(), "empezar"),
             (_("Actual game"), Iconos.PartidaOriginal(), "original"),
             (_("Next"), Iconos.Siguiente(), "seguir"),
+            (_("Hint"), Iconos.Thinking(), "hint"),
         )
         self.tb = Controles.TB(self, li_acciones)
 
@@ -252,6 +254,16 @@ class WTrainBMT(LCDialog.LCDialog):
         self.ponPuntos(0)
         self.pon_toolbar()
 
+    def hint(self):
+
+        if self.bmt_uno.puntos > 1:
+            self.bmt_uno.puntos = 1
+        self.ponPuntos(0)
+        mrm = self.bmt_uno.mrm
+
+        forcingMoves = ForcingMoves.ForcingMoves(self.board, mrm, self)
+        forcingMoves.fm_show_checklist()
+
     def borrar(self):
         if QTUtil2.pregunta(self, _("Do you want to delete this position?")):
             self.borrar_fen_lista.add(self.bmt_uno.fen)
@@ -279,6 +291,8 @@ class WTrainBMT(LCDialog.LCDialog):
             self.original()
         elif accion == "opciones":
             self.opciones()
+        elif accion == "hint":
+            self.hint()
 
     def closeEvent(self, event):
         self.terminar()
@@ -567,6 +581,7 @@ class WTrainBMT(LCDialog.LCDialog):
                 if self.bmt_uno.cl_game:
                     li.append("original")
             li.append("seguir")
+            li.append("hint")
 
         self.tb.clear()
         for k in li:

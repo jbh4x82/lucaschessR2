@@ -1,11 +1,10 @@
-import struct
+import time
 
 import psutil
 from PySide2 import QtCore
 
-import Code
 from Code import Util
-from Code.Base import Game
+from Code.Base import Game, Move
 from Code.Engines import EngineRun
 from Code.Kibitzers import Kibitzers
 from Code.Kibitzers import WKibCommon
@@ -37,11 +36,13 @@ class WKibEngine(WKibCommon.WKibCommon):
 
         o_columns = Columnas.ListaColumnas()
         if not self.is_candidates:
-            o_columns.nueva("DEPTH", "^", 40, centered=True)
-        o_columns.nueva("BESTMOVE", rotulo, 80, centered=True, edicion=delegado)
-        o_columns.nueva("EVALUATION", _("Evaluation"), 85, centered=True)
+            o_columns.nueva("DEPTH", "^", 40, align_center=True)
+        o_columns.nueva("BESTMOVE", rotulo, 80, align_center=True, edicion=delegado)
+        o_columns.nueva("EVALUATION", _("Evaluation"), 85, align_center=True)
         o_columns.nueva("MAINLINE", _("Main line"), 400)
         self.grid = Grid.Grid(self, o_columns, dicVideo=self.dicVideo, siSelecFilas=True)
+        f = Controles.TipoLetra(puntos=self.cpu.configuration.x_pgn_fontpoints)
+        self.grid.ponFuente(f)
 
         self.lbDepth = Controles.LB(self)
 
@@ -50,8 +51,12 @@ class WKibEngine(WKibCommon.WKibCommon):
             (_("Continue"), Iconos.Kibitzer_Play(), self.play),
             (_("Pause"), Iconos.Kibitzer_Pause(), self.pause),
             (_("Takeback"), Iconos.Kibitzer_Back(), self.takeback),
-            (_("The line selected is saved on clipboard"), Iconos.Kibitzer_Clipboard(), self.portapapelesJugSelected),
-            (_("Analyze only color"), Iconos.Kibitzer_Side(), self.color),
+            (
+                _("The line selected is saved to the clipboard"),
+                Iconos.Kibitzer_Clipboard(),
+                self.portapapelesJugSelected,
+            ),
+            (_("Analyze color"), Iconos.Kibitzer_Side(), self.color),
             (_("Show/hide board"), Iconos.Kibitzer_Board(), self.config_board),
             (_("Manual position"), Iconos.Kibitzer_Voyager(), self.set_position),
             ("%s: %s" % (_("Enable"), _("window on top")), Iconos.Kibitzer_Up(), self.windowTop),
@@ -61,7 +66,7 @@ class WKibEngine(WKibCommon.WKibCommon):
         if cpu.tipo == Kibitzers.KIB_THREATS:
             del li_acciones[4]
         self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
-        self.tb.setAccionVisible(self.play, False)
+        self.tb.set_action_visible(self.play, False)
 
         ly1 = Colocacion.H().control(self.tb).relleno().control(self.lbDepth).margen(0)
         ly2 = Colocacion.H().control(self.board).control(self.grid).margen(0)
@@ -77,7 +82,7 @@ class WKibEngine(WKibCommon.WKibCommon):
         self.restore_video(self.dicVideo)
         self.ponFlags()
 
-        self.engine = self.lanzaMotor()
+        self.engine = self.launch_engine()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.compruebaInput)
@@ -85,46 +90,52 @@ class WKibEngine(WKibCommon.WKibCommon):
         self.depth = 0
         self.veces = 0
 
+        self.time_init = time.time()
+        self.stopped = False
+
     def compruebaInput(self):
         if not self.engine:
             return
-        self.veces += 1
-        if self.veces == 3:
-            self.veces = 0
-            if self.valid_to_play():
-                mrm = self.engine.ac_estado()
-                rm = mrm.rmBest()
-                if rm and rm.depth > self.depth:
-                    self.depth = rm.depth
-                    if self.is_candidates:
-                        self.li_moves = mrm.li_rm
-                        self.lbDepth.set_text("%s: %d" % (_("Depth"), rm.depth))
-                    else:
-                        self.li_moves.insert(0, rm.copia())
-                        if len(self.li_moves) > 256:
-                            self.li_moves = self.li_moves[:128]
+        if self.valid_to_play() and not self.stopped:
+            mrm = self.engine.ac_estado()
+            rm = mrm.rmBest()
+            if self.kibitzer.max_time and (time.time() - self.time_init) > self.kibitzer.max_time:
+                if not self.stopped:
+                    self.engine.ac_final(0)
+                    self.stopped = True
+                else:
+                    self.depth = 999
+            if rm and rm.depth > self.depth:
+                self.depth = rm.depth
+                if self.is_candidates:
+                    self.li_moves = mrm.li_rm
+                    self.lbDepth.set_text("%s: %d" % (_("Depth"), rm.depth))
+                else:
+                    self.li_moves.insert(0, rm.copia())
+                    if len(self.li_moves) > 256:
+                        self.li_moves = self.li_moves[:128]
 
-                    # TODO mirar si es de posicion previa o posterior
-                    game = Game.Game(first_position=self.game.last_position)
-                    game.read_pv(rm.pv)
-                    if len(game):
-                        self.board.remove_arrows()
-                        tipo = "mt"
-                        opacity = 100
-                        salto = (80 - 15) * 2 // (self.nArrows - 1) if self.nArrows > 1 else 1
-                        cambio = max(30, salto)
+                # TODO mirar si es de posicion previa o posterior
+                game = Game.Game(first_position=self.game.last_position)
+                game.read_pv(rm.pv)
+                if len(game):
+                    self.board.remove_arrows()
+                    tipo = "mt"
+                    opacity = 100
+                    salto = (80 - 15) * 2 // (self.nArrows - 1) if self.nArrows > 1 else 1
+                    cambio = max(30, salto)
 
-                        for njg in range(min(len(game), self.nArrows)):
-                            tipo = "ms" if tipo == "mt" else "mt"
-                            move = game.move(njg)
-                            self.board.creaFlechaMov(move.from_sq, move.to_sq, tipo + str(opacity))
-                            if njg % 2 == 1:
-                                opacity -= cambio
-                                cambio = salto
+                    for njg in range(min(len(game), self.nArrows)):
+                        tipo = "ms" if tipo == "mt" else "mt"
+                        move = game.move(njg)
+                        self.board.creaFlechaMov(move.from_sq, move.to_sq, tipo + str(opacity))
+                        if njg % 2 == 1:
+                            opacity -= cambio
+                            cambio = salto
 
-                    self.grid.refresh()
+                self.grid.refresh()
 
-                QTUtil.refresh_gui()
+            QTUtil.refresh_gui()
 
         self.cpu.compruebaInput()
 
@@ -134,12 +145,12 @@ class WKibEngine(WKibCommon.WKibCommon):
         if w.exec_():
             xprioridad = w.result_xprioridad
             if xprioridad is not None:
-                pid = self.engine.pid()
-                if Code.is_windows:
-                    hp, ht, pid, dt = struct.unpack("PPII", pid.asstring(16))
+                pid = self.engine.process.pid
                 p = psutil.Process(pid)
                 p.nice(xprioridad)
-            self.cpu.kibitzer.pointofview = w.result_xpointofview
+            self.kibitzer.prioridad = self.cpu.kibitzer.prioridad = xprioridad
+            self.kibitzer.pointofview = self.cpu.kibitzer.pointofview = w.result_xpointofview
+            self.kibitzer.max_time = self.cpu.kibitzer.max_time = w.result_max_time
             if w.result_opciones:
                 for opcion, valor in w.result_opciones:
                     if valor is None:
@@ -149,6 +160,7 @@ class WKibEngine(WKibCommon.WKibCommon):
                             valor = str(valor).lower()
                         orden = "setoption name %s value %s" % (opcion, valor)
                     self.engine.put_line(orden)
+            self.cpu.reprocesa()
         self.play()
 
     def stop(self):
@@ -165,21 +177,17 @@ class WKibEngine(WKibCommon.WKibCommon):
 
         elif key == "BESTMOVE":
             p = Game.Game(first_position=self.game.last_position)
-            p.read_pv(rm.pv)
-            pgn = p.pgnBaseRAW() if self.with_figurines else p.pgn_translated()
-            li = pgn.split(" ")
-            resp = ""
-            if li:
-                if ".." in li[0]:
-                    if len(li) > 1:
-                        resp = li[1]
+            p.read_pv(rm.movimiento())
+            if len(p) > 0:
+                move: Move.Move = p.li_moves[0]
+                resp = move.pgnFigurinesSP() if self.with_figurines else move.pgn_translated()
+                if self.with_figurines:
+                    is_white = self.game.last_position.is_white
+                    return resp, is_white, None, None, None, None, False, True
                 else:
-                    resp = li[0].lstrip("1234567890.")
-            if self.with_figurines:
-                is_white = self.game.last_position.is_white
-                return resp, is_white, None, None, None, None, False, True
+                    return resp
             else:
-                return resp
+                return None
 
         elif key == "DEPTH":
             return "%d" % rm.depth
@@ -187,10 +195,11 @@ class WKibEngine(WKibCommon.WKibCommon):
         else:
             p = Game.Game(first_position=self.game.last_position)
             p.read_pv(rm.pv)
-            li = p.pgn_translated().split(" ")
-            if ".." in li[0]:
-                li = li[1:]
-            return " ".join(li[1:])
+            move0: Move.Move = p.li_moves[0]
+            p.first_position = move0.position
+            p.li_moves = p.li_moves[1:]
+            txt = p.pgn_translated()
+            return txt.lstrip("0123456789. ") if ".." in txt else txt
 
     def grid_doble_click(self, grid, row, o_column):
         if 0 <= row < len(self.li_moves):
@@ -201,7 +210,7 @@ class WKibEngine(WKibCommon.WKibCommon):
     def grid_bold(self, grid, row, o_column):
         return o_column.key in ("EVALUATION", "BESTMOVE", "DEPTH")
 
-    def lanzaMotor(self):
+    def launch_engine(self):
         if self.is_candidates:
             self.numMultiPV = self.kibitzer.current_multipv()
             if self.numMultiPV <= 1:
@@ -218,7 +227,9 @@ class WKibEngine(WKibCommon.WKibCommon):
             sys.exit()
         args = self.kibitzer.args
         li_uci = self.kibitzer.liUCI
-        return EngineRun.RunEngine(self.nom_engine, exe, li_uci, self.numMultiPV, priority=self.cpu.prioridad, args=args)
+        return EngineRun.RunEngine(
+            self.nom_engine, exe, li_uci, self.numMultiPV, priority=self.cpu.prioridad, args=args
+        )
 
     def valid_to_play(self):
         if self.game is None:
@@ -246,13 +257,15 @@ class WKibEngine(WKibCommon.WKibCommon):
             p = Game.Game(fen=fen)
             p.read_pv(rm.pv)
             jg0 = p.move(0)
-            jg0.comment = rm.abrTextoPDT() + " " + self.nom_engine
+            jg0.set_comment(rm.abrTextoPDT() + " " + self.nom_engine)
             pgn = p.pgnBaseRAW()
             resp = '[FEN "%s"]\n\n%s' % (fen, pgn)
             QTUtil.ponPortapapeles(resp)
             QTUtil2.mensajeTemporal(self, _("The line selected is saved to the clipboard"), 0.7)
 
     def orden_game(self, game: Game.Game):
+        if game is None:
+            return
         posicion = game.last_position
 
         is_white = posicion.is_white
@@ -268,4 +281,8 @@ class WKibEngine(WKibCommon.WKibCommon):
 
         if self.valid_to_play():
             self.engine.ac_inicio(game)
+
+            # Para kibitzer con tiempo fijo
+            self.time_init = time.time()
+            self.stopped = False
         self.grid.refresh()

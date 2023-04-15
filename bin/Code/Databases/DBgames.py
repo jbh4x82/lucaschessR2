@@ -1,22 +1,24 @@
 import os
+import random
 import sqlite3
 import time
-import random
 
 import FasterCode
-from Code.Base.Constantes import STANDARD_TAGS, FEN_INITIAL
 
-from Code.Base import Game
-from Code import Util
-from Code.SQL import UtilSQL
 import Code
+from Code import Util
+from Code.Base import Game
+from Code.Base.Constantes import STANDARD_TAGS, FEN_INITIAL
 from Code.Databases import DBgamesST
+from Code.SQL import UtilSQL
 
 pos_a1 = FasterCode.pos_a1
 a1_pos = FasterCode.a1_pos
 pv_xpv = FasterCode.pv_xpv
 xpv_pv = FasterCode.xpv_pv
+xpv_lipv = FasterCode.xpv_lipv
 xpv_pgn = FasterCode.xpv_pgn
+lipv_pgn = FasterCode.lipv_pgn
 PGNreader = FasterCode.PGNreader
 set_fen = FasterCode.set_fen
 make_move = FasterCode.make_move
@@ -60,16 +62,16 @@ class DBgames:
 
         summary_depth = self.read_config("SUMMARY_DEPTH", 0)
         self.with_db_stat = summary_depth > 0
-
-        self.db_stat = DBgamesST.TreeSTAT(self.nom_fichero + ".st1", summary_depth)
+        if self.with_db_stat:
+            self.db_stat = DBgamesST.TreeSTAT(self.nom_fichero + ".st1", summary_depth)
+        else:
+            self.db_stat = None
 
         self.li_row_ids = []
 
         self.rowidReader = UtilSQL.RowidReader(self.nom_fichero, "Games")
 
         self.with_plycount = "PLYCOUNT" in self.read_config("dcabs", {})
-
-
 
     def read_options(self):
         self.allows_duplicates = self.read_config("ALLOWS_DUPLICATES", True)
@@ -98,13 +100,13 @@ class DBgames:
         sql_select = ",".join(["Games_old.%s" % f for f in lifields])
 
         for sql in (
-            "PRAGMA foreign_keys=off;",
-            "BEGIN TRANSACTION;",
-            "ALTER TABLE Games RENAME TO Games_old;",
-            "CREATE TABLE Games (%s);" % sql_create,
-            "INSERT INTO Games (%s) SELECT %s FROM Games_old;" % (sql_fields, sql_select),
-            "DROP TABLE Games_old;",
-            "CREATE INDEX XPV_INDEX ON Games (XPV);",
+                "PRAGMA foreign_keys=off;",
+                "BEGIN TRANSACTION;",
+                "ALTER TABLE Games RENAME TO Games_old;",
+                "CREATE TABLE Games (%s);" % sql_create,
+                "INSERT INTO Games (%s) SELECT %s FROM Games_old;" % (sql_fields, sql_select),
+                "DROP TABLE Games_old;",
+                "CREATE INDEX XPV_INDEX ON Games (XPV);",
         ):
             self.conexion.execute(sql)
         self.conexion.commit()
@@ -123,12 +125,12 @@ class DBgames:
         cursor = self.conexion.execute("pragma table_info(Games)")
         if not cursor.fetchall():
             for sql in (
-                "CREATE TABLE Games(XPV VARCHAR,_DATA_ BLOB,PLYCOUNT INT);",
-                "CREATE INDEX XPV_INDEX ON Games (XPV);",
-                "PRAGMA page_size = 4096;",
-                "PRAGMA synchronous = OFF;",
-                "PRAGMA cache_size = 10000;",
-                "PRAGMA journal_mode = MEMORY;",
+                    "CREATE TABLE Games(XPV VARCHAR,_DATA_ BLOB,PLYCOUNT INT);",
+                    "CREATE INDEX XPV_INDEX ON Games (XPV);",
+                    "PRAGMA page_size = 4096;",
+                    "PRAGMA synchronous = OFF;",
+                    "PRAGMA cache_size = 10000;",
+                    "PRAGMA journal_mode = MEMORY;",
             ):
                 self.conexion.execute(sql)
             self.conexion.commit()
@@ -231,11 +233,11 @@ class DBgames:
                 li = []
                 for unpv in pv:
                     xpv = pv_xpv(unpv)
-                    li.append('XPV GLOB "%s*"' % xpv)
+                    li.append('XPV LIKE "%s%%"' % xpv)
                 condicion = "(%s)" % (" OR ".join(li),)
         elif pv:
             xpv = pv_xpv(pv)
-            condicion = 'XPV GLOB "%s*"' % xpv if xpv else ""
+            condicion = 'XPV LIKE "%s%%"' % xpv if xpv else ""
         if condicionAdicional:
             if condicion:
                 condicion += " AND (%s)" % condicionAdicional
@@ -286,7 +288,7 @@ class DBgames:
             return "%s (%s)" % (Code.relative_root(self.nom_fichero), Code.relative_root(self.link_file))
 
     def depth_stat(self):
-        return self.db_stat.depth if self.db_stat else 0
+        return self.db_stat.depth if self.with_db_stat else 0
 
     def read_xpv(self, xpv):
         if xpv.startswith("|"):
@@ -302,8 +304,11 @@ class DBgames:
 
     def put_order(self, li_order):
         li = []
-        for campo, tipo in li_order:
-            li.append("%s %s" % (campo, tipo))
+        for campo, tipo, is_numeric in li_order:
+            if is_numeric:
+                li.append("CAST(%s as INT) %s" % (campo, tipo))
+            else:
+                li.append("%s %s" % (campo, tipo))
         self.order = ",".join(li)
         self.li_row_ids = []
         self.rowidReader.run(self.li_row_ids, self.filter, self.order)
@@ -326,12 +331,53 @@ class DBgames:
             self.db_stat.commit()
         self.conexion.commit()
 
+    def remove_duplicates(self):
+        li_mirar = [field for field in self.li_fields if field.upper() not in ("_DATA_", "ECO", "XPV", "PLYCOUNT")]
+        select = ",".join(li_mirar)
+        sql_xpv = "SELECT ROWID, %s FROM Games WHERE XPV = ?" % select
+
+        st_rowid_borrar = set()
+        sql = "SELECT XPV FROM Games GROUP BY XPV HAVING COUNT(XPV) > 1"
+        cursor = self.conexion.execute(sql)
+        for xpv, in cursor.fetchall():
+            st = set()
+            cursor = self.conexion.execute(sql_xpv, (xpv,))
+            for row in cursor.fetchall():
+                txt = "".join([x.strip().upper() if x else "" for x in row[1:]])
+                if txt in st:
+                    st_rowid_borrar.add(row[0])
+                else:
+                    st.add(txt)
+
+        li_recnos = []
+        for recno, rowid in enumerate(self.li_row_ids):
+            if rowid in st_rowid_borrar:
+                li_recnos.append(recno)
+
+        self.remove_list_recnos(li_recnos)
+
+
+
+
+
+
+
+
+
+
+
+
+
     def get_summary(self, pvBase, dicAnalisis, with_figurines, allmoves=True):
-        return self.db_stat.get_summary(pvBase, dicAnalisis, with_figurines, allmoves)
+        return self.db_stat.get_summary(pvBase, dicAnalisis, with_figurines, allmoves) if self.with_db_stat else []
 
     def rebuild_stat(self, dispatch, depth):
         if not ("RESULT" in self.li_fields):
             return
+
+        if not self.with_db_stat:
+            self.with_db_stat = True
+            self.db_stat = DBgamesST.TreeSTAT(self.nom_fichero + ".st1", depth)
 
         self.save_config("SUMMARY_DEPTH", depth)
         self.db_stat.depth = depth
@@ -442,7 +488,7 @@ class DBgames:
         listaw.extend(listab)
 
         lista = list(set(listaw))
-        lista.sort()
+        lista.sort(key=lambda name: name.upper())
         return lista
 
     def read_game_recno(self, recno):
@@ -456,7 +502,7 @@ class DBgames:
         fen, pv = self.read_xpv(raw["XPV"])
         if xpgn:
             if xpgn.startswith(BODY_SAVE):
-                pgn_read = xpgn[len(BODY_SAVE) :].strip()
+                pgn_read = xpgn[len(BODY_SAVE):].strip()
                 if fen:
                     pgn_read = b'[FEN "%s"]\n' % fen.encode() + pgn_read
                 ok, p = Game.pgn_game(pgn_read)
@@ -499,6 +545,23 @@ class DBgames:
         if self.filter:
             sql += " WHERE %s" % self.filter
         self.conexion.execute(sql, [value for field, value in li_field_value])
+        self.conexion.commit()
+
+    def fill_pgn(self, field):
+        sql = "SELECT ROWID, XPV FROM Games"
+        if self.filter:
+            sql += " WHERE %s" % self.filter
+        cursor = self.conexion.execute(sql)
+        for rowid, xpv in cursor.fetchall():
+            if xpv.startswith("|"):
+                nada, fen, xpv = xpv.split("|")
+                lipv = FasterCode.xpv_lipv(xpv)
+                pgn = lipv_pgn(fen, lipv)
+            else:
+                pgn = xpv_pgn(xpv)
+            pgn = pgn.replace("\n", " ")
+            sql = "UPDATE Games SET %s=? WHERE ROWID=?" % field
+            self.conexion.execute(sql, [pgn, rowid])
         self.conexion.commit()
 
     def pack(self):
@@ -572,7 +635,11 @@ class DBgames:
                     if n == next_n:
                         if time.time() - t1 > 0.8:
                             if not dlTmp.actualiza(
-                                erroneos + duplicados + importados, erroneos, duplicados, importados, btell * 100.0 / bsize
+                                    erroneos + duplicados + importados,
+                                    erroneos,
+                                    duplicados,
+                                    importados,
+                                    btell * 100.0 / bsize,
                             ):
                                 break
                             t1 = time.time()
@@ -735,7 +802,9 @@ class DBgames:
         for btell, recno in enumerate(liRecnos):
             if btell == next_n:
                 if time.time() - t1 > 0.9:
-                    if not dlTmp.actualiza(erroneos + duplicados + importados, erroneos, duplicados, importados, btell * 100.0 / bsize):
+                    if not dlTmp.actualiza(
+                            erroneos + duplicados + importados, erroneos, duplicados, importados, btell * 100.0 / bsize
+                    ):
                         break
                     t1 = time.time()
                 next_n = btell + random.randint(1000, 2000)

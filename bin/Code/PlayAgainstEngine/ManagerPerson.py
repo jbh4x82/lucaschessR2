@@ -1,4 +1,3 @@
-from Code import Util
 from Code.Base.Constantes import (
     ST_PLAYING,
     TB_REINIT,
@@ -10,12 +9,10 @@ from Code.Base.Constantes import (
     TB_RESIGN,
     TB_UTILITIES,
     GT_AGAINST_CHILD_ENGINE,
-    WHITE,
-    BLACK,
 )
 from Code.Openings import Opening
 from Code.PlayAgainstEngine import ManagerPlayAgainstEngine
-from Code.QT import Iconos
+from Code.QT import QTVarios
 
 
 class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
@@ -34,7 +31,7 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
         self.with_summary = dic_var.get("SUMMARY", False)
 
         is_white = dic_var["ISWHITE"]
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         w, b = self.configuration.nom_player(), _F(dic_var["RIVAL"])
@@ -48,12 +45,16 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
 
         cmrival = self.configuration.buscaRival("irina", None)
         self.xrival = self.procesador.creaManagerMotor(cmrival, None, 2)
-        self.rival_name = dic_var["RIVAL"]
-        self.xrival.set_option("Personality", self.rival_name)
+        imagen = None
+        for name, trans, ico, elo in QTVarios.list_irina():
+            if name == dic_var["RIVAL"]:
+                self.xrival.name = trans
+                imagen = ico.pixmap(ico.availableSizes()[0])
+                break
+        self.xrival.set_option("Personality", dic_var["RIVAL"])
         if not dic_var["FASTMOVES"]:
             self.xrival.set_option("Max Time", "5")
             self.xrival.set_option("Min Time", "1")
-        self.xrival.name = _F(self.rival_name)
 
         self.lirm_engine = []
         self.next_test_resign = 0
@@ -63,7 +64,7 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
 
         self.human_is_playing = False
         self.state = ST_PLAYING
-        self.siAnalizando = False
+        self.if_analyzing = False
 
         self.aperturaStd = Opening.OpeningPol(1)
 
@@ -79,17 +80,23 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
 
         self.xrival.is_white = self.is_engine_side_white
 
-        self.timed = dic_var["SITIEMPO"]
-        if self.timed:
-            self.max_seconds = dic_var["MINUTOS"] * 60.0
-            self.seconds_per_move = dic_var["SEGUNDOS"]
-            self.secs_extra = dic_var.get("MINEXTRA", 0) * 60.0
+        self.tc_player = self.tc_white if self.is_human_side_white else self.tc_black
+        self.tc_rival = self.tc_white if self.is_engine_side_white else self.tc_black
 
-            self.vtime = {WHITE: Util.Timer(self.max_seconds), BLACK: Util.Timer(self.max_seconds)}
+        self.timed = dic_var["SITIEMPO"]
+        self.tc_white.set_displayed(self.timed)
+        self.tc_black.set_displayed(self.timed)
+        if self.timed:
+            max_seconds = dic_var["MINUTOS"] * 60.0
+            seconds_per_move = dic_var["SEGUNDOS"]
+            secs_extra = dic_var.get("MINEXTRA", 0) * 60.0
+
+            self.tc_player.config_clock(max_seconds, seconds_per_move, 0.0, secs_extra)
+            self.tc_rival.config_clock(max_seconds, seconds_per_move, 0.0, secs_extra)
 
             time_control = "%d" % int(self.max_seconds)
-            if self.seconds_per_move:
-                time_control += "+%d" % self.seconds_per_move
+            if seconds_per_move:
+                time_control += "+%d" % seconds_per_move
             self.game.set_tag("TimeControl", time_control)
 
         self.thinking(False)
@@ -105,9 +112,7 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
         self.remove_hints(True, siQuitarAtras=False)
         self.put_pieces_bottom(is_white)
 
-        imagen = getattr(Iconos, "pm%s" % self.rival_name)
-
-        self.main_window.base.lbRotulo1.ponImagen(imagen())
+        self.main_window.base.lbRotulo1.ponImagen(imagen)
         self.main_window.base.lbRotulo1.show()
 
         self.ponCapInfoPorDefecto()
@@ -119,17 +124,26 @@ class ManagerPerson(ManagerPlayAgainstEngine.ManagerPlayAgainstEngine):
         bl, ng = player, rival
         if self.is_engine_side_white:
             bl, ng = ng, bl
+
         if self.timed:
-            tpBL = self.vtime[True].etiqueta()
-            tpNG = self.vtime[False].etiqueta()
-            self.main_window.ponDatosReloj(bl, tpBL, ng, tpNG)
+            tp_bl, tp_ng = self.tc_white.label(), self.tc_black.label()
+
+            self.main_window.set_data_clock(bl, tp_bl, ng, tp_ng)
             self.refresh()
-            self.main_window.start_clock(self.set_clock, 1000)
         else:
             self.main_window.base.change_player_labels(bl, ng)
 
+        if self.timed:
+            tp_bl, tp_ng = self.tc_white.label(), self.tc_black.label()
+
+            self.main_window.set_data_clock(bl, tp_bl, ng, tp_ng)
+            self.refresh()
+        else:
+            self.main_window.base.change_player_labels(bl, ng)
+
+        self.main_window.start_clock(self.set_clock, 1000)
         self.main_window.set_notify(self.mueve_rival_base)
 
         self.check_boards_setposition()
 
-        self.game.tag_timestart()
+        self.game.add_tag_timestart()

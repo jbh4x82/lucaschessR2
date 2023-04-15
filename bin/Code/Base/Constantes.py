@@ -8,6 +8,7 @@ ST_PLAYING, ST_ENDGAME, ST_WAITING, ST_PAUSE = range(4)
     GT_POSITIONS,
     GT_AGAINST_PGN,
     GT_AGAINST_ENGINE,
+    GT_AGAINST_ENGINE_LEAGUE,
     GT_AGAINST_CHILD_ENGINE,
     GT_AGAINST_GM,
     GT_ALONE,
@@ -32,7 +33,7 @@ ST_PLAYING, ST_ENDGAME, ST_WAITING, ST_PAUSE = range(4)
     GT_SINGULAR_MOVES,
     GT_NOTE_DOWN,
     GT_BMT,
-) = range(28)
+) = range(29)
 
 OUT_NORMAL, OUT_REINIT = range(2)
 
@@ -64,7 +65,8 @@ RESULT_UNKNOWN, RESULT_WIN_WHITE, RESULT_WIN_BLACK, RESULT_DRAW = ("*", "1-0", "
     TERMINATION_ADJUDICATION,
     TERMINATION_WIN_ON_TIME,
     TERMINATION_UNKNOWN,
-) = ("MT", "DS", "DR", "DM", "D5", "DA", "RS", "AD", "LT", "UN")
+    TERMINATION_ENGINE_MALFUNCTION,
+) = ("MT", "DS", "DR", "DM", "D5", "DA", "RS", "AD", "LT", "UN", "EM")
 
 BEEP_WIN_PLAYER = "GANAMOS"
 BEEP_WIN_OPPONENT = "GANARIVAL"
@@ -93,8 +95,7 @@ GO_FORWARD, GO_BACK, GO_START, GO_END, GO_FREE, GO_CLOCK = range(6)
     TB_REINIT,
     TB_TAKEBACK,
     TB_ADJOURN,
-    TB_Adjournments,
-    TB_END_GAME,
+    TB_ADJOURNMENTS,
     TB_CLOSE,
     TB_PREVIOUS,
     TB_NEXT,
@@ -102,13 +103,13 @@ GO_FORWARD, GO_BACK, GO_START, GO_END, GO_FREE, GO_CLOCK = range(6)
     TB_READ_PGN,
     TB_PGN_LABELS,
     TB_OTHER_GAME,
-    TB_MY_GAMES,
     TB_DRAW,
     TB_BOXROOMS_PGN,
     TB_END_REPLAY,
     TB_SLOW_REPLAY,
     TB_PAUSE,
     TB_CONTINUE,
+    TB_REPLAY,
     TB_PAUSE_REPLAY,
     TB_CONTINUE_REPLAY,
     TB_FAST_REPLAY,
@@ -119,7 +120,6 @@ GO_FORWARD, GO_BACK, GO_START, GO_END, GO_FREE, GO_CLOCK = range(6)
     TB_LEVEL,
     TB_ACCEPT,
     TB_CANCEL,
-    # TB_GAME_OF_THE_DAY,
     TB_CONFIG,
     TB_UTILITIES,
     TB_VARIATIONS,
@@ -127,11 +127,10 @@ GO_FORWARD, GO_BACK, GO_START, GO_END, GO_FREE, GO_CLOCK = range(6)
     TB_CHANGE,
     TB_SHOW_TEXT,
     TB_HELP_TO_MOVE,
-    TB_SEND,
     TB_STOP,
-    TB_EBOARD
-) = range(50)
-
+    TB_EBOARD,
+    TB_COMMENTS,
+) = range(49)
 
 ZVALUE_PIECE, ZVALUE_PIECE_MOVING = 10, 20
 
@@ -172,63 +171,11 @@ KIB_BEFORE_MOVE, KIB_AFTER_MOVE = True, False
 
 FEN_INITIAL = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-NAG_0, NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6 = (
-    NO_RATING,
-    GOOD_MOVE,
-    MISTAKE,
-    VERY_GOOD_MOVE,
-    BLUNDER,
-    SPECULATIVE_MOVE,
-    INACCURACY,
-) = range(7)
-
-
-dicHTMLnags = {
-    NAG_1: "!",
-    NAG_2: "?",
-    NAG_3: "‼",
-    NAG_4: "⁇",
-    NAG_5: "⁉",
-    NAG_6: "⁈",
-    7: "□",
-    10: "=",
-    13: "∞",
-    14: "⩲",
-    15: "⩱",
-    16: "±",
-    17: "∓",
-    18: "+-",
-    19: "-+",
-    22: "⨀",
-    23: "⨀",
-    32: "⟳",
-    33: "⟳",
-    36: "→",
-    37: "→",
-    40: "↑",
-    41: "↑",
-    132: "⇆",
-    133: "⇆",
-    140: "∆",
-    142: "⌓",
-    239: "⇔",
-    240: "⇗",
-    242: "⟫",
-    243: "⟪",
-    244: "✕",
-    245: "⊥",
-}
-
-dicHTMLnagsTxt = {NAG_1: "!", NAG_2: "?", NAG_3: "!!", NAG_4: "??", NAG_5: "!?", NAG_6: "?!"}
-
-
-def html_nag_txt(nag):
-    return dicHTMLnagsTxt.get(nag, "$%d" % nag)
-
-
 OPENING, MIDDLEGAME, ENDGAME, ALLGAME = range(4)
 
 CALCWEIGHT_NUMGAMES, CALCWEIGHT_SCORE, CALCWEIGHT_NUMGAMES_SCORE = "NG", "SC100", "NGS"
+
+(NO_RATING, GOOD_MOVE, MISTAKE, VERY_GOOD_MOVE, BLUNDER, INTERESTING_MOVE, INACCURACY) = range(7)
 
 STANDARD_TAGS = [
     "Event",
@@ -274,7 +221,10 @@ STANDARD_TAGS = [
     "Mode",
 ]
 
-
 TACTICS_BASIC, TACTICS_PERSONAL = "B", "P"
 
 ALL, NONE, ONLY_WHITE, ONLY_BLACK = "A", "N", "W", "B"
+
+ENG_INTERNAL, ENG_EXTERNAL, ENG_MICGM, ENG_MICPER, ENG_FIXED, ENG_IRINA, ENG_ELO, ENG_RODENT, ENG_KOMODO = range(9)
+
+ENGINE, HUMAN = range(2)

@@ -2,8 +2,8 @@ from PySide2 import QtCore, QtWidgets
 
 import Code
 from Code.Analysis import Histogram
-from Code.Base.Constantes import NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6
 from Code.Board import Board
+from Code.Nags import Nags
 from Code.Openings import OpeningsStd
 from Code.QT import Colocacion
 from Code.QT import Columnas
@@ -29,39 +29,42 @@ class WAnalisisGraph(LCDialog.LCDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
         )
 
-        c = Code.configuration
-        self.dic_nagcolor = {
-            NAG_1: QTUtil.qtColor(c.x_color_nag1),
-            NAG_2: QTUtil.qtColor(c.x_color_nag2),
-            NAG_3: QTUtil.qtColor(c.x_color_nag3),
-            NAG_4: QTUtil.qtColor(c.x_color_nag4),
-            NAG_5: QTUtil.qtColor(c.x_color_nag5),
-            NAG_6: QTUtil.qtColor(c.x_color_nag6),
-        }
-        self.dic_color = {
-            NAG_1: c.x_color_nag1,
-            NAG_2: c.x_color_nag2,
-            NAG_3: c.x_color_nag3,
-            NAG_4: c.x_color_nag4,
-            NAG_5: c.x_color_nag5,
-            NAG_6: c.x_color_nag6,
-        }
-
         self.alm = alm
         self.procesador = manager.procesador
         self.manager = manager
         self.configuration = manager.configuration
+        self.with_figurines = self.configuration.x_pgn_withfigurines
         self.show_analysis = show_analysis
         self.colorWhite = QTUtil.qtColorRGB(231, 244, 254)
 
+        self.with_time = False
+        for move in alm.lijg:
+            if move.time_ms:
+                self.with_time = True
+                break
+
         def xcol():
             o_columns = Columnas.ListaColumnas()
-            o_columns.nueva("NUM", _("N."), 50, centered=True)
-            o_columns.nueva("MOVE", _("Move"), 120, centered=True, edicion=Delegados.EtiquetaPGN(True, True, True))
-            o_columns.nueva("BEST", _("Best move"), 120, centered=True, edicion=Delegados.EtiquetaPGN(True, True, True))
-            o_columns.nueva("DIF", _("Difference"), 80, centered=True)
-            o_columns.nueva("PORC", "%", 80, centered=True)
-            o_columns.nueva("ELO", _("Elo"), 80, centered=True)
+            o_columns.nueva("NUM", _("N."), 50, align_center=True)
+            o_columns.nueva(
+                "MOVE",
+                _("Move"),
+                120,
+                align_center=True,
+                edicion=Delegados.EtiquetaPGN(True if self.with_figurines else None),
+            )
+            o_columns.nueva(
+                "BEST",
+                _("Best move"),
+                120,
+                align_center=True,
+                edicion=Delegados.EtiquetaPGN(True if self.with_figurines else None),
+            )
+            o_columns.nueva("DIF", _("Difference"), 80, align_center=True)
+            if self.with_time:
+                o_columns.nueva("TIME", _("Time"), 50, align_right=True)
+            o_columns.nueva("PORC", "%", 80, align_center=True)
+            o_columns.nueva("ELO", _("Elo"), 80, align_center=True)
             return o_columns
 
         self.dicLiJG = {"A": self.alm.lijg, "W": self.alm.lijgW, "B": self.alm.lijgB}
@@ -96,12 +99,12 @@ class WAnalisisGraph(LCDialog.LCDialog):
         w_moves.setLayout(ly)
 
         self.tabGrid = tabGrid = Controles.Tab()
-        tabGrid.nuevaTab(gridAll, _("All moves"))
-        tabGrid.nuevaTab(gridW, _("White"))
-        tabGrid.nuevaTab(gridB, _("Black"))
-        tabGrid.nuevaTab(wIdx, _("Indexes"))
-        tabGrid.nuevaTab(w_elo, _("Elo"))
-        tabGrid.nuevaTab(w_moves, _("Moves"))
+        tabGrid.new_tab(gridAll, _("All moves"))
+        tabGrid.new_tab(gridW, _("White"))
+        tabGrid.new_tab(gridB, _("Black"))
+        tabGrid.new_tab(wIdx, _("Indexes"))
+        tabGrid.new_tab(w_elo, _("Elo"))
+        tabGrid.new_tab(w_moves, _("Moves"))
         tabGrid.dispatchChange(self.tabChanged)
         self.tabActive = 0
 
@@ -232,7 +235,6 @@ class WAnalisisGraph(LCDialog.LCDialog):
             self.procesador.xtutor,
             move,
             self.board.is_white_bottom,
-            999999,
             pos,
             main_window=self,
             must_save=False,
@@ -249,13 +251,13 @@ class WAnalisisGraph(LCDialog.LCDialog):
             if nrecno > 0:
                 grid.goto(nrecno - 1, 0)
         else:
-            return True # que siga con el resto de teclas
+            return True  # que siga con el resto de teclas
 
-    def grid_color_fondo(self, grid, row, o_column):
-        if grid.id == "A":
-            move = self.alm.lijg[row]
-            return self.colorWhite if move.xsiW else None
-        return None
+    # def grid_color_fondo(self, grid, row, o_column):
+    #     if grid.id == "A":
+    #         move = self.alm.lijg[row]
+    #         return self.colorWhite if move.xsiW else None
+    #     return None
 
     def grid_color_texto(self, grid, row, o_column):
         if grid.id == "A":
@@ -266,7 +268,7 @@ class WAnalisisGraph(LCDialog.LCDialog):
             move = self.alm.lijgB[row]
         if len(move.nag_color) == 2:
             nagc = move.nag_color[1]
-            return self.dic_nagcolor.get(nagc)
+            return Nags.nag_qcolor(nagc)
 
     def grid_alineacion(self, grid, row, o_column):
         if grid.id == "A":
@@ -285,6 +287,9 @@ class WAnalisisGraph(LCDialog.LCDialog):
             return " %s " % move.xnum
 
         elif column in ("MOVE", "BEST"):
+            if self.with_figurines:
+                delegado = o_column.edicion
+                delegado.setWhite(move.is_white())
             mrm, pos = move.analysis
             rm = mrm.li_rm[pos if column == "MOVE" else 0]
             pv1 = rm.pv.split(" ")[0]
@@ -297,13 +302,17 @@ class WAnalisisGraph(LCDialog.LCDialog):
             if column == "MOVE":
                 fenm2 = move.position.fenm2()
                 nagc = move.nag_color[1]
-                color = self.dic_color.get(nagc)
+                color = Nags.nag_color(nagc)
             else:
                 fenm2 = move.position_before.get_fenm2(from_sq, to_sq, promotion)
             is_book = OpeningsStd.ap.is_book_fenm2(fenm2)
             book = "O" if is_book else None
 
             return move.position_before.pgn(from_sq, to_sq, promotion), color, txt, book, None
+
+        elif column == "TIME":
+            ms = move.time_ms
+            return '%0.02f"' % (ms / 1000,) if ms else ""
 
         elif column == "DIF":
             mrm, pos = move.analysis
@@ -326,4 +335,3 @@ class WAnalisisGraph(LCDialog.LCDialog):
 def showGraph(wowner, manager, alm, show_analysis):
     w = WAnalisisGraph(wowner, manager, alm, show_analysis)
     w.exec_()
-

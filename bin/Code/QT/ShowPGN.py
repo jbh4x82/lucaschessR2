@@ -1,6 +1,7 @@
 import PySide2.QtGui
 from PySide2 import QtWidgets, QtCore
 
+import Code
 from Code.Base import Move, Game
 from Code.QT import Controles, Colocacion, QTVarios, Iconos
 
@@ -11,7 +12,7 @@ class LBPGN(Controles.LB):
         self.wparent = parent
         self.set_wrap()
         self.ponTipoLetra(puntos=puntos)
-        self.setStyleSheet("QLabel{ border-style: groove; border-width: 1px; border-color: LightSlateGray; padding: 2px;}")
+        Code.configuration.set_property(self, "pgn")
         self.setOpenExternalLinks(False)
         self.linkActivated.connect(link)
 
@@ -91,19 +92,22 @@ class ShowPGN(QtWidgets.QScrollArea):
                 return
 
     def right_click(self, lb_sender):
-        # num_lb = None
-        # for num, lb in enumerate(self.li_variations):
-        #     if lb == lb_sender:
-        #         num_lb = num
-        #         break
+        text = lb_sender.text()
+        if not text or 'href="' not in text:
+            return
+        if not self.selected_link or 'href="%s"' % self.selected_link not in text:
+            bq = text.split('href="')[1]
+            href = bq.split('"')[0]
+            self.wowner.link_variation_pressed(href)
+            self.selected_link = href
+
         menu = QTVarios.LCMenu(self)
         menu.opcion("remove_line", _("Remove line"), Iconos.DeleteRow())
-        if self.selected_link and self.selected_link in lb_sender.text():  # move selected in variation
-            if not self.selected_link.endswith("|0"):  # si no es el primero
-                menu.separador()
-                menu.opcion("remove_move", _("Remove move"), Iconos.DeleteColumn())
+        if not self.selected_link.endswith("|0"):  # si no es el primero
             menu.separador()
-            menu.opcion("comment", _("Edit comment"), Iconos.ComentarioEditar())
+            menu.opcion("remove_move", _("Remove move"), Iconos.DeleteColumn())
+        menu.separador()
+        menu.opcion("comment", _("Edit comment"), Iconos.ComentarioEditar())
 
         resp = menu.lanza()
         if resp is None:
@@ -130,9 +134,9 @@ class ShowPGN(QtWidgets.QScrollArea):
 
     def show_variations(self, work_move, selected_link):
         self.reset()
-        style_number = "color:teal"
-        style_moves = "color:black"
-        style_select = "color:darkred"
+        style_number = "color:%s" % Code.dic_colors["PGN_NUMBER"]
+        style_select = "color:%s" % Code.dic_colors["PGN_SELECT"]
+        style_moves = "color:%s" % Code.dic_colors["PGN_MOVES"]
 
         self.move: Move.Move = work_move
         self.selected_link = selected_link

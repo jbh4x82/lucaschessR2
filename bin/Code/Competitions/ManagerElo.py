@@ -23,7 +23,12 @@ from Code.Base.Constantes import (
 from Code.Engines import EngineResponse
 from Code.Openings import Opening
 from Code.QT import QTUtil2
+from Code.QT import QTVarios
 from Code.SQL import UtilSQL
+
+# Se elimina cinnamon, se bloquea en los mates con profundidad fija
+# position startpos moves e2e4 d7d5 e4d5 d8d5 b1c3 d5e5 f1e2 c8g4 d2d4 g4e2 g1e2 e5f5 d1d3 f5d3 c2d3 b8c6 c1f4 e8c8 c3b5 g8f6 f4c7 d8d5 e2c3 d5g5 c7g3 e7e6 h2h4 g5f5 g3d6 g7g6 d6f8 f5b5 f8g7 h8g8 c3b5 g8g7 a1c1 f6d5 b5a7 c8d7 a7c6 b7c6 e1d2 g7g8 h1e1 g8b8 b2b3 b8a8 a2a4 d7d6 c1c5 a8b8 e1c1 b8b3 c5c6 d6d7 c6c8 b3b2 d2e1 d7d6 e1f1 h7h5 a4a5 d6d7 a5a6 b2a2 c8f8 a2a6 f8f7 d7d6 f7g7 d5f4 c1b1 a6a2 b1b6 d6d5
+# go depth 2
 
 
 def listaMotoresElo():
@@ -47,9 +52,6 @@ chispa|1|1109|5158
 chispa|2|1321|6193
 chispa|3|1402|6433
 chispa|4|1782|7450
-cinnamon|2|1111|4751
-cinnamon|3|1151|5770
-cinnamon|4|1187|5770
 clarabit|1|1134|5210
 clarabit|2|1166|6014
 clarabit|3|1345|6407
@@ -180,11 +182,11 @@ class MotorElo:
 
 class ManagerElo(Manager.Manager):
     def valores(self):
-        lit = ("Monkey", "Donkey", "Bull", "Wolf", "Lion", "Rat", "Snake")
+        li = QTVarios.list_irina()
 
         self.liMotores = []
-        for x in range(1, 8):
-            self.liMotores.append(MotorElo(x * 108 + 50, _F(lit[x - 1]), lit[x - 1], 0))
+        for (alias, name, icono, elo) in li:
+            self.liMotores.append(MotorElo(elo, name, alias, 0))
 
         def m(elo, key, depth):
             self.liMotores.append(MotorElo(elo, Util.primera_mayuscula(key), key, depth))
@@ -271,7 +273,7 @@ class ManagerElo(Manager.Manager):
 
         is_white = self.determina_side(datos_motor)
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.lirm_engine = []
@@ -341,15 +343,19 @@ class ManagerElo(Manager.Manager):
 
         player = self.configuration.nom_player()
         other = self.datosMotor.name
-        w, b = (player, other) if self.human_side else (other, player)
+        w, b = (player, other) if self.is_human_side_white else (other, player)
         self.game.set_tag("White", w)
         self.game.set_tag("Black", b)
+        self.game.set_tag("WhiteElo", str(self.whiteElo))
+        self.game.set_tag("BlackElo", str(self.blackElo))
+
+        self.game.add_tag_timestart()
 
     def adjourn(self):
         if len(self.game) > 0 and QTUtil2.pregunta(self.main_window, _("Do you want to adjourn the game?")):
             self.state = ST_ENDGAME
             dic = {
-                "ISWHITE": self.human_side,
+                "ISWHITE": self.is_human_side_white,
                 "GAME_SAVE": self.game.save(),
                 "CLAVE": self.datosMotor.key,
                 "DEPTH": self.datosMotor.depth,
@@ -373,9 +379,9 @@ class ManagerElo(Manager.Manager):
         engine.ppierde = dic["PPIERDE"]
         engine.ptablas = dic["PTABLAS"]
         self.base_inicio(engine)
-        self.human_side = dic["ISWHITE"]
-        self.is_engine_side_white = not self.human_side
-        self.put_pieces_bottom(self.human_side)
+        self.is_human_side_white = dic["ISWHITE"]
+        self.is_engine_side_white = not self.is_human_side_white
+        self.put_pieces_bottom(self.is_human_side_white)
 
         self.game.restore(dic["GAME_SAVE"])
         self.goto_end()
@@ -427,9 +433,8 @@ class ManagerElo(Manager.Manager):
         if not self.pte_tool_resigndraw:
             if not QTUtil2.pregunta(self.main_window, _("Do you want to resign?") + " (%d)" % self.datosMotor.ppierde):
                 return False  # no abandona
-            self.game.resign(self.human_side)
-            self.muestra_resultado()
-            self.autosave()
+            self.game.resign(self.is_human_side_white)
+            self.show_result()
         else:
             self.procesador.start()
 
@@ -447,7 +452,7 @@ class ManagerElo(Manager.Manager):
         is_white = self.game.last_position.is_white
 
         if self.game.is_finished():
-            self.muestra_resultado()
+            self.show_result()
             return
 
         siRival = is_white == self.is_engine_side_white
@@ -499,25 +504,24 @@ class ManagerElo(Manager.Manager):
                 time.sleep(t - difT)
 
             self.thinking(False)
-            if self.play_rival(rm_rival):
+            if self.rival_has_moved(rm_rival):
                 self.lirm_engine.append(rm_rival)
                 if self.valoraRMrival():
                     self.play_next_move()
                 else:
-                    self.muestra_resultado()
-                    self.autosave()
+                    self.show_result()
                     return
         else:
 
             self.human_is_playing = True
             self.activate_side(is_white)
 
-    def muestra_resultado(self):
+    def show_result(self):
         self.state = ST_ENDGAME
         self.disable_all()
         self.human_is_playing = False
 
-        mensaje, beep, player_win = self.game.label_resultado_player(self.human_side)
+        mensaje, beep, player_win = self.game.label_resultado_player(self.is_human_side_white)
 
         self.beepResultado(beep)
 
@@ -555,12 +559,12 @@ class ManagerElo(Manager.Manager):
 
         self.move_the_pieces(move.liMovs)
 
-        self.masJugada(move, True)
+        self.add_move(move, True)
         self.error = ""
         self.play_next_move()
         return True
 
-    def masJugada(self, move, siNuestra):
+    def add_move(self, move, siNuestra):
         self.game.add_move(move)
 
         self.put_arrow_sc(move.from_sq, move.to_sq)
@@ -576,7 +580,7 @@ class ManagerElo(Manager.Manager):
         if self.pte_tool_resigndraw:
             self.pon_toolbar()
 
-    def play_rival(self, engine_response):
+    def rival_has_moved(self, engine_response):
         from_sq = engine_response.from_sq
         to_sq = engine_response.to_sq
 
@@ -584,7 +588,7 @@ class ManagerElo(Manager.Manager):
 
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         if ok:
-            self.masJugada(move, False)
+            self.add_move(move, False)
             self.move_the_pieces(move.liMovs, True)
 
             self.error = ""
@@ -608,7 +612,7 @@ class ManagerElo(Manager.Manager):
 
         dd = UtilSQL.DictSQL(self.configuration.fichEstadElo, tabla="color")
         key = "%s-%d" % (self.datosMotor.name, self.datosMotor.depth if self.datosMotor.depth else 0)
-        dd[key] = self.human_side
+        dd[key] = self.is_human_side_white
         dd.close()
 
     def determina_side(self, datosMotor):

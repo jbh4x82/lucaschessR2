@@ -21,17 +21,17 @@ class WAbout(QtWidgets.QDialog):
 
         f = Controles.TipoLetra(puntos=10)  # 0, peso=75 )
 
-        head = '<span style="font-size:30pt; font-weight="700"; font-family:arial; color:#2D2B2B">%s</span><br>' % Code.lucas_chess
+        head = '<span style="font-size:30pt; font-weight="700"; font-family:arial; >%s</span><br>' % Code.lucas_chess
         head += '<span style="font-size:15pt;">%s</span><br>' % _X(_("version %1"), procesador.version)
-        head += '<span style="font-size:10pt;color:2D2B2B">%s: %s</span>' % (
+        head += '<span style="font-size:10pt;>%s: %s</span>' % (
             _("Author"),
             '<a href="mailto:lukasmonk@gmail.com">Lucas Monge</a>',
         )
-        head += ' - <a style="font-size:10pt; color:2D2B2B" href="%s">%s</a>' % (procesador.web, procesador.web)
-        head += ' - <a style="font-size:10pt; color:2D2B2B" href="%s">Blog : Fresh news</a>' % (procesador.blog,)
-        head += ' - <a style="font-size:10pt; color:2D2B2B" href="%s">Sources: github</a>' % (procesador.github,)
-        # head += ' - <a style="font-size:10pt; color:2D2B2B" href="%s">Wiki</a><br>' % (procesador.wiki,)
-        head += ' - %s <a style="font-size:10pt; color:2D2B2B" href="http://www.gnu.org/copyleft/gpl.html"> GPL</a>' % _("License")
+        head += ' - <a style="font-size:10pt;" href="%s">%s</a>' % (procesador.web, procesador.web)
+        head += ' - <a style="font-size:10pt;" href="%s">Blog : Fresh news</a>' % (procesador.blog,)
+        head += ' - <a style="font-size:10pt;" href="%s">Sources: github</a>' % (procesador.github,)
+        head += ' - <a style="font-size:10pt;" href="%s">Wiki</a>' % (procesador.wiki,)
+        head += '<br>%s <a style="font-size:10pt;" href="http://www.gnu.org/copyleft/gpl.html"> GPL</a>' % _("License")
 
         lb_ico = Controles.LB(self).ponImagen(Iconos.pmAplicacion64())
         lb_titulo = Controles.LB(self, head)
@@ -46,14 +46,13 @@ class WAbout(QtWidgets.QDialog):
         for k, titulo in ib.dic.items():
             txt = ib.texto(k)
             lb = Controles.LB(self, txt)
-            lb.set_background("#F6F3EE")
             lb.ponFuente(f)
             if "-" in k:
                 base, num = k.split("-")
                 if num == "1":
                     sub_tab = Controles.Tab()
                     sub_tab.ponFuente(f)
-                    sub_tab.set_position("S")
+                    # sub_tab.set_position("S")
                     tab.addTab(sub_tab, _("Engines"))
                 lm = ib.list_engines(num)
                 titulo = lm[0][0].split(" ")[1] + " - " + lm[-1][0].split(" ")[1]
@@ -86,7 +85,7 @@ class WAbout(QtWidgets.QDialog):
 #
 #     dic = ib.dic
 #
-#     with open(r"c:\lucaschess\_WEB_R\mysite\templates\Thanksto.html", "wt", encoding="utf-8") as q:
+#     with open(r"c:\lucaschess\WEB\mysite\templates\Thanksto.html", "wt", encoding="utf-8") as q:
 #
 #         li = ['{% extends "base.html" %}',
 #               '{% block contenido %}',
@@ -160,8 +159,10 @@ class WAbout(QtWidgets.QDialog):
 #                     for linea in flnx:
 #                         linea = linea.strip()
 #                         if linea.startswith("cm = mas(") or linea.startswith("mas("):
+#                             if "maia-" in linea:
+#                                 linea = linea.replace(" % level", "")
 #                             lir = linea.split('"')
-#                             x, alias, x, autor, x, version, x, url, x, nombre, x = lir
+#                             x, alias, x, autor, x, version, x, url, x, nombre, x = lir[:11]
 #                             if alias == "Maia-%d":
 #                                 nombre = "Maia-1100/1900"
 #                             if "{bmi2}" in nombre:
@@ -190,7 +191,7 @@ class WAbout(QtWidgets.QDialog):
 #         li.append("{% endblock contenido %}")
 #
 #         q.write("\n".join(li))
-#
+
 
 class WInfo(QtWidgets.QDialog):
     def __init__(self, wparent, titulo, head, txt, min_tam, pm_icon):

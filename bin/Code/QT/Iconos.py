@@ -1,3966 +1,3094 @@
-from PySide2 import QtGui
-
-import Code
-
-f = open(Code.path_resource("IntFiles", "Iconos.bin"), "rb")
-binIconos = f.read()
-f.close()
+from Code.QT.IconosBase import iget
 
 
 def icono(name):
-    return eval("%s()"%name)
+    return iget(name)
 
 
 def pixmap(name):
-    return eval("pm%s()"%name)
-
-
-def PM(desde, hasta):
-    pm = QtGui.QPixmap()
-    pm.loadFromData(binIconos[desde:hasta])
-    return pm
-
-def pmLM():
-    return PM(0,1248)
-
-
-def LM():
-    return QtGui.QIcon(pmLM())
+    return iget("pm%s" % name)
 
 
 def pmAplicacion64():
-    return PM(1248,6430)
-
+    return iget("pmAplicacion64")
 
 def Aplicacion64():
-    return QtGui.QIcon(pmAplicacion64())
-
+    return iget("Aplicacion64")
 
 def pmDatos():
-    return PM(6430,7617)
-
+    return iget("pmDatos")
 
 def Datos():
-    return QtGui.QIcon(pmDatos())
-
+    return iget("Datos")
 
 def pmTutor():
-    return PM(7617,9646)
-
+    return iget("pmTutor")
 
 def Tutor():
-    return QtGui.QIcon(pmTutor())
-
+    return iget("Tutor")
 
 def pmPartidaOriginal():
-    return PM(9646,11623)
-
+    return iget("pmPartidaOriginal")
 
 def PartidaOriginal():
-    return QtGui.QIcon(pmPartidaOriginal())
-
+    return iget("PartidaOriginal")
 
 def pmFindAllMoves():
-    return PM(11623,13219)
-
+    return iget("pmFindAllMoves")
 
 def FindAllMoves():
-    return QtGui.QIcon(pmFindAllMoves())
-
+    return iget("FindAllMoves")
 
 def pmResizeBoard():
-    return PM(11623,13219)
-
+    return iget("pmResizeBoard")
 
 def ResizeBoard():
-    return QtGui.QIcon(pmResizeBoard())
-
+    return iget("ResizeBoard")
 
 def pmMensEspera():
-    return PM(13219,16967)
-
+    return iget("pmMensEspera")
 
 def MensEspera():
-    return QtGui.QIcon(pmMensEspera())
-
+    return iget("MensEspera")
 
 def pmUtilidades():
-    return PM(16967,23396)
-
+    return iget("pmUtilidades")
 
 def Utilidades():
-    return QtGui.QIcon(pmUtilidades())
-
+    return iget("Utilidades")
 
 def pmTerminar():
-    return PM(23396,25146)
-
+    return iget("pmTerminar")
 
 def Terminar():
-    return QtGui.QIcon(pmTerminar())
-
+    return iget("Terminar")
 
 def pmNuevaPartida():
-    return PM(25146,26894)
-
+    return iget("pmNuevaPartida")
 
 def NuevaPartida():
-    return QtGui.QIcon(pmNuevaPartida())
-
+    return iget("NuevaPartida")
 
 def pmOpciones():
-    return PM(26894,28622)
-
+    return iget("pmOpciones")
 
 def Opciones():
-    return QtGui.QIcon(pmOpciones())
-
+    return iget("Opciones")
 
 def pmEntrenamiento():
-    return PM(7617,9646)
-
+    return iget("pmEntrenamiento")
 
 def Entrenamiento():
-    return QtGui.QIcon(pmEntrenamiento())
-
+    return iget("Entrenamiento")
 
 def pmAplazar():
-    return PM(28622,31689)
-
+    return iget("pmAplazar")
 
 def Aplazar():
-    return QtGui.QIcon(pmAplazar())
-
+    return iget("Aplazar")
 
 def pmAplazamientos():
-    return PM(31689,35005)
-
+    return iget("pmAplazamientos")
 
 def Aplazamientos():
-    return QtGui.QIcon(pmAplazamientos())
-
+    return iget("Aplazamientos")
 
 def pmCapturas():
-    return PM(35005,37046)
-
+    return iget("pmCapturas")
 
 def Capturas():
-    return QtGui.QIcon(pmCapturas())
-
+    return iget("Capturas")
 
 def pmReiniciar():
-    return PM(37046,39340)
-
+    return iget("pmReiniciar")
 
 def Reiniciar():
-    return QtGui.QIcon(pmReiniciar())
-
+    return iget("Reiniciar")
 
 def pmImportarGM():
-    return PM(39340,41940)
-
+    return iget("pmImportarGM")
 
 def ImportarGM():
-    return QtGui.QIcon(pmImportarGM())
-
+    return iget("ImportarGM")
 
 def pmAbandonar():
-    return PM(41940,45940)
-
+    return iget("pmAbandonar")
 
 def Abandonar():
-    return QtGui.QIcon(pmAbandonar())
-
+    return iget("Abandonar")
 
 def pmEmpezar():
-    return PM(45940,47976)
-
+    return iget("pmEmpezar")
 
 def Empezar():
-    return QtGui.QIcon(pmEmpezar())
-
+    return iget("Empezar")
 
 def pmOtros():
-    return PM(47976,52446)
-
+    return iget("pmOtros")
 
 def Otros():
-    return QtGui.QIcon(pmOtros())
-
+    return iget("Otros")
 
 def pmAnalizar():
-    return PM(52446,53983)
-
+    return iget("pmAnalizar")
 
 def Analizar():
-    return QtGui.QIcon(pmAnalizar())
+    return iget("Analizar")
 
+def pmConfAnalysis():
+    return iget("pmConfAnalysis")
+
+def ConfAnalysis():
+    return iget("ConfAnalysis")
 
 def pmMainMenu():
-    return PM(53983,58293)
-
+    return iget("pmMainMenu")
 
 def MainMenu():
-    return QtGui.QIcon(pmMainMenu())
-
+    return iget("MainMenu")
 
 def pmFinPartida():
-    return PM(58293,61241)
-
+    return iget("pmFinPartida")
 
 def FinPartida():
-    return QtGui.QIcon(pmFinPartida())
-
+    return iget("FinPartida")
 
 def pmGrabar():
-    return PM(61241,62704)
-
+    return iget("pmGrabar")
 
 def Grabar():
-    return QtGui.QIcon(pmGrabar())
-
+    return iget("Grabar")
 
 def pmGrabarComo():
-    return PM(62704,64756)
-
+    return iget("pmGrabarComo")
 
 def GrabarComo():
-    return QtGui.QIcon(pmGrabarComo())
-
+    return iget("GrabarComo")
 
 def pmRecuperar():
-    return PM(64756,67514)
-
+    return iget("pmRecuperar")
 
 def Recuperar():
-    return QtGui.QIcon(pmRecuperar())
-
+    return iget("Recuperar")
 
 def pmInformacion():
-    return PM(67514,69473)
-
+    return iget("pmInformacion")
 
 def Informacion():
-    return QtGui.QIcon(pmInformacion())
-
+    return iget("Informacion")
 
 def pmNuevo():
-    return PM(69473,70227)
-
+    return iget("pmNuevo")
 
 def Nuevo():
-    return QtGui.QIcon(pmNuevo())
-
+    return iget("Nuevo")
 
 def pmCopiar():
-    return PM(70227,71408)
-
+    return iget("pmCopiar")
 
 def Copiar():
-    return QtGui.QIcon(pmCopiar())
-
+    return iget("Copiar")
 
 def pmModificar():
-    return PM(71408,75805)
-
+    return iget("pmModificar")
 
 def Modificar():
-    return QtGui.QIcon(pmModificar())
-
+    return iget("Modificar")
 
 def pmBorrar():
-    return PM(75805,80796)
-
+    return iget("pmBorrar")
 
 def Borrar():
-    return QtGui.QIcon(pmBorrar())
-
+    return iget("Borrar")
 
 def pmMarcar():
-    return PM(80796,85725)
-
+    return iget("pmMarcar")
 
 def Marcar():
-    return QtGui.QIcon(pmMarcar())
-
+    return iget("Marcar")
 
 def pmPegar():
-    return PM(85725,88036)
-
+    return iget("pmPegar")
 
 def Pegar():
-    return QtGui.QIcon(pmPegar())
-
+    return iget("Pegar")
 
 def pmFichero():
-    return PM(88036,92721)
-
+    return iget("pmFichero")
 
 def Fichero():
-    return QtGui.QIcon(pmFichero())
-
+    return iget("Fichero")
 
 def pmNuestroFichero():
-    return PM(92721,95768)
-
+    return iget("pmNuestroFichero")
 
 def NuestroFichero():
-    return QtGui.QIcon(pmNuestroFichero())
-
+    return iget("NuestroFichero")
 
 def pmFicheroRepite():
-    return PM(95768,97264)
-
+    return iget("pmFicheroRepite")
 
 def FicheroRepite():
-    return QtGui.QIcon(pmFicheroRepite())
-
+    return iget("FicheroRepite")
 
 def pmInformacionPGN():
-    return PM(97264,98282)
-
+    return iget("pmInformacionPGN")
 
 def InformacionPGN():
-    return QtGui.QIcon(pmInformacionPGN())
-
+    return iget("InformacionPGN")
 
 def pmVer():
-    return PM(98282,99736)
-
+    return iget("pmVer")
 
 def Ver():
-    return QtGui.QIcon(pmVer())
-
+    return iget("Ver")
 
 def pmInicio():
-    return PM(99736,101750)
-
+    return iget("pmInicio")
 
 def Inicio():
-    return QtGui.QIcon(pmInicio())
-
+    return iget("Inicio")
 
 def pmFinal():
-    return PM(101750,103744)
-
+    return iget("pmFinal")
 
 def Final():
-    return QtGui.QIcon(pmFinal())
-
+    return iget("Final")
 
 def pmFiltrar():
-    return PM(103744,110234)
-
+    return iget("pmFiltrar")
 
 def Filtrar():
-    return QtGui.QIcon(pmFiltrar())
-
+    return iget("Filtrar")
 
 def pmArriba():
-    return PM(110234,112387)
-
+    return iget("pmArriba")
 
 def Arriba():
-    return QtGui.QIcon(pmArriba())
-
+    return iget("Arriba")
 
 def pmAbajo():
-    return PM(112387,114495)
-
+    return iget("pmAbajo")
 
 def Abajo():
-    return QtGui.QIcon(pmAbajo())
-
+    return iget("Abajo")
 
 def pmEstadisticas():
-    return PM(114495,116634)
-
+    return iget("pmEstadisticas")
 
 def Estadisticas():
-    return QtGui.QIcon(pmEstadisticas())
-
+    return iget("Estadisticas")
 
 def pmCheck():
-    return PM(116634,119858)
-
+    return iget("pmCheck")
 
 def Check():
-    return QtGui.QIcon(pmCheck())
-
+    return iget("Check")
 
 def pmTablas():
-    return PM(119858,121481)
-
+    return iget("pmTablas")
 
 def Tablas():
-    return QtGui.QIcon(pmTablas())
-
+    return iget("Tablas")
 
 def pmAtras():
-    return PM(121481,123000)
-
+    return iget("pmAtras")
 
 def Atras():
-    return QtGui.QIcon(pmAtras())
-
+    return iget("Atras")
 
 def pmBuscar():
-    return PM(123000,124985)
-
+    return iget("pmBuscar")
 
 def Buscar():
-    return QtGui.QIcon(pmBuscar())
-
+    return iget("Buscar")
 
 def pmLibros():
-    return PM(124985,127113)
-
+    return iget("pmLibros")
 
 def Libros():
-    return QtGui.QIcon(pmLibros())
-
+    return iget("Libros")
 
 def pmAceptar():
-    return PM(127113,130460)
-
+    return iget("pmAceptar")
 
 def Aceptar():
-    return QtGui.QIcon(pmAceptar())
-
+    return iget("Aceptar")
 
 def pmCancelar():
-    return PM(130460,132443)
-
+    return iget("pmCancelar")
 
 def Cancelar():
-    return QtGui.QIcon(pmCancelar())
-
+    return iget("Cancelar")
 
 def pmDefecto():
-    return PM(132443,135762)
-
+    return iget("pmDefecto")
 
 def Defecto():
-    return QtGui.QIcon(pmDefecto())
-
+    return iget("Defecto")
 
 def pmInsertar():
-    return PM(135762,138158)
-
+    return iget("pmInsertar")
 
 def Insertar():
-    return QtGui.QIcon(pmInsertar())
-
+    return iget("Insertar")
 
 def pmJugar():
-    return PM(138158,140367)
-
+    return iget("pmJugar")
 
 def Jugar():
-    return QtGui.QIcon(pmJugar())
-
+    return iget("Jugar")
 
 def pmConfigurar():
-    return PM(140367,143451)
-
+    return iget("pmConfigurar")
 
 def Configurar():
-    return QtGui.QIcon(pmConfigurar())
-
+    return iget("Configurar")
 
 def pmS_Aceptar():
-    return PM(127113,130460)
-
+    return iget("pmS_Aceptar")
 
 def S_Aceptar():
-    return QtGui.QIcon(pmS_Aceptar())
-
+    return iget("S_Aceptar")
 
 def pmS_Cancelar():
-    return PM(130460,132443)
-
+    return iget("pmS_Cancelar")
 
 def S_Cancelar():
-    return QtGui.QIcon(pmS_Cancelar())
-
+    return iget("S_Cancelar")
 
 def pmS_Microfono():
-    return PM(143451,148892)
-
+    return iget("pmS_Microfono")
 
 def S_Microfono():
-    return QtGui.QIcon(pmS_Microfono())
-
+    return iget("S_Microfono")
 
 def pmS_LeerWav():
-    return PM(39340,41940)
-
+    return iget("pmS_LeerWav")
 
 def S_LeerWav():
-    return QtGui.QIcon(pmS_LeerWav())
-
+    return iget("S_LeerWav")
 
 def pmS_Play():
-    return PM(148892,154230)
-
+    return iget("pmS_Play")
 
 def S_Play():
-    return QtGui.QIcon(pmS_Play())
-
+    return iget("S_Play")
 
 def pmS_StopPlay():
-    return PM(154230,154840)
-
+    return iget("pmS_StopPlay")
 
 def S_StopPlay():
-    return QtGui.QIcon(pmS_StopPlay())
-
+    return iget("S_StopPlay")
 
 def pmS_StopMicrofono():
-    return PM(154230,154840)
-
+    return iget("pmS_StopMicrofono")
 
 def S_StopMicrofono():
-    return QtGui.QIcon(pmS_StopMicrofono())
-
+    return iget("S_StopMicrofono")
 
 def pmS_Record():
-    return PM(154840,158073)
-
+    return iget("pmS_Record")
 
 def S_Record():
-    return QtGui.QIcon(pmS_Record())
-
+    return iget("S_Record")
 
 def pmS_Limpiar():
-    return PM(75805,80796)
-
+    return iget("pmS_Limpiar")
 
 def S_Limpiar():
-    return QtGui.QIcon(pmS_Limpiar())
-
+    return iget("S_Limpiar")
 
 def pmHistorial():
-    return PM(158073,159336)
-
+    return iget("pmHistorial")
 
 def Historial():
-    return QtGui.QIcon(pmHistorial())
-
+    return iget("Historial")
 
 def pmPegar16():
-    return PM(159336,160330)
-
+    return iget("pmPegar16")
 
 def Pegar16():
-    return QtGui.QIcon(pmPegar16())
-
+    return iget("Pegar16")
 
 def pmRivalesMP():
-    return PM(160330,163012)
-
+    return iget("pmRivalesMP")
 
 def RivalesMP():
-    return QtGui.QIcon(pmRivalesMP())
-
+    return iget("RivalesMP")
 
 def pmCamara():
-    return PM(163012,164534)
-
+    return iget("pmCamara")
 
 def Camara():
-    return QtGui.QIcon(pmCamara())
-
+    return iget("Camara")
 
 def pmUsuarios():
-    return PM(164534,165774)
-
+    return iget("pmUsuarios")
 
 def Usuarios():
-    return QtGui.QIcon(pmUsuarios())
-
+    return iget("Usuarios")
 
 def pmResistencia():
-    return PM(165774,168836)
-
+    return iget("pmResistencia")
 
 def Resistencia():
-    return QtGui.QIcon(pmResistencia())
-
+    return iget("Resistencia")
 
 def pmCebra():
-    return PM(168836,171289)
-
+    return iget("pmCebra")
 
 def Cebra():
-    return QtGui.QIcon(pmCebra())
-
+    return iget("Cebra")
 
 def pmGafas():
-    return PM(171289,172447)
-
+    return iget("pmGafas")
 
 def Gafas():
-    return QtGui.QIcon(pmGafas())
-
+    return iget("Gafas")
 
 def pmPuente():
-    return PM(172447,173083)
-
+    return iget("pmPuente")
 
 def Puente():
-    return QtGui.QIcon(pmPuente())
-
+    return iget("Puente")
 
 def pmWeb():
-    return PM(173083,174265)
-
+    return iget("pmWeb")
 
 def Web():
-    return QtGui.QIcon(pmWeb())
-
+    return iget("Web")
 
 def pmMail():
-    return PM(174265,175225)
-
+    return iget("pmMail")
 
 def Mail():
-    return QtGui.QIcon(pmMail())
-
+    return iget("Mail")
 
 def pmAyuda():
-    return PM(175225,176406)
-
+    return iget("pmAyuda")
 
 def Ayuda():
-    return QtGui.QIcon(pmAyuda())
-
+    return iget("Ayuda")
 
 def pmFAQ():
-    return PM(176406,177727)
-
+    return iget("pmFAQ")
 
 def FAQ():
-    return QtGui.QIcon(pmFAQ())
-
+    return iget("FAQ")
 
 def pmActualiza():
-    return PM(177727,178593)
-
+    return iget("pmActualiza")
 
 def Actualiza():
-    return QtGui.QIcon(pmActualiza())
-
+    return iget("Actualiza")
 
 def pmRefresh():
-    return PM(178593,180985)
-
+    return iget("pmRefresh")
 
 def Refresh():
-    return QtGui.QIcon(pmRefresh())
-
+    return iget("Refresh")
 
 def pmJuegaSolo():
-    return PM(180985,182837)
-
+    return iget("pmJuegaSolo")
 
 def JuegaSolo():
-    return QtGui.QIcon(pmJuegaSolo())
-
+    return iget("JuegaSolo")
 
 def pmPlayer():
-    return PM(182837,184019)
-
+    return iget("pmPlayer")
 
 def Player():
-    return QtGui.QIcon(pmPlayer())
-
+    return iget("Player")
 
 def pmJS_Rotacion():
-    return PM(184019,185929)
-
+    return iget("pmJS_Rotacion")
 
 def JS_Rotacion():
-    return QtGui.QIcon(pmJS_Rotacion())
-
+    return iget("JS_Rotacion")
 
 def pmElo():
-    return PM(185929,187435)
-
+    return iget("pmElo")
 
 def Elo():
-    return QtGui.QIcon(pmElo())
-
+    return iget("Elo")
 
 def pmMate():
-    return PM(187435,187996)
-
+    return iget("pmMate")
 
 def Mate():
-    return QtGui.QIcon(pmMate())
-
+    return iget("Mate")
 
 def pmEloTimed():
-    return PM(187996,189480)
-
+    return iget("pmEloTimed")
 
 def EloTimed():
-    return QtGui.QIcon(pmEloTimed())
-
+    return iget("EloTimed")
 
 def pmPGN():
-    return PM(189480,191478)
-
+    return iget("pmPGN")
 
 def PGN():
-    return QtGui.QIcon(pmPGN())
-
+    return iget("PGN")
 
 def pmPGN_Importar():
-    return PM(191478,193068)
-
+    return iget("pmPGN_Importar")
 
 def PGN_Importar():
-    return QtGui.QIcon(pmPGN_Importar())
-
+    return iget("PGN_Importar")
 
 def pmAyudaGR():
-    return PM(193068,198946)
-
+    return iget("pmAyudaGR")
 
 def AyudaGR():
-    return QtGui.QIcon(pmAyudaGR())
-
+    return iget("AyudaGR")
 
 def pmBotonAyuda():
-    return PM(198946,201406)
-
+    return iget("pmBotonAyuda")
 
 def BotonAyuda():
-    return QtGui.QIcon(pmBotonAyuda())
-
+    return iget("BotonAyuda")
 
 def pmColores():
-    return PM(201406,202637)
-
+    return iget("pmColores")
 
 def Colores():
-    return QtGui.QIcon(pmColores())
-
+    return iget("Colores")
 
 def pmEditarColores():
-    return PM(202637,204940)
-
+    return iget("pmEditarColores")
 
 def EditarColores():
-    return QtGui.QIcon(pmEditarColores())
-
+    return iget("EditarColores")
 
 def pmGranMaestro():
-    return PM(204940,205796)
-
+    return iget("pmGranMaestro")
 
 def GranMaestro():
-    return QtGui.QIcon(pmGranMaestro())
-
+    return iget("GranMaestro")
 
 def pmFavoritos():
-    return PM(205796,207562)
-
+    return iget("pmFavoritos")
 
 def Favoritos():
-    return QtGui.QIcon(pmFavoritos())
-
+    return iget("Favoritos")
 
 def pmCarpeta():
-    return PM(207562,208266)
-
+    return iget("pmCarpeta")
 
 def Carpeta():
-    return QtGui.QIcon(pmCarpeta())
-
+    return iget("Carpeta")
 
 def pmDivision():
-    return PM(208266,208931)
-
+    return iget("pmDivision")
 
 def Division():
-    return QtGui.QIcon(pmDivision())
-
+    return iget("Division")
 
 def pmDivisionF():
-    return PM(208931,210045)
-
+    return iget("pmDivisionF")
 
 def DivisionF():
-    return QtGui.QIcon(pmDivisionF())
-
+    return iget("DivisionF")
 
 def pmDelete():
-    return PM(210045,210969)
-
+    return iget("pmDelete")
 
 def Delete():
-    return QtGui.QIcon(pmDelete())
-
+    return iget("Delete")
 
 def pmModificarP():
-    return PM(210969,212035)
-
+    return iget("pmModificarP")
 
 def ModificarP():
-    return QtGui.QIcon(pmModificarP())
-
+    return iget("ModificarP")
 
 def pmGrupo_Si():
-    return PM(212035,212497)
-
+    return iget("pmGrupo_Si")
 
 def Grupo_Si():
-    return QtGui.QIcon(pmGrupo_Si())
-
+    return iget("Grupo_Si")
 
 def pmGrupo_No():
-    return PM(212497,212820)
-
+    return iget("pmGrupo_No")
 
 def Grupo_No():
-    return QtGui.QIcon(pmGrupo_No())
-
+    return iget("Grupo_No")
 
 def pmMotor_Si():
-    return PM(212820,213282)
-
+    return iget("pmMotor_Si")
 
 def Motor_Si():
-    return QtGui.QIcon(pmMotor_Si())
-
+    return iget("Motor_Si")
 
 def pmMotor_No():
-    return PM(210045,210969)
-
+    return iget("pmMotor_No")
 
 def Motor_No():
-    return QtGui.QIcon(pmMotor_No())
-
+    return iget("Motor_No")
 
 def pmMotor_Actual():
-    return PM(213282,214299)
-
+    return iget("pmMotor_Actual")
 
 def Motor_Actual():
-    return QtGui.QIcon(pmMotor_Actual())
-
+    return iget("Motor_Actual")
 
 def pmMoverInicio():
-    return PM(214299,214597)
-
+    return iget("pmMoverInicio")
 
 def MoverInicio():
-    return QtGui.QIcon(pmMoverInicio())
-
+    return iget("MoverInicio")
 
 def pmMoverFinal():
-    return PM(214597,214898)
-
+    return iget("pmMoverFinal")
 
 def MoverFinal():
-    return QtGui.QIcon(pmMoverFinal())
-
+    return iget("MoverFinal")
 
 def pmMoverAdelante():
-    return PM(214898,215253)
-
+    return iget("pmMoverAdelante")
 
 def MoverAdelante():
-    return QtGui.QIcon(pmMoverAdelante())
-
+    return iget("MoverAdelante")
 
 def pmMoverAtras():
-    return PM(215253,215618)
-
+    return iget("pmMoverAtras")
 
 def MoverAtras():
-    return QtGui.QIcon(pmMoverAtras())
-
+    return iget("MoverAtras")
 
 def pmMoverLibre():
-    return PM(215618,216036)
-
+    return iget("pmMoverLibre")
 
 def MoverLibre():
-    return QtGui.QIcon(pmMoverLibre())
-
+    return iget("MoverLibre")
 
 def pmMoverTiempo():
-    return PM(216036,216615)
-
+    return iget("pmMoverTiempo")
 
 def MoverTiempo():
-    return QtGui.QIcon(pmMoverTiempo())
-
+    return iget("MoverTiempo")
 
 def pmMoverMas():
-    return PM(216615,217654)
-
+    return iget("pmMoverMas")
 
 def MoverMas():
-    return QtGui.QIcon(pmMoverMas())
-
+    return iget("MoverMas")
 
 def pmMoverGrabar():
-    return PM(217654,218510)
-
+    return iget("pmMoverGrabar")
 
 def MoverGrabar():
-    return QtGui.QIcon(pmMoverGrabar())
-
+    return iget("MoverGrabar")
 
 def pmMoverGrabarTodos():
-    return PM(218510,219554)
-
+    return iget("pmMoverGrabarTodos")
 
 def MoverGrabarTodos():
-    return QtGui.QIcon(pmMoverGrabarTodos())
-
+    return iget("MoverGrabarTodos")
 
 def pmMoverJugar():
-    return PM(219554,220385)
-
+    return iget("pmMoverJugar")
 
 def MoverJugar():
-    return QtGui.QIcon(pmMoverJugar())
-
+    return iget("MoverJugar")
 
 def pmPelicula():
-    return PM(220385,222519)
-
+    return iget("pmPelicula")
 
 def Pelicula():
-    return QtGui.QIcon(pmPelicula())
-
+    return iget("Pelicula")
 
 def pmPelicula_Pausa():
-    return PM(222519,224278)
-
+    return iget("pmPelicula_Pausa")
 
 def Pelicula_Pausa():
-    return QtGui.QIcon(pmPelicula_Pausa())
-
+    return iget("Pelicula_Pausa")
 
 def pmPelicula_Seguir():
-    return PM(224278,226367)
-
+    return iget("pmPelicula_Seguir")
 
 def Pelicula_Seguir():
-    return QtGui.QIcon(pmPelicula_Seguir())
-
+    return iget("Pelicula_Seguir")
 
 def pmPelicula_Rapido():
-    return PM(226367,228426)
-
+    return iget("pmPelicula_Rapido")
 
 def Pelicula_Rapido():
-    return QtGui.QIcon(pmPelicula_Rapido())
-
+    return iget("Pelicula_Rapido")
 
 def pmPelicula_Lento():
-    return PM(228426,230301)
-
+    return iget("pmPelicula_Lento")
 
 def Pelicula_Lento():
-    return QtGui.QIcon(pmPelicula_Lento())
-
+    return iget("Pelicula_Lento")
 
 def pmPelicula_Repetir():
-    return PM(37046,39340)
-
+    return iget("pmPelicula_Repetir")
 
 def Pelicula_Repetir():
-    return QtGui.QIcon(pmPelicula_Repetir())
-
+    return iget("Pelicula_Repetir")
 
 def pmPelicula_PGN():
-    return PM(230301,231209)
-
+    return iget("pmPelicula_PGN")
 
 def Pelicula_PGN():
-    return QtGui.QIcon(pmPelicula_PGN())
-
+    return iget("Pelicula_PGN")
 
 def pmMemoria():
-    return PM(231209,233150)
-
+    return iget("pmMemoria")
 
 def Memoria():
-    return QtGui.QIcon(pmMemoria())
-
+    return iget("Memoria")
 
 def pmEntrenar():
-    return PM(233150,234689)
-
+    return iget("pmEntrenar")
 
 def Entrenar():
-    return QtGui.QIcon(pmEntrenar())
-
+    return iget("Entrenar")
 
 def pmEnviar():
-    return PM(233150,234689)
-
+    return iget("pmEnviar")
 
 def Enviar():
-    return QtGui.QIcon(pmEnviar())
-
+    return iget("Enviar")
 
 def pmBoxRooms():
-    return PM(234689,239492)
-
+    return iget("pmBoxRooms")
 
 def BoxRooms():
-    return QtGui.QIcon(pmBoxRooms())
-
+    return iget("BoxRooms")
 
 def pmBoxRoom():
-    return PM(239492,239954)
-
+    return iget("pmBoxRoom")
 
 def BoxRoom():
-    return QtGui.QIcon(pmBoxRoom())
-
+    return iget("BoxRoom")
 
 def pmNewBoxRoom():
-    return PM(239954,241462)
-
+    return iget("pmNewBoxRoom")
 
 def NewBoxRoom():
-    return QtGui.QIcon(pmNewBoxRoom())
-
+    return iget("NewBoxRoom")
 
 def pmNuevoMas():
-    return PM(239954,241462)
-
+    return iget("pmNuevoMas")
 
 def NuevoMas():
-    return QtGui.QIcon(pmNuevoMas())
-
+    return iget("NuevoMas")
 
 def pmTemas():
-    return PM(241462,243685)
-
+    return iget("pmTemas")
 
 def Temas():
-    return QtGui.QIcon(pmTemas())
-
+    return iget("Temas")
 
 def pmTutorialesCrear():
-    return PM(243685,249954)
-
+    return iget("pmTutorialesCrear")
 
 def TutorialesCrear():
-    return QtGui.QIcon(pmTutorialesCrear())
-
+    return iget("TutorialesCrear")
 
 def pmMover():
-    return PM(249954,250536)
-
+    return iget("pmMover")
 
 def Mover():
-    return QtGui.QIcon(pmMover())
-
+    return iget("Mover")
 
 def pmSeleccionar():
-    return PM(250536,256240)
-
+    return iget("pmSeleccionar")
 
 def Seleccionar():
-    return QtGui.QIcon(pmSeleccionar())
-
+    return iget("Seleccionar")
 
 def pmVista():
-    return PM(256240,258164)
-
+    return iget("pmVista")
 
 def Vista():
-    return QtGui.QIcon(pmVista())
-
+    return iget("Vista")
 
 def pmInformacionPGNUno():
-    return PM(258164,259542)
-
+    return iget("pmInformacionPGNUno")
 
 def InformacionPGNUno():
-    return QtGui.QIcon(pmInformacionPGNUno())
-
+    return iget("InformacionPGNUno")
 
 def pmDailyTest():
-    return PM(259542,261882)
-
+    return iget("pmDailyTest")
 
 def DailyTest():
-    return QtGui.QIcon(pmDailyTest())
-
+    return iget("DailyTest")
 
 def pmJuegaPorMi():
-    return PM(261882,263602)
-
+    return iget("pmJuegaPorMi")
 
 def JuegaPorMi():
-    return QtGui.QIcon(pmJuegaPorMi())
-
+    return iget("JuegaPorMi")
 
 def pmArbol():
-    return PM(263602,264236)
-
+    return iget("pmArbol")
 
 def Arbol():
-    return QtGui.QIcon(pmArbol())
-
+    return iget("Arbol")
 
 def pmGrabarFichero():
-    return PM(61241,62704)
-
+    return iget("pmGrabarFichero")
 
 def GrabarFichero():
-    return QtGui.QIcon(pmGrabarFichero())
-
+    return iget("GrabarFichero")
 
 def pmClipboard():
-    return PM(264236,265014)
-
+    return iget("pmClipboard")
 
 def Clipboard():
-    return QtGui.QIcon(pmClipboard())
-
+    return iget("Clipboard")
 
 def pmFics():
-    return PM(265014,265431)
-
+    return iget("pmFics")
 
 def Fics():
-    return QtGui.QIcon(pmFics())
-
+    return iget("Fics")
 
 def pmFide():
-    return PM(9646,11623)
-
+    return iget("pmFide")
 
 def Fide():
-    return QtGui.QIcon(pmFide())
-
+    return iget("Fide")
 
 def pmFichPGN():
-    return PM(25146,26894)
-
+    return iget("pmFichPGN")
 
 def FichPGN():
-    return QtGui.QIcon(pmFichPGN())
-
+    return iget("FichPGN")
 
 def pmFlechas():
-    return PM(265431,268783)
-
+    return iget("pmFlechas")
 
 def Flechas():
-    return QtGui.QIcon(pmFlechas())
-
+    return iget("Flechas")
 
 def pmMarcos():
-    return PM(268783,270230)
-
+    return iget("pmMarcos")
 
 def Marcos():
-    return QtGui.QIcon(pmMarcos())
-
+    return iget("Marcos")
 
 def pmSVGs():
-    return PM(270230,273799)
-
+    return iget("pmSVGs")
 
 def SVGs():
-    return QtGui.QIcon(pmSVGs())
-
+    return iget("SVGs")
 
 def pmAmarillo():
-    return PM(273799,275051)
-
+    return iget("pmAmarillo")
 
 def Amarillo():
-    return QtGui.QIcon(pmAmarillo())
-
+    return iget("Amarillo")
 
 def pmNaranja():
-    return PM(275051,276283)
-
+    return iget("pmNaranja")
 
 def Naranja():
-    return QtGui.QIcon(pmNaranja())
-
+    return iget("Naranja")
 
 def pmVerde():
-    return PM(276283,277559)
-
+    return iget("pmVerde")
 
 def Verde():
-    return QtGui.QIcon(pmVerde())
-
+    return iget("Verde")
 
 def pmAzul():
-    return PM(277559,278647)
-
+    return iget("pmAzul")
 
 def Azul():
-    return QtGui.QIcon(pmAzul())
-
+    return iget("Azul")
 
 def pmMagenta():
-    return PM(278647,279935)
-
+    return iget("pmMagenta")
 
 def Magenta():
-    return QtGui.QIcon(pmMagenta())
-
+    return iget("Magenta")
 
 def pmRojo():
-    return PM(279935,281154)
-
+    return iget("pmRojo")
 
 def Rojo():
-    return QtGui.QIcon(pmRojo())
-
+    return iget("Rojo")
 
 def pmGris():
-    return PM(281154,282112)
-
+    return iget("pmGris")
 
 def Gris():
-    return QtGui.QIcon(pmGris())
-
+    return iget("Gris")
 
 def pmAmarillo32():
-    return PM(282112,284092)
-
+    return iget("pmAmarillo32")
 
 def Amarillo32():
-    return QtGui.QIcon(pmAmarillo32())
-
+    return iget("Amarillo32")
 
 def pmNaranja32():
-    return PM(284092,286216)
-
+    return iget("pmNaranja32")
 
 def Naranja32():
-    return QtGui.QIcon(pmNaranja32())
-
+    return iget("Naranja32")
 
 def pmVerde32():
-    return PM(286216,288337)
-
+    return iget("pmVerde32")
 
 def Verde32():
-    return QtGui.QIcon(pmVerde32())
-
+    return iget("Verde32")
 
 def pmAzul32():
-    return PM(288337,290716)
-
+    return iget("pmAzul32")
 
 def Azul32():
-    return QtGui.QIcon(pmAzul32())
-
+    return iget("Azul32")
 
 def pmMagenta32():
-    return PM(290716,293167)
-
+    return iget("pmMagenta32")
 
 def Magenta32():
-    return QtGui.QIcon(pmMagenta32())
-
+    return iget("Magenta32")
 
 def pmRojo32():
-    return PM(293167,294982)
-
+    return iget("pmRojo32")
 
 def Rojo32():
-    return QtGui.QIcon(pmRojo32())
-
+    return iget("Rojo32")
 
 def pmGris32():
-    return PM(294982,296896)
-
+    return iget("pmGris32")
 
 def Gris32():
-    return QtGui.QIcon(pmGris32())
-
+    return iget("Gris32")
 
 def pmPuntoBlanco():
-    return PM(296896,297245)
-
+    return iget("pmPuntoBlanco")
 
 def PuntoBlanco():
-    return QtGui.QIcon(pmPuntoBlanco())
-
+    return iget("PuntoBlanco")
 
 def pmPuntoAmarillo():
-    return PM(212035,212497)
-
+    return iget("pmPuntoAmarillo")
 
 def PuntoAmarillo():
-    return QtGui.QIcon(pmPuntoAmarillo())
-
+    return iget("PuntoAmarillo")
 
 def pmPuntoNaranja():
-    return PM(297245,297707)
-
+    return iget("pmPuntoNaranja")
 
 def PuntoNaranja():
-    return QtGui.QIcon(pmPuntoNaranja())
-
+    return iget("PuntoNaranja")
 
 def pmPuntoVerde():
-    return PM(212820,213282)
-
+    return iget("pmPuntoVerde")
 
 def PuntoVerde():
-    return QtGui.QIcon(pmPuntoVerde())
-
+    return iget("PuntoVerde")
 
 def pmPuntoAzul():
-    return PM(239492,239954)
-
+    return iget("pmPuntoAzul")
 
 def PuntoAzul():
-    return QtGui.QIcon(pmPuntoAzul())
-
+    return iget("PuntoAzul")
 
 def pmPuntoMagenta():
-    return PM(297707,298206)
-
+    return iget("pmPuntoMagenta")
 
 def PuntoMagenta():
-    return QtGui.QIcon(pmPuntoMagenta())
-
+    return iget("PuntoMagenta")
 
 def pmPuntoRojo():
-    return PM(298206,298705)
-
+    return iget("pmPuntoRojo")
 
 def PuntoRojo():
-    return QtGui.QIcon(pmPuntoRojo())
-
+    return iget("PuntoRojo")
 
 def pmPuntoNegro():
-    return PM(212497,212820)
-
+    return iget("pmPuntoNegro")
 
 def PuntoNegro():
-    return QtGui.QIcon(pmPuntoNegro())
-
+    return iget("PuntoNegro")
 
 def pmPuntoEstrella():
-    return PM(298705,299132)
-
+    return iget("pmPuntoEstrella")
 
 def PuntoEstrella():
-    return QtGui.QIcon(pmPuntoEstrella())
-
+    return iget("PuntoEstrella")
 
 def pmComentario():
-    return PM(299132,299769)
-
+    return iget("pmComentario")
 
 def Comentario():
-    return QtGui.QIcon(pmComentario())
-
+    return iget("Comentario")
 
 def pmComentarioMas():
-    return PM(299769,300708)
-
+    return iget("pmComentarioMas")
 
 def ComentarioMas():
-    return QtGui.QIcon(pmComentarioMas())
-
+    return iget("ComentarioMas")
 
 def pmComentarioEditar():
-    return PM(217654,218510)
-
+    return iget("pmComentarioEditar")
 
 def ComentarioEditar():
-    return QtGui.QIcon(pmComentarioEditar())
-
+    return iget("ComentarioEditar")
 
 def pmOpeningComentario():
-    return PM(300708,301704)
-
+    return iget("pmOpeningComentario")
 
 def OpeningComentario():
-    return QtGui.QIcon(pmOpeningComentario())
-
+    return iget("OpeningComentario")
 
 def pmMas():
-    return PM(301704,302213)
-
+    return iget("pmMas")
 
 def Mas():
-    return QtGui.QIcon(pmMas())
-
+    return iget("Mas")
 
 def pmMasR():
-    return PM(302213,302701)
-
+    return iget("pmMasR")
 
 def MasR():
-    return QtGui.QIcon(pmMasR())
-
+    return iget("MasR")
 
 def pmMasDoc():
-    return PM(302701,303502)
-
+    return iget("pmMasDoc")
 
 def MasDoc():
-    return QtGui.QIcon(pmMasDoc())
-
+    return iget("MasDoc")
 
 def pmPotencia():
-    return PM(177727,178593)
-
+    return iget("pmPotencia")
 
 def Potencia():
-    return QtGui.QIcon(pmPotencia())
-
+    return iget("Potencia")
 
 def pmBMT():
-    return PM(303502,304380)
-
+    return iget("pmBMT")
 
 def BMT():
-    return QtGui.QIcon(pmBMT())
-
+    return iget("BMT")
 
 def pmOjo():
-    return PM(304380,305502)
-
+    return iget("pmOjo")
 
 def Ojo():
-    return QtGui.QIcon(pmOjo())
-
+    return iget("Ojo")
 
 def pmOcultar():
-    return PM(304380,305502)
-
+    return iget("pmOcultar")
 
 def Ocultar():
-    return QtGui.QIcon(pmOcultar())
-
+    return iget("Ocultar")
 
 def pmMostrar():
-    return PM(305502,306558)
-
+    return iget("pmMostrar")
 
 def Mostrar():
-    return QtGui.QIcon(pmMostrar())
-
+    return iget("Mostrar")
 
 def pmBlog():
-    return PM(306558,307080)
-
+    return iget("pmBlog")
 
 def Blog():
-    return QtGui.QIcon(pmBlog())
-
+    return iget("Blog")
 
 def pmVariations():
-    return PM(307080,307987)
-
+    return iget("pmVariations")
 
 def Variations():
-    return QtGui.QIcon(pmVariations())
-
+    return iget("Variations")
 
 def pmVariationsG():
-    return PM(307987,310414)
-
+    return iget("pmVariationsG")
 
 def VariationsG():
-    return QtGui.QIcon(pmVariationsG())
-
+    return iget("VariationsG")
 
 def pmCambiar():
-    return PM(310414,312128)
-
+    return iget("pmCambiar")
 
 def Cambiar():
-    return QtGui.QIcon(pmCambiar())
-
+    return iget("Cambiar")
 
 def pmAnterior():
-    return PM(312128,314182)
-
+    return iget("pmAnterior")
 
 def Anterior():
-    return QtGui.QIcon(pmAnterior())
-
+    return iget("Anterior")
 
 def pmSiguiente():
-    return PM(314182,316252)
-
+    return iget("pmSiguiente")
 
 def Siguiente():
-    return QtGui.QIcon(pmSiguiente())
-
+    return iget("Siguiente")
 
 def pmSiguienteF():
-    return PM(316252,318427)
-
+    return iget("pmSiguienteF")
 
 def SiguienteF():
-    return QtGui.QIcon(pmSiguienteF())
-
+    return iget("SiguienteF")
 
 def pmAnteriorF():
-    return PM(318427,320621)
-
+    return iget("pmAnteriorF")
 
 def AnteriorF():
-    return QtGui.QIcon(pmAnteriorF())
-
+    return iget("AnteriorF")
 
 def pmX():
-    return PM(320621,321903)
-
+    return iget("pmX")
 
 def X():
-    return QtGui.QIcon(pmX())
-
+    return iget("X")
 
 def pmTools():
-    return PM(321903,324504)
-
+    return iget("pmTools")
 
 def Tools():
-    return QtGui.QIcon(pmTools())
-
+    return iget("Tools")
 
 def pmTacticas():
-    return PM(324504,327077)
-
+    return iget("pmTacticas")
 
 def Tacticas():
-    return QtGui.QIcon(pmTacticas())
-
+    return iget("Tacticas")
 
 def pmCancelarPeque():
-    return PM(327077,327639)
-
+    return iget("pmCancelarPeque")
 
 def CancelarPeque():
-    return QtGui.QIcon(pmCancelarPeque())
-
+    return iget("CancelarPeque")
 
 def pmAceptarPeque():
-    return PM(213282,214299)
-
+    return iget("pmAceptarPeque")
 
 def AceptarPeque():
-    return QtGui.QIcon(pmAceptarPeque())
-
+    return iget("AceptarPeque")
 
 def pmLibre():
-    return PM(327639,330031)
-
+    return iget("pmLibre")
 
 def Libre():
-    return QtGui.QIcon(pmLibre())
-
+    return iget("Libre")
 
 def pmEnBlanco():
-    return PM(330031,330757)
-
+    return iget("pmEnBlanco")
 
 def EnBlanco():
-    return QtGui.QIcon(pmEnBlanco())
-
+    return iget("EnBlanco")
 
 def pmDirector():
-    return PM(330757,333731)
-
+    return iget("pmDirector")
 
 def Director():
-    return QtGui.QIcon(pmDirector())
-
+    return iget("Director")
 
 def pmTorneos():
-    return PM(333731,335469)
-
+    return iget("pmTorneos")
 
 def Torneos():
-    return QtGui.QIcon(pmTorneos())
-
+    return iget("Torneos")
 
 def pmOpenings():
-    return PM(335469,336394)
-
+    return iget("pmOpenings")
 
 def Openings():
-    return QtGui.QIcon(pmOpenings())
-
+    return iget("Openings")
 
 def pmV_Blancas():
-    return PM(336394,336674)
-
+    return iget("pmV_Blancas")
 
 def V_Blancas():
-    return QtGui.QIcon(pmV_Blancas())
-
+    return iget("V_Blancas")
 
 def pmV_Blancas_Mas():
-    return PM(336674,336954)
-
+    return iget("pmV_Blancas_Mas")
 
 def V_Blancas_Mas():
-    return QtGui.QIcon(pmV_Blancas_Mas())
-
+    return iget("V_Blancas_Mas")
 
 def pmV_Blancas_Mas_Mas():
-    return PM(336954,337226)
-
+    return iget("pmV_Blancas_Mas_Mas")
 
 def V_Blancas_Mas_Mas():
-    return QtGui.QIcon(pmV_Blancas_Mas_Mas())
-
+    return iget("V_Blancas_Mas_Mas")
 
 def pmV_Negras():
-    return PM(337226,337501)
-
+    return iget("pmV_Negras")
 
 def V_Negras():
-    return QtGui.QIcon(pmV_Negras())
-
+    return iget("V_Negras")
 
 def pmV_Negras_Mas():
-    return PM(337501,337776)
-
+    return iget("pmV_Negras_Mas")
 
 def V_Negras_Mas():
-    return QtGui.QIcon(pmV_Negras_Mas())
-
+    return iget("V_Negras_Mas")
 
 def pmV_Negras_Mas_Mas():
-    return PM(337776,338045)
-
+    return iget("pmV_Negras_Mas_Mas")
 
 def V_Negras_Mas_Mas():
-    return QtGui.QIcon(pmV_Negras_Mas_Mas())
-
+    return iget("V_Negras_Mas_Mas")
 
 def pmV_Blancas_Igual_Negras():
-    return PM(338045,338347)
-
+    return iget("pmV_Blancas_Igual_Negras")
 
 def V_Blancas_Igual_Negras():
-    return QtGui.QIcon(pmV_Blancas_Igual_Negras())
-
+    return iget("V_Blancas_Igual_Negras")
 
 def pmMezclar():
-    return PM(135762,138158)
-
+    return iget("pmMezclar")
 
 def Mezclar():
-    return QtGui.QIcon(pmMezclar())
-
+    return iget("Mezclar")
 
 def pmVoyager():
-    return PM(338347,339190)
-
+    return iget("pmVoyager")
 
 def Voyager():
-    return QtGui.QIcon(pmVoyager())
-
+    return iget("Voyager")
 
 def pmVoyager32():
-    return PM(339190,341078)
-
+    return iget("pmVoyager32")
 
 def Voyager32():
-    return QtGui.QIcon(pmVoyager32())
-
+    return iget("Voyager32")
 
 def pmReindexar():
-    return PM(341078,342895)
-
+    return iget("pmReindexar")
 
 def Reindexar():
-    return QtGui.QIcon(pmReindexar())
-
+    return iget("Reindexar")
 
 def pmRename():
-    return PM(342895,343879)
-
+    return iget("pmRename")
 
 def Rename():
-    return QtGui.QIcon(pmRename())
-
+    return iget("Rename")
 
 def pmAdd():
-    return PM(343879,344832)
-
+    return iget("pmAdd")
 
 def Add():
-    return QtGui.QIcon(pmAdd())
-
+    return iget("Add")
 
 def pmMas22():
-    return PM(344832,345496)
-
+    return iget("pmMas22")
 
 def Mas22():
-    return QtGui.QIcon(pmMas22())
-
+    return iget("Mas22")
 
 def pmMenos22():
-    return PM(345496,345940)
-
+    return iget("pmMenos22")
 
 def Menos22():
-    return QtGui.QIcon(pmMenos22())
-
+    return iget("Menos22")
 
 def pmTransposition():
-    return PM(345940,346459)
-
+    return iget("pmTransposition")
 
 def Transposition():
-    return QtGui.QIcon(pmTransposition())
-
+    return iget("Transposition")
 
 def pmRat():
-    return PM(346459,352163)
-
+    return iget("pmRat")
 
 def Rat():
-    return QtGui.QIcon(pmRat())
-
+    return iget("Rat")
 
 def pmAlligator():
-    return PM(352163,357155)
-
+    return iget("pmAlligator")
 
 def Alligator():
-    return QtGui.QIcon(pmAlligator())
-
+    return iget("Alligator")
 
 def pmAnt():
-    return PM(357155,363853)
-
+    return iget("pmAnt")
 
 def Ant():
-    return QtGui.QIcon(pmAnt())
-
+    return iget("Ant")
 
 def pmBat():
-    return PM(363853,366807)
-
+    return iget("pmBat")
 
 def Bat():
-    return QtGui.QIcon(pmBat())
-
+    return iget("Bat")
 
 def pmBear():
-    return PM(366807,374086)
-
+    return iget("pmBear")
 
 def Bear():
-    return QtGui.QIcon(pmBear())
-
+    return iget("Bear")
 
 def pmBee():
-    return PM(374086,379088)
-
+    return iget("pmBee")
 
 def Bee():
-    return QtGui.QIcon(pmBee())
-
+    return iget("Bee")
 
 def pmBird():
-    return PM(379088,385147)
-
+    return iget("pmBird")
 
 def Bird():
-    return QtGui.QIcon(pmBird())
-
+    return iget("Bird")
 
 def pmBull():
-    return PM(385147,392116)
-
+    return iget("pmBull")
 
 def Bull():
-    return QtGui.QIcon(pmBull())
-
+    return iget("Bull")
 
 def pmBulldog():
-    return PM(392116,399007)
-
+    return iget("pmBulldog")
 
 def Bulldog():
-    return QtGui.QIcon(pmBulldog())
-
+    return iget("Bulldog")
 
 def pmButterfly():
-    return PM(399007,406381)
-
+    return iget("pmButterfly")
 
 def Butterfly():
-    return QtGui.QIcon(pmButterfly())
-
+    return iget("Butterfly")
 
 def pmCat():
-    return PM(406381,412653)
-
+    return iget("pmCat")
 
 def Cat():
-    return QtGui.QIcon(pmCat())
-
+    return iget("Cat")
 
 def pmChicken():
-    return PM(412653,418464)
-
+    return iget("pmChicken")
 
 def Chicken():
-    return QtGui.QIcon(pmChicken())
-
+    return iget("Chicken")
 
 def pmCow():
-    return PM(418464,425207)
-
+    return iget("pmCow")
 
 def Cow():
-    return QtGui.QIcon(pmCow())
-
+    return iget("Cow")
 
 def pmCrab():
-    return PM(425207,430796)
-
+    return iget("pmCrab")
 
 def Crab():
-    return QtGui.QIcon(pmCrab())
-
+    return iget("Crab")
 
 def pmCrocodile():
-    return PM(430796,436937)
-
+    return iget("pmCrocodile")
 
 def Crocodile():
-    return QtGui.QIcon(pmCrocodile())
-
+    return iget("Crocodile")
 
 def pmDeer():
-    return PM(436937,443244)
-
+    return iget("pmDeer")
 
 def Deer():
-    return QtGui.QIcon(pmDeer())
-
+    return iget("Deer")
 
 def pmDog():
-    return PM(443244,449847)
-
+    return iget("pmDog")
 
 def Dog():
-    return QtGui.QIcon(pmDog())
-
+    return iget("Dog")
 
 def pmDonkey():
-    return PM(449847,455494)
-
+    return iget("pmDonkey")
 
 def Donkey():
-    return QtGui.QIcon(pmDonkey())
-
+    return iget("Donkey")
 
 def pmDuck():
-    return PM(455494,462037)
-
+    return iget("pmDuck")
 
 def Duck():
-    return QtGui.QIcon(pmDuck())
-
+    return iget("Duck")
 
 def pmEagle():
-    return PM(462037,466855)
-
+    return iget("pmEagle")
 
 def Eagle():
-    return QtGui.QIcon(pmEagle())
-
+    return iget("Eagle")
 
 def pmElephant():
-    return PM(466855,473336)
-
+    return iget("pmElephant")
 
 def Elephant():
-    return QtGui.QIcon(pmElephant())
-
+    return iget("Elephant")
 
 def pmFish():
-    return PM(473336,480177)
-
+    return iget("pmFish")
 
 def Fish():
-    return QtGui.QIcon(pmFish())
-
+    return iget("Fish")
 
 def pmFox():
-    return PM(480177,486960)
-
+    return iget("pmFox")
 
 def Fox():
-    return QtGui.QIcon(pmFox())
-
+    return iget("Fox")
 
 def pmFrog():
-    return PM(486960,493376)
-
+    return iget("pmFrog")
 
 def Frog():
-    return QtGui.QIcon(pmFrog())
-
+    return iget("Frog")
 
 def pmGiraffe():
-    return PM(493376,500554)
-
+    return iget("pmGiraffe")
 
 def Giraffe():
-    return QtGui.QIcon(pmGiraffe())
-
+    return iget("Giraffe")
 
 def pmGorilla():
-    return PM(500554,507093)
-
+    return iget("pmGorilla")
 
 def Gorilla():
-    return QtGui.QIcon(pmGorilla())
-
+    return iget("Gorilla")
 
 def pmHippo():
-    return PM(507093,514214)
-
+    return iget("pmHippo")
 
 def Hippo():
-    return QtGui.QIcon(pmHippo())
-
+    return iget("Hippo")
 
 def pmHorse():
-    return PM(514214,520761)
-
+    return iget("pmHorse")
 
 def Horse():
-    return QtGui.QIcon(pmHorse())
-
+    return iget("Horse")
 
 def pmInsect():
-    return PM(520761,526696)
-
+    return iget("pmInsect")
 
 def Insect():
-    return QtGui.QIcon(pmInsect())
-
+    return iget("Insect")
 
 def pmLion():
-    return PM(526696,535606)
-
+    return iget("pmLion")
 
 def Lion():
-    return QtGui.QIcon(pmLion())
-
+    return iget("Lion")
 
 def pmMonkey():
-    return PM(535606,543285)
-
+    return iget("pmMonkey")
 
 def Monkey():
-    return QtGui.QIcon(pmMonkey())
-
+    return iget("Monkey")
 
 def pmMoose():
-    return PM(543285,549909)
-
+    return iget("pmMoose")
 
 def Moose():
-    return QtGui.QIcon(pmMoose())
-
+    return iget("Moose")
 
 def pmMouse():
-    return PM(346459,352163)
-
+    return iget("pmMouse")
 
 def Mouse():
-    return QtGui.QIcon(pmMouse())
-
+    return iget("Mouse")
 
 def pmOwl():
-    return PM(549909,556615)
-
+    return iget("pmOwl")
 
 def Owl():
-    return QtGui.QIcon(pmOwl())
-
+    return iget("Owl")
 
 def pmPanda():
-    return PM(556615,560649)
-
+    return iget("pmPanda")
 
 def Panda():
-    return QtGui.QIcon(pmPanda())
-
+    return iget("Panda")
 
 def pmPenguin():
-    return PM(560649,566198)
-
+    return iget("pmPenguin")
 
 def Penguin():
-    return QtGui.QIcon(pmPenguin())
-
+    return iget("Penguin")
 
 def pmPig():
-    return PM(566198,574238)
-
+    return iget("pmPig")
 
 def Pig():
-    return QtGui.QIcon(pmPig())
-
+    return iget("Pig")
 
 def pmRabbit():
-    return PM(574238,581539)
-
+    return iget("pmRabbit")
 
 def Rabbit():
-    return QtGui.QIcon(pmRabbit())
-
+    return iget("Rabbit")
 
 def pmRhino():
-    return PM(581539,587926)
-
+    return iget("pmRhino")
 
 def Rhino():
-    return QtGui.QIcon(pmRhino())
-
+    return iget("Rhino")
 
 def pmRooster():
-    return PM(587926,593189)
-
+    return iget("pmRooster")
 
 def Rooster():
-    return QtGui.QIcon(pmRooster())
-
+    return iget("Rooster")
 
 def pmShark():
-    return PM(593189,598959)
-
+    return iget("pmShark")
 
 def Shark():
-    return QtGui.QIcon(pmShark())
-
+    return iget("Shark")
 
 def pmSheep():
-    return PM(598959,602790)
-
+    return iget("pmSheep")
 
 def Sheep():
-    return QtGui.QIcon(pmSheep())
-
+    return iget("Sheep")
 
 def pmSnake():
-    return PM(602790,608815)
-
+    return iget("pmSnake")
 
 def Snake():
-    return QtGui.QIcon(pmSnake())
-
+    return iget("Snake")
 
 def pmTiger():
-    return PM(608815,616852)
-
+    return iget("pmTiger")
 
 def Tiger():
-    return QtGui.QIcon(pmTiger())
-
+    return iget("Tiger")
 
 def pmTurkey():
-    return PM(616852,624266)
-
+    return iget("pmTurkey")
 
 def Turkey():
-    return QtGui.QIcon(pmTurkey())
-
+    return iget("Turkey")
 
 def pmTurtle():
-    return PM(624266,630987)
-
+    return iget("pmTurtle")
 
 def Turtle():
-    return QtGui.QIcon(pmTurtle())
-
+    return iget("Turtle")
 
 def pmWolf():
-    return PM(630987,634082)
-
+    return iget("pmWolf")
 
 def Wolf():
-    return QtGui.QIcon(pmWolf())
-
+    return iget("Wolf")
 
 def pmSteven():
-    return PM(634082,641234)
-
+    return iget("pmSteven")
 
 def Steven():
-    return QtGui.QIcon(pmSteven())
+    return iget("Steven")
 
+def pmKnightMan():
+    return iget("pmKnightMan")
+
+def KnightMan():
+    return iget("KnightMan")
 
 def pmWheel():
-    return PM(641234,649299)
-
+    return iget("pmWheel")
 
 def Wheel():
-    return QtGui.QIcon(pmWheel())
-
+    return iget("Wheel")
 
 def pmWheelchair():
-    return PM(649299,658103)
-
+    return iget("pmWheelchair")
 
 def Wheelchair():
-    return QtGui.QIcon(pmWheelchair())
-
+    return iget("Wheelchair")
 
 def pmTouringMotorcycle():
-    return PM(658103,664415)
-
+    return iget("pmTouringMotorcycle")
 
 def TouringMotorcycle():
-    return QtGui.QIcon(pmTouringMotorcycle())
-
+    return iget("TouringMotorcycle")
 
 def pmContainer():
-    return PM(664415,669750)
-
+    return iget("pmContainer")
 
 def Container():
-    return QtGui.QIcon(pmContainer())
-
+    return iget("Container")
 
 def pmBoatEquipment():
-    return PM(669750,675273)
-
+    return iget("pmBoatEquipment")
 
 def BoatEquipment():
-    return QtGui.QIcon(pmBoatEquipment())
-
+    return iget("BoatEquipment")
 
 def pmCar():
-    return PM(675273,679919)
-
+    return iget("pmCar")
 
 def Car():
-    return QtGui.QIcon(pmCar())
-
+    return iget("Car")
 
 def pmLorry():
-    return PM(679919,685955)
-
+    return iget("pmLorry")
 
 def Lorry():
-    return QtGui.QIcon(pmLorry())
-
+    return iget("Lorry")
 
 def pmCarTrailer():
-    return PM(685955,690052)
-
+    return iget("pmCarTrailer")
 
 def CarTrailer():
-    return QtGui.QIcon(pmCarTrailer())
-
+    return iget("CarTrailer")
 
 def pmTowTruck():
-    return PM(690052,694810)
-
+    return iget("pmTowTruck")
 
 def TowTruck():
-    return QtGui.QIcon(pmTowTruck())
-
+    return iget("TowTruck")
 
 def pmQuadBike():
-    return PM(694810,700779)
-
+    return iget("pmQuadBike")
 
 def QuadBike():
-    return QtGui.QIcon(pmQuadBike())
-
+    return iget("QuadBike")
 
 def pmRecoveryTruck():
-    return PM(700779,705776)
-
+    return iget("pmRecoveryTruck")
 
 def RecoveryTruck():
-    return QtGui.QIcon(pmRecoveryTruck())
-
+    return iget("RecoveryTruck")
 
 def pmContainerLoader():
-    return PM(705776,710918)
-
+    return iget("pmContainerLoader")
 
 def ContainerLoader():
-    return QtGui.QIcon(pmContainerLoader())
-
+    return iget("ContainerLoader")
 
 def pmPoliceCar():
-    return PM(710918,715750)
-
+    return iget("pmPoliceCar")
 
 def PoliceCar():
-    return QtGui.QIcon(pmPoliceCar())
-
+    return iget("PoliceCar")
 
 def pmExecutiveCar():
-    return PM(715750,720428)
-
+    return iget("pmExecutiveCar")
 
 def ExecutiveCar():
-    return QtGui.QIcon(pmExecutiveCar())
-
+    return iget("ExecutiveCar")
 
 def pmTruck():
-    return PM(720428,725891)
-
+    return iget("pmTruck")
 
 def Truck():
-    return QtGui.QIcon(pmTruck())
-
+    return iget("Truck")
 
 def pmExcavator():
-    return PM(725891,730782)
-
+    return iget("pmExcavator")
 
 def Excavator():
-    return QtGui.QIcon(pmExcavator())
-
+    return iget("Excavator")
 
 def pmCabriolet():
-    return PM(730782,735620)
-
+    return iget("pmCabriolet")
 
 def Cabriolet():
-    return QtGui.QIcon(pmCabriolet())
-
+    return iget("Cabriolet")
 
 def pmMixerTruck():
-    return PM(735620,741930)
-
+    return iget("pmMixerTruck")
 
 def MixerTruck():
-    return QtGui.QIcon(pmMixerTruck())
-
+    return iget("MixerTruck")
 
 def pmForkliftTruckLoaded():
-    return PM(741930,748078)
-
+    return iget("pmForkliftTruckLoaded")
 
 def ForkliftTruckLoaded():
-    return QtGui.QIcon(pmForkliftTruckLoaded())
-
+    return iget("ForkliftTruckLoaded")
 
 def pmAmbulance():
-    return PM(748078,754128)
-
+    return iget("pmAmbulance")
 
 def Ambulance():
-    return QtGui.QIcon(pmAmbulance())
-
+    return iget("Ambulance")
 
 def pmDieselLocomotiveBoxcar():
-    return PM(754128,758134)
-
+    return iget("pmDieselLocomotiveBoxcar")
 
 def DieselLocomotiveBoxcar():
-    return QtGui.QIcon(pmDieselLocomotiveBoxcar())
-
+    return iget("DieselLocomotiveBoxcar")
 
 def pmTractorUnit():
-    return PM(758134,763601)
-
+    return iget("pmTractorUnit")
 
 def TractorUnit():
-    return QtGui.QIcon(pmTractorUnit())
-
+    return iget("TractorUnit")
 
 def pmFireTruck():
-    return PM(763601,769940)
-
+    return iget("pmFireTruck")
 
 def FireTruck():
-    return QtGui.QIcon(pmFireTruck())
-
+    return iget("FireTruck")
 
 def pmCargoShip():
-    return PM(769940,774281)
-
+    return iget("pmCargoShip")
 
 def CargoShip():
-    return QtGui.QIcon(pmCargoShip())
-
+    return iget("CargoShip")
 
 def pmSubwayTrain():
-    return PM(774281,779171)
-
+    return iget("pmSubwayTrain")
 
 def SubwayTrain():
-    return QtGui.QIcon(pmSubwayTrain())
-
+    return iget("SubwayTrain")
 
 def pmTruckMountedCrane():
-    return PM(779171,784912)
-
+    return iget("pmTruckMountedCrane")
 
 def TruckMountedCrane():
-    return QtGui.QIcon(pmTruckMountedCrane())
-
+    return iget("TruckMountedCrane")
 
 def pmAirAmbulance():
-    return PM(784912,790025)
-
+    return iget("pmAirAmbulance")
 
 def AirAmbulance():
-    return QtGui.QIcon(pmAirAmbulance())
-
+    return iget("AirAmbulance")
 
 def pmAirplane():
-    return PM(790025,794913)
-
+    return iget("pmAirplane")
 
 def Airplane():
-    return QtGui.QIcon(pmAirplane())
-
+    return iget("Airplane")
 
 def pmCaracol():
-    return PM(794913,796729)
-
+    return iget("pmCaracol")
 
 def Caracol():
-    return QtGui.QIcon(pmCaracol())
-
+    return iget("Caracol")
 
 def pmUno():
-    return PM(796729,799191)
-
+    return iget("pmUno")
 
 def Uno():
-    return QtGui.QIcon(pmUno())
-
+    return iget("Uno")
 
 def pmMotoresExternos():
-    return PM(799191,801093)
-
+    return iget("pmMotoresExternos")
 
 def MotoresExternos():
-    return QtGui.QIcon(pmMotoresExternos())
-
+    return iget("MotoresExternos")
 
 def pmDatabase():
-    return PM(801093,802409)
-
+    return iget("pmDatabase")
 
 def Database():
-    return QtGui.QIcon(pmDatabase())
-
+    return iget("Database")
 
 def pmDatabaseMas():
-    return PM(802409,803868)
-
+    return iget("pmDatabaseMas")
 
 def DatabaseMas():
-    return QtGui.QIcon(pmDatabaseMas())
-
+    return iget("DatabaseMas")
 
 def pmDatabaseImport():
-    return PM(803868,804504)
-
+    return iget("pmDatabaseImport")
 
 def DatabaseImport():
-    return QtGui.QIcon(pmDatabaseImport())
-
+    return iget("DatabaseImport")
 
 def pmDatabaseExport():
-    return PM(804504,805149)
-
+    return iget("pmDatabaseExport")
 
 def DatabaseExport():
-    return QtGui.QIcon(pmDatabaseExport())
-
+    return iget("DatabaseExport")
 
 def pmDatabaseDelete():
-    return PM(805149,806272)
-
+    return iget("pmDatabaseDelete")
 
 def DatabaseDelete():
-    return QtGui.QIcon(pmDatabaseDelete())
-
+    return iget("DatabaseDelete")
 
 def pmDatabaseMaintenance():
-    return PM(806272,807768)
-
+    return iget("pmDatabaseMaintenance")
 
 def DatabaseMaintenance():
-    return QtGui.QIcon(pmDatabaseMaintenance())
-
+    return iget("DatabaseMaintenance")
 
 def pmAtacante():
-    return PM(807768,808373)
-
+    return iget("pmAtacante")
 
 def Atacante():
-    return QtGui.QIcon(pmAtacante())
-
+    return iget("Atacante")
 
 def pmAtacada():
-    return PM(808373,808939)
-
+    return iget("pmAtacada")
 
 def Atacada():
-    return QtGui.QIcon(pmAtacada())
-
+    return iget("Atacada")
 
 def pmGoToNext():
-    return PM(808939,809351)
-
+    return iget("pmGoToNext")
 
 def GoToNext():
-    return QtGui.QIcon(pmGoToNext())
-
+    return iget("GoToNext")
 
 def pmBlancas():
-    return PM(809351,809702)
-
+    return iget("pmBlancas")
 
 def Blancas():
-    return QtGui.QIcon(pmBlancas())
-
+    return iget("Blancas")
 
 def pmNegras():
-    return PM(809702,809948)
-
+    return iget("pmNegras")
 
 def Negras():
-    return QtGui.QIcon(pmNegras())
-
+    return iget("Negras")
 
 def pmFolderChange():
-    return PM(64756,67514)
-
+    return iget("pmFolderChange")
 
 def FolderChange():
-    return QtGui.QIcon(pmFolderChange())
-
+    return iget("FolderChange")
 
 def pmMarkers():
-    return PM(809948,811643)
-
+    return iget("pmMarkers")
 
 def Markers():
-    return QtGui.QIcon(pmMarkers())
-
+    return iget("Markers")
 
 def pmTop():
-    return PM(811643,812227)
-
+    return iget("pmTop")
 
 def Top():
-    return QtGui.QIcon(pmTop())
-
+    return iget("Top")
 
 def pmBottom():
-    return PM(812227,812816)
-
+    return iget("pmBottom")
 
 def Bottom():
-    return QtGui.QIcon(pmBottom())
-
+    return iget("Bottom")
 
 def pmSTS():
-    return PM(812816,815007)
-
+    return iget("pmSTS")
 
 def STS():
-    return QtGui.QIcon(pmSTS())
-
+    return iget("STS")
 
 def pmRun():
-    return PM(815007,816731)
-
+    return iget("pmRun")
 
 def Run():
-    return QtGui.QIcon(pmRun())
-
+    return iget("Run")
 
 def pmRun2():
-    return PM(816731,818251)
-
+    return iget("pmRun2")
 
 def Run2():
-    return QtGui.QIcon(pmRun2())
-
+    return iget("Run2")
 
 def pmWorldMap():
-    return PM(818251,820992)
-
+    return iget("pmWorldMap")
 
 def WorldMap():
-    return QtGui.QIcon(pmWorldMap())
-
+    return iget("WorldMap")
 
 def pmAfrica():
-    return PM(820992,823478)
-
+    return iget("pmAfrica")
 
 def Africa():
-    return QtGui.QIcon(pmAfrica())
-
+    return iget("Africa")
 
 def pmMaps():
-    return PM(823478,824422)
-
+    return iget("pmMaps")
 
 def Maps():
-    return QtGui.QIcon(pmMaps())
-
+    return iget("Maps")
 
 def pmSol():
-    return PM(824422,825348)
-
+    return iget("pmSol")
 
 def Sol():
-    return QtGui.QIcon(pmSol())
-
+    return iget("Sol")
 
 def pmSolNubes():
-    return PM(825348,826211)
-
+    return iget("pmSolNubes")
 
 def SolNubes():
-    return QtGui.QIcon(pmSolNubes())
-
+    return iget("SolNubes")
 
 def pmSolNubesLluvia():
-    return PM(826211,827171)
-
+    return iget("pmSolNubesLluvia")
 
 def SolNubesLluvia():
-    return QtGui.QIcon(pmSolNubesLluvia())
-
+    return iget("SolNubesLluvia")
 
 def pmLluvia():
-    return PM(827171,828010)
-
+    return iget("pmLluvia")
 
 def Lluvia():
-    return QtGui.QIcon(pmLluvia())
-
+    return iget("Lluvia")
 
 def pmInvierno():
-    return PM(828010,829586)
-
+    return iget("pmInvierno")
 
 def Invierno():
-    return QtGui.QIcon(pmInvierno())
-
+    return iget("Invierno")
 
 def pmFixedElo():
-    return PM(158073,159336)
-
+    return iget("pmFixedElo")
 
 def FixedElo():
-    return QtGui.QIcon(pmFixedElo())
-
+    return iget("FixedElo")
 
 def pmSoundTool():
-    return PM(829586,832045)
-
+    return iget("pmSoundTool")
 
 def SoundTool():
-    return QtGui.QIcon(pmSoundTool())
-
+    return iget("SoundTool")
 
 def pmTrain():
-    return PM(832045,833415)
-
+    return iget("pmTrain")
 
 def Train():
-    return QtGui.QIcon(pmTrain())
-
+    return iget("Train")
 
 def pmPlay():
-    return PM(224278,226367)
-
+    return iget("pmPlay")
 
 def Play():
-    return QtGui.QIcon(pmPlay())
-
+    return iget("Play")
 
 def pmMeasure():
-    return PM(119858,121481)
-
+    return iget("pmMeasure")
 
 def Measure():
-    return QtGui.QIcon(pmMeasure())
-
+    return iget("Measure")
 
 def pmPlayGame():
-    return PM(833415,837773)
-
+    return iget("pmPlayGame")
 
 def PlayGame():
-    return QtGui.QIcon(pmPlayGame())
-
+    return iget("PlayGame")
 
 def pmScanner():
-    return PM(837773,838114)
-
+    return iget("pmScanner")
 
 def Scanner():
-    return QtGui.QIcon(pmScanner())
-
+    return iget("Scanner")
 
 def pmCursorScanner():
-    return PM(838114,838431)
-
+    return iget("pmCursorScanner")
 
 def CursorScanner():
-    return QtGui.QIcon(pmCursorScanner())
-
+    return iget("CursorScanner")
 
 def pmMenos():
-    return PM(838431,838956)
-
+    return iget("pmMenos")
 
 def Menos():
-    return QtGui.QIcon(pmMenos())
-
+    return iget("Menos")
 
 def pmSchool():
-    return PM(838956,840318)
-
+    return iget("pmSchool")
 
 def School():
-    return QtGui.QIcon(pmSchool())
-
+    return iget("School")
 
 def pmLaw():
-    return PM(840318,840934)
-
+    return iget("pmLaw")
 
 def Law():
-    return QtGui.QIcon(pmLaw())
-
+    return iget("Law")
 
 def pmLearnGame():
-    return PM(840934,841367)
-
+    return iget("pmLearnGame")
 
 def LearnGame():
-    return QtGui.QIcon(pmLearnGame())
-
+    return iget("LearnGame")
 
 def pmLonghaul():
-    return PM(841367,842293)
-
+    return iget("pmLonghaul")
 
 def Longhaul():
-    return QtGui.QIcon(pmLonghaul())
-
+    return iget("Longhaul")
 
 def pmTrekking():
-    return PM(842293,842987)
-
+    return iget("pmTrekking")
 
 def Trekking():
-    return QtGui.QIcon(pmTrekking())
-
+    return iget("Trekking")
 
 def pmPassword():
-    return PM(842987,843440)
-
+    return iget("pmPassword")
 
 def Password():
-    return QtGui.QIcon(pmPassword())
-
+    return iget("Password")
 
 def pmSQL_RAW():
-    return PM(833415,837773)
-
+    return iget("pmSQL_RAW")
 
 def SQL_RAW():
-    return QtGui.QIcon(pmSQL_RAW())
-
+    return iget("SQL_RAW")
 
 def pmSun():
-    return PM(303502,304380)
-
+    return iget("pmSun")
 
 def Sun():
-    return QtGui.QIcon(pmSun())
-
+    return iget("Sun")
 
 def pmLight32():
-    return PM(843440,845140)
-
+    return iget("pmLight32")
 
 def Light32():
-    return QtGui.QIcon(pmLight32())
-
+    return iget("Light32")
 
 def pmTOL():
-    return PM(845140,845849)
-
+    return iget("pmTOL")
 
 def TOL():
-    return QtGui.QIcon(pmTOL())
-
+    return iget("TOL")
 
 def pmUned():
-    return PM(845849,846269)
-
+    return iget("pmUned")
 
 def Uned():
-    return QtGui.QIcon(pmUned())
-
+    return iget("Uned")
 
 def pmUwe():
-    return PM(846269,847238)
-
+    return iget("pmUwe")
 
 def Uwe():
-    return QtGui.QIcon(pmUwe())
-
+    return iget("Uwe")
 
 def pmThinking():
-    return PM(847238,848027)
-
+    return iget("pmThinking")
 
 def Thinking():
-    return QtGui.QIcon(pmThinking())
-
+    return iget("Thinking")
 
 def pmWashingMachine():
-    return PM(848027,848690)
-
+    return iget("pmWashingMachine")
 
 def WashingMachine():
-    return QtGui.QIcon(pmWashingMachine())
-
+    return iget("WashingMachine")
 
 def pmTerminal():
-    return PM(848690,852234)
-
+    return iget("pmTerminal")
 
 def Terminal():
-    return QtGui.QIcon(pmTerminal())
-
+    return iget("Terminal")
 
 def pmManualSave():
-    return PM(852234,852817)
-
+    return iget("pmManualSave")
 
 def ManualSave():
-    return QtGui.QIcon(pmManualSave())
-
+    return iget("ManualSave")
 
 def pmSettings():
-    return PM(852817,853255)
-
+    return iget("pmSettings")
 
 def Settings():
-    return QtGui.QIcon(pmSettings())
-
+    return iget("Settings")
 
 def pmStrength():
-    return PM(853255,853926)
-
+    return iget("pmStrength")
 
 def Strength():
-    return QtGui.QIcon(pmStrength())
-
+    return iget("Strength")
 
 def pmSingular():
-    return PM(853926,854781)
-
+    return iget("pmSingular")
 
 def Singular():
-    return QtGui.QIcon(pmSingular())
-
+    return iget("Singular")
 
 def pmScript():
-    return PM(854781,855350)
-
+    return iget("pmScript")
 
 def Script():
-    return QtGui.QIcon(pmScript())
-
+    return iget("Script")
 
 def pmTexto():
-    return PM(855350,858195)
-
+    return iget("pmTexto")
 
 def Texto():
-    return QtGui.QIcon(pmTexto())
-
+    return iget("Texto")
 
 def pmLampara():
-    return PM(858195,858904)
-
+    return iget("pmLampara")
 
 def Lampara():
-    return QtGui.QIcon(pmLampara())
-
+    return iget("Lampara")
 
 def pmFile():
-    return PM(858904,861204)
-
+    return iget("pmFile")
 
 def File():
-    return QtGui.QIcon(pmFile())
-
+    return iget("File")
 
 def pmCalculo():
-    return PM(861204,862130)
-
+    return iget("pmCalculo")
 
 def Calculo():
-    return QtGui.QIcon(pmCalculo())
-
+    return iget("Calculo")
 
 def pmOpeningLines():
-    return PM(862130,862808)
-
+    return iget("pmOpeningLines")
 
 def OpeningLines():
-    return QtGui.QIcon(pmOpeningLines())
-
+    return iget("OpeningLines")
 
 def pmStudy():
-    return PM(862808,863721)
-
+    return iget("pmStudy")
 
 def Study():
-    return QtGui.QIcon(pmStudy())
-
+    return iget("Study")
 
 def pmLichess():
-    return PM(863721,864609)
-
+    return iget("pmLichess")
 
 def Lichess():
-    return QtGui.QIcon(pmLichess())
-
+    return iget("Lichess")
 
 def pmMiniatura():
-    return PM(864609,865536)
-
+    return iget("pmMiniatura")
 
 def Miniatura():
-    return QtGui.QIcon(pmMiniatura())
-
+    return iget("Miniatura")
 
 def pmLocomotora():
-    return PM(865536,866317)
-
+    return iget("pmLocomotora")
 
 def Locomotora():
-    return QtGui.QIcon(pmLocomotora())
-
+    return iget("Locomotora")
 
 def pmTrainSequential():
-    return PM(866317,867458)
-
+    return iget("pmTrainSequential")
 
 def TrainSequential():
-    return QtGui.QIcon(pmTrainSequential())
-
+    return iget("TrainSequential")
 
 def pmTrainStatic():
-    return PM(867458,868418)
-
+    return iget("pmTrainStatic")
 
 def TrainStatic():
-    return QtGui.QIcon(pmTrainStatic())
-
+    return iget("TrainStatic")
 
 def pmTrainPositions():
-    return PM(868418,869399)
-
+    return iget("pmTrainPositions")
 
 def TrainPositions():
-    return QtGui.QIcon(pmTrainPositions())
-
+    return iget("TrainPositions")
 
 def pmTrainEngines():
-    return PM(869399,870833)
-
+    return iget("pmTrainEngines")
 
 def TrainEngines():
-    return QtGui.QIcon(pmTrainEngines())
-
+    return iget("TrainEngines")
 
 def pmError():
-    return PM(41940,45940)
-
+    return iget("pmError")
 
 def Error():
-    return QtGui.QIcon(pmError())
-
+    return iget("Error")
 
 def pmAtajos():
-    return PM(870833,872012)
-
+    return iget("pmAtajos")
 
 def Atajos():
-    return QtGui.QIcon(pmAtajos())
-
+    return iget("Atajos")
 
 def pmTOLline():
-    return PM(872012,873116)
-
+    return iget("pmTOLline")
 
 def TOLline():
-    return QtGui.QIcon(pmTOLline())
-
+    return iget("TOLline")
 
 def pmTOLchange():
-    return PM(873116,875338)
-
+    return iget("pmTOLchange")
 
 def TOLchange():
-    return QtGui.QIcon(pmTOLchange())
-
+    return iget("TOLchange")
 
 def pmPack():
-    return PM(875338,876511)
-
+    return iget("pmPack")
 
 def Pack():
-    return QtGui.QIcon(pmPack())
-
+    return iget("Pack")
 
 def pmHome():
-    return PM(173083,174265)
-
+    return iget("pmHome")
 
 def Home():
-    return QtGui.QIcon(pmHome())
-
+    return iget("Home")
 
 def pmImport8():
-    return PM(876511,877269)
-
+    return iget("pmImport8")
 
 def Import8():
-    return QtGui.QIcon(pmImport8())
-
+    return iget("Import8")
 
 def pmExport8():
-    return PM(877269,877894)
-
+    return iget("pmExport8")
 
 def Export8():
-    return QtGui.QIcon(pmExport8())
-
+    return iget("Export8")
 
 def pmTablas8():
-    return PM(877894,878686)
-
+    return iget("pmTablas8")
 
 def Tablas8():
-    return QtGui.QIcon(pmTablas8())
-
+    return iget("Tablas8")
 
 def pmBlancas8():
-    return PM(878686,879716)
-
+    return iget("pmBlancas8")
 
 def Blancas8():
-    return QtGui.QIcon(pmBlancas8())
-
+    return iget("Blancas8")
 
 def pmNegras8():
-    return PM(879716,880555)
-
+    return iget("pmNegras8")
 
 def Negras8():
-    return QtGui.QIcon(pmNegras8())
-
+    return iget("Negras8")
 
 def pmBook():
-    return PM(880555,881129)
-
+    return iget("pmBook")
 
 def Book():
-    return QtGui.QIcon(pmBook())
-
+    return iget("Book")
 
 def pmWrite():
-    return PM(881129,882334)
-
+    return iget("pmWrite")
 
 def Write():
-    return QtGui.QIcon(pmWrite())
-
+    return iget("Write")
 
 def pmAlt():
-    return PM(882334,882776)
-
+    return iget("pmAlt")
 
 def Alt():
-    return QtGui.QIcon(pmAlt())
-
+    return iget("Alt")
 
 def pmShift():
-    return PM(882776,883116)
-
+    return iget("pmShift")
 
 def Shift():
-    return QtGui.QIcon(pmShift())
-
+    return iget("Shift")
 
 def pmRightMouse():
-    return PM(883116,883916)
-
+    return iget("pmRightMouse")
 
 def RightMouse():
-    return QtGui.QIcon(pmRightMouse())
-
+    return iget("RightMouse")
 
 def pmControl():
-    return PM(883916,884441)
-
+    return iget("pmControl")
 
 def Control():
-    return QtGui.QIcon(pmControl())
-
+    return iget("Control")
 
 def pmFinales():
-    return PM(884441,885528)
-
+    return iget("pmFinales")
 
 def Finales():
-    return QtGui.QIcon(pmFinales())
-
+    return iget("Finales")
 
 def pmEditColumns():
-    return PM(885528,886260)
-
+    return iget("pmEditColumns")
 
 def EditColumns():
-    return QtGui.QIcon(pmEditColumns())
-
+    return iget("EditColumns")
 
 def pmResizeAll():
-    return PM(886260,886770)
-
+    return iget("pmResizeAll")
 
 def ResizeAll():
-    return QtGui.QIcon(pmResizeAll())
-
+    return iget("ResizeAll")
 
 def pmChecked():
-    return PM(886770,887276)
-
+    return iget("pmChecked")
 
 def Checked():
-    return QtGui.QIcon(pmChecked())
-
+    return iget("Checked")
 
 def pmUnchecked():
-    return PM(887276,887524)
-
+    return iget("pmUnchecked")
 
 def Unchecked():
-    return QtGui.QIcon(pmUnchecked())
-
+    return iget("Unchecked")
 
 def pmBuscarC():
-    return PM(887524,887968)
-
+    return iget("pmBuscarC")
 
 def BuscarC():
-    return QtGui.QIcon(pmBuscarC())
-
+    return iget("BuscarC")
 
 def pmPeonBlanco():
-    return PM(887968,890149)
-
+    return iget("pmPeonBlanco")
 
 def PeonBlanco():
-    return QtGui.QIcon(pmPeonBlanco())
-
+    return iget("PeonBlanco")
 
 def pmPeonNegro():
-    return PM(890149,891673)
-
+    return iget("pmPeonNegro")
 
 def PeonNegro():
-    return QtGui.QIcon(pmPeonNegro())
-
+    return iget("PeonNegro")
 
 def pmReciclar():
-    return PM(891673,892397)
-
+    return iget("pmReciclar")
 
 def Reciclar():
-    return QtGui.QIcon(pmReciclar())
-
+    return iget("Reciclar")
 
 def pmLanzamiento():
-    return PM(892397,893110)
-
+    return iget("pmLanzamiento")
 
 def Lanzamiento():
-    return QtGui.QIcon(pmLanzamiento())
+    return iget("Lanzamiento")
 
+def pmLanzamientos():
+    return iget("pmLanzamientos")
+
+def Lanzamientos():
+    return iget("Lanzamientos")
 
 def pmEndGame():
-    return PM(893110,893524)
-
+    return iget("pmEndGame")
 
 def EndGame():
-    return QtGui.QIcon(pmEndGame())
-
+    return iget("EndGame")
 
 def pmPause():
-    return PM(893524,894393)
-
+    return iget("pmPause")
 
 def Pause():
-    return QtGui.QIcon(pmPause())
-
+    return iget("Pause")
 
 def pmContinue():
-    return PM(894393,895597)
-
+    return iget("pmContinue")
 
 def Continue():
-    return QtGui.QIcon(pmContinue())
-
+    return iget("Continue")
 
 def pmClose():
-    return PM(895597,896296)
-
+    return iget("pmClose")
 
 def Close():
-    return QtGui.QIcon(pmClose())
-
+    return iget("Close")
 
 def pmStop():
-    return PM(896296,897329)
-
+    return iget("pmStop")
 
 def Stop():
-    return QtGui.QIcon(pmStop())
-
+    return iget("Stop")
 
 def pmFactoryPolyglot():
-    return PM(897329,898149)
-
+    return iget("pmFactoryPolyglot")
 
 def FactoryPolyglot():
-    return QtGui.QIcon(pmFactoryPolyglot())
-
+    return iget("FactoryPolyglot")
 
 def pmTags():
-    return PM(898149,898972)
-
+    return iget("pmTags")
 
 def Tags():
-    return QtGui.QIcon(pmTags())
-
+    return iget("Tags")
 
 def pmAppearance():
-    return PM(898972,899699)
-
+    return iget("pmAppearance")
 
 def Appearance():
-    return QtGui.QIcon(pmAppearance())
-
+    return iget("Appearance")
 
 def pmFill():
-    return PM(899699,900737)
-
+    return iget("pmFill")
 
 def Fill():
-    return QtGui.QIcon(pmFill())
-
+    return iget("Fill")
 
 def pmSupport():
-    return PM(900737,901469)
-
+    return iget("pmSupport")
 
 def Support():
-    return QtGui.QIcon(pmSupport())
-
+    return iget("Support")
 
 def pmOrder():
-    return PM(901469,902267)
-
+    return iget("pmOrder")
 
 def Order():
-    return QtGui.QIcon(pmOrder())
-
+    return iget("Order")
 
 def pmPlay1():
-    return PM(902267,903562)
-
+    return iget("pmPlay1")
 
 def Play1():
-    return QtGui.QIcon(pmPlay1())
-
+    return iget("Play1")
 
 def pmRemove1():
-    return PM(903562,904689)
-
+    return iget("pmRemove1")
 
 def Remove1():
-    return QtGui.QIcon(pmRemove1())
-
+    return iget("Remove1")
 
 def pmNew1():
-    return PM(904689,905011)
-
+    return iget("pmNew1")
 
 def New1():
-    return QtGui.QIcon(pmNew1())
-
+    return iget("New1")
 
 def pmMensError():
-    return PM(905011,907075)
-
+    return iget("pmMensError")
 
 def MensError():
-    return QtGui.QIcon(pmMensError())
-
+    return iget("MensError")
 
 def pmMensInfo():
-    return PM(907075,909630)
-
+    return iget("pmMensInfo")
 
 def MensInfo():
-    return QtGui.QIcon(pmMensInfo())
-
+    return iget("MensInfo")
 
 def pmJump():
-    return PM(909630,910305)
-
+    return iget("pmJump")
 
 def Jump():
-    return QtGui.QIcon(pmJump())
-
+    return iget("Jump")
 
 def pmCaptures():
-    return PM(910305,911486)
-
+    return iget("pmCaptures")
 
 def Captures():
-    return QtGui.QIcon(pmCaptures())
-
+    return iget("Captures")
 
 def pmRepeat():
-    return PM(911486,912145)
-
+    return iget("pmRepeat")
 
 def Repeat():
-    return QtGui.QIcon(pmRepeat())
-
+    return iget("Repeat")
 
 def pmCount():
-    return PM(912145,912821)
-
+    return iget("pmCount")
 
 def Count():
-    return QtGui.QIcon(pmCount())
-
+    return iget("Count")
 
 def pmMate15():
-    return PM(912821,913892)
-
+    return iget("pmMate15")
 
 def Mate15():
-    return QtGui.QIcon(pmMate15())
-
+    return iget("Mate15")
 
 def pmCoordinates():
-    return PM(913892,915045)
-
+    return iget("pmCoordinates")
 
 def Coordinates():
-    return QtGui.QIcon(pmCoordinates())
-
+    return iget("Coordinates")
 
 def pmKnight():
-    return PM(915045,916288)
-
+    return iget("pmKnight")
 
 def Knight():
-    return QtGui.QIcon(pmKnight())
-
+    return iget("Knight")
 
 def pmCorrecto():
-    return PM(916288,917314)
-
+    return iget("pmCorrecto")
 
 def Correcto():
-    return QtGui.QIcon(pmCorrecto())
-
+    return iget("Correcto")
 
 def pmBlocks():
-    return PM(917314,917651)
-
+    return iget("pmBlocks")
 
 def Blocks():
-    return QtGui.QIcon(pmBlocks())
-
+    return iget("Blocks")
 
 def pmWest():
-    return PM(917651,918757)
-
+    return iget("pmWest")
 
 def West():
-    return QtGui.QIcon(pmWest())
-
+    return iget("West")
 
 def pmOpening():
-    return PM(918757,919015)
-
+    return iget("pmOpening")
 
 def Opening():
-    return QtGui.QIcon(pmOpening())
-
+    return iget("Opening")
 
 def pmVariation():
-    return PM(215618,216036)
-
+    return iget("pmVariation")
 
 def Variation():
-    return QtGui.QIcon(pmVariation())
-
+    return iget("Variation")
 
 def pmComment():
-    return PM(919015,919378)
-
+    return iget("pmComment")
 
 def Comment():
-    return QtGui.QIcon(pmComment())
+    return iget("Comment")
 
+def pmComment32():
+    return iget("pmComment32")
+
+def Comment32():
+    return iget("Comment32")
 
 def pmVariationComment():
-    return PM(919378,919722)
-
+    return iget("pmVariationComment")
 
 def VariationComment():
-    return QtGui.QIcon(pmVariationComment())
-
+    return iget("VariationComment")
 
 def pmOpeningVariation():
-    return PM(919722,920186)
-
+    return iget("pmOpeningVariation")
 
 def OpeningVariation():
-    return QtGui.QIcon(pmOpeningVariation())
-
+    return iget("OpeningVariation")
 
 def pmOpeningComment():
-    return PM(920186,920519)
-
+    return iget("pmOpeningComment")
 
 def OpeningComment():
-    return QtGui.QIcon(pmOpeningComment())
-
+    return iget("OpeningComment")
 
 def pmOpeningVariationComment():
-    return PM(919722,920186)
-
+    return iget("pmOpeningVariationComment")
 
 def OpeningVariationComment():
-    return QtGui.QIcon(pmOpeningVariationComment())
-
+    return iget("OpeningVariationComment")
 
 def pmDeleteRow():
-    return PM(920519,920950)
-
+    return iget("pmDeleteRow")
 
 def DeleteRow():
-    return QtGui.QIcon(pmDeleteRow())
-
+    return iget("DeleteRow")
 
 def pmDeleteColumn():
-    return PM(920950,921393)
-
+    return iget("pmDeleteColumn")
 
 def DeleteColumn():
-    return QtGui.QIcon(pmDeleteColumn())
-
+    return iget("DeleteColumn")
 
 def pmEditVariation():
-    return PM(921393,921748)
-
+    return iget("pmEditVariation")
 
 def EditVariation():
-    return QtGui.QIcon(pmEditVariation())
-
+    return iget("EditVariation")
 
 def pmKibitzer():
-    return PM(921748,922347)
-
+    return iget("pmKibitzer")
 
 def Kibitzer():
-    return QtGui.QIcon(pmKibitzer())
-
+    return iget("Kibitzer")
 
 def pmKibitzer_Pause():
-    return PM(922347,922519)
-
+    return iget("pmKibitzer_Pause")
 
 def Kibitzer_Pause():
-    return QtGui.QIcon(pmKibitzer_Pause())
-
+    return iget("Kibitzer_Pause")
 
 def pmKibitzer_Options():
-    return PM(922519,923421)
-
+    return iget("pmKibitzer_Options")
 
 def Kibitzer_Options():
-    return QtGui.QIcon(pmKibitzer_Options())
-
+    return iget("Kibitzer_Options")
 
 def pmKibitzer_Voyager():
-    return PM(338347,339190)
-
+    return iget("pmKibitzer_Voyager")
 
 def Kibitzer_Voyager():
-    return QtGui.QIcon(pmKibitzer_Voyager())
-
+    return iget("Kibitzer_Voyager")
 
 def pmKibitzer_Close():
-    return PM(923421,923978)
-
+    return iget("pmKibitzer_Close")
 
 def Kibitzer_Close():
-    return QtGui.QIcon(pmKibitzer_Close())
-
+    return iget("Kibitzer_Close")
 
 def pmKibitzer_Down():
-    return PM(923978,924367)
-
+    return iget("pmKibitzer_Down")
 
 def Kibitzer_Down():
-    return QtGui.QIcon(pmKibitzer_Down())
-
+    return iget("Kibitzer_Down")
 
 def pmKibitzer_Up():
-    return PM(924367,924762)
-
+    return iget("pmKibitzer_Up")
 
 def Kibitzer_Up():
-    return QtGui.QIcon(pmKibitzer_Up())
-
+    return iget("Kibitzer_Up")
 
 def pmKibitzer_Back():
-    return PM(924762,925195)
-
+    return iget("pmKibitzer_Back")
 
 def Kibitzer_Back():
-    return QtGui.QIcon(pmKibitzer_Back())
-
+    return iget("Kibitzer_Back")
 
 def pmKibitzer_Clipboard():
-    return PM(925195,925581)
-
+    return iget("pmKibitzer_Clipboard")
 
 def Kibitzer_Clipboard():
-    return QtGui.QIcon(pmKibitzer_Clipboard())
-
+    return iget("Kibitzer_Clipboard")
 
 def pmKibitzer_Play():
-    return PM(925581,926102)
-
+    return iget("pmKibitzer_Play")
 
 def Kibitzer_Play():
-    return QtGui.QIcon(pmKibitzer_Play())
-
+    return iget("Kibitzer_Play")
 
 def pmKibitzer_Side():
-    return PM(926102,926855)
-
+    return iget("pmKibitzer_Side")
 
 def Kibitzer_Side():
-    return QtGui.QIcon(pmKibitzer_Side())
-
+    return iget("Kibitzer_Side")
 
 def pmKibitzer_Board():
-    return PM(926855,927293)
-
+    return iget("pmKibitzer_Board")
 
 def Kibitzer_Board():
-    return QtGui.QIcon(pmKibitzer_Board())
-
+    return iget("Kibitzer_Board")
 
 def pmBoard():
-    return PM(927293,927762)
-
+    return iget("pmBoard")
 
 def Board():
-    return QtGui.QIcon(pmBoard())
-
+    return iget("Board")
 
 def pmTraining_Games():
-    return PM(927762,929454)
-
+    return iget("pmTraining_Games")
 
 def Training_Games():
-    return QtGui.QIcon(pmTraining_Games())
-
+    return iget("Training_Games")
 
 def pmTraining_Basic():
-    return PM(929454,930827)
-
+    return iget("pmTraining_Basic")
 
 def Training_Basic():
-    return QtGui.QIcon(pmTraining_Basic())
-
+    return iget("Training_Basic")
 
 def pmTraining_Tactics():
-    return PM(930827,931608)
-
+    return iget("pmTraining_Tactics")
 
 def Training_Tactics():
-    return QtGui.QIcon(pmTraining_Tactics())
-
+    return iget("Training_Tactics")
 
 def pmTraining_Endings():
-    return PM(931608,932542)
-
+    return iget("pmTraining_Endings")
 
 def Training_Endings():
-    return QtGui.QIcon(pmTraining_Endings())
-
+    return iget("Training_Endings")
 
 def pmBridge():
-    return PM(932542,933560)
-
+    return iget("pmBridge")
 
 def Bridge():
-    return QtGui.QIcon(pmBridge())
-
+    return iget("Bridge")
 
 def pmMaia():
-    return PM(933560,934344)
-
+    return iget("pmMaia")
 
 def Maia():
-    return QtGui.QIcon(pmMaia())
-
+    return iget("Maia")
 
 def pmBinBook():
-    return PM(934344,935093)
-
+    return iget("pmBinBook")
 
 def BinBook():
-    return QtGui.QIcon(pmBinBook())
-
+    return iget("BinBook")
 
 def pmConnected():
-    return PM(935093,936711)
-
+    return iget("pmConnected")
 
 def Connected():
-    return QtGui.QIcon(pmConnected())
-
+    return iget("Connected")
 
 def pmThemes():
-    return PM(936711,937280)
-
+    return iget("pmThemes")
 
 def Themes():
-    return QtGui.QIcon(pmThemes())
-
+    return iget("Themes")
 
 def pmReset():
-    return PM(937280,938899)
-
+    return iget("pmReset")
 
 def Reset():
-    return QtGui.QIcon(pmReset())
-
+    return iget("Reset")
 
 def pmInstall():
-    return PM(938899,941028)
-
+    return iget("pmInstall")
 
 def Install():
-    return QtGui.QIcon(pmInstall())
-
+    return iget("Install")
 
 def pmUninstall():
-    return PM(941028,943054)
-
+    return iget("pmUninstall")
 
 def Uninstall():
-    return QtGui.QIcon(pmUninstall())
-
+    return iget("Uninstall")
 
 def pmLive():
-    return PM(943054,946537)
-
+    return iget("pmLive")
 
 def Live():
-    return QtGui.QIcon(pmLive())
-
+    return iget("Live")
 
 def pmLauncher():
-    return PM(946537,951212)
-
+    return iget("pmLauncher")
 
 def Launcher():
-    return QtGui.QIcon(pmLauncher())
-
+    return iget("Launcher")
 
 def pmLogInactive():
-    return PM(951212,951743)
-
+    return iget("pmLogInactive")
 
 def LogInactive():
-    return QtGui.QIcon(pmLogInactive())
-
+    return iget("LogInactive")
 
 def pmLogActive():
-    return PM(951743,952307)
-
+    return iget("pmLogActive")
 
 def LogActive():
-    return QtGui.QIcon(pmLogActive())
-
+    return iget("LogActive")
 
 def pmFolderAnil():
-    return PM(952307,952671)
-
+    return iget("pmFolderAnil")
 
 def FolderAnil():
-    return QtGui.QIcon(pmFolderAnil())
-
+    return iget("FolderAnil")
 
 def pmFolderBlack():
-    return PM(952671,953008)
-
+    return iget("pmFolderBlack")
 
 def FolderBlack():
-    return QtGui.QIcon(pmFolderBlack())
-
+    return iget("FolderBlack")
 
 def pmFolderBlue():
-    return PM(953008,953382)
-
+    return iget("pmFolderBlue")
 
 def FolderBlue():
-    return QtGui.QIcon(pmFolderBlue())
-
+    return iget("FolderBlue")
 
 def pmFolderGreen():
-    return PM(953382,953754)
-
+    return iget("pmFolderGreen")
 
 def FolderGreen():
-    return QtGui.QIcon(pmFolderGreen())
-
+    return iget("FolderGreen")
 
 def pmFolderMagenta():
-    return PM(953754,954127)
-
+    return iget("pmFolderMagenta")
 
 def FolderMagenta():
-    return QtGui.QIcon(pmFolderMagenta())
-
+    return iget("FolderMagenta")
 
 def pmFolderRed():
-    return PM(954127,954491)
-
+    return iget("pmFolderRed")
 
 def FolderRed():
-    return QtGui.QIcon(pmFolderRed())
-
+    return iget("FolderRed")
 
 def pmThis():
-    return PM(954491,954945)
-
+    return iget("pmThis")
 
 def This():
-    return QtGui.QIcon(pmThis())
-
+    return iget("This")
 
 def pmAll():
-    return PM(954945,955448)
-
+    return iget("pmAll")
 
 def All():
-    return QtGui.QIcon(pmAll())
-
+    return iget("All")
 
 def pmPrevious():
-    return PM(955448,955907)
-
+    return iget("pmPrevious")
 
 def Previous():
-    return QtGui.QIcon(pmPrevious())
-
+    return iget("Previous")
 
 def pmLine():
-    return PM(955907,956094)
-
+    return iget("pmLine")
 
 def Line():
-    return QtGui.QIcon(pmLine())
-
+    return iget("Line")
 
 def pmEmpty():
-    return PM(956094,956179)
-
+    return iget("pmEmpty")
 
 def Empty():
-    return QtGui.QIcon(pmEmpty())
-
+    return iget("Empty")
 
 def pmMore():
-    return PM(956179,956468)
-
+    return iget("pmMore")
 
 def More():
-    return QtGui.QIcon(pmMore())
-
+    return iget("More")
 
 def pmSelectLogo():
-    return PM(956468,957074)
-
+    return iget("pmSelectLogo")
 
 def SelectLogo():
-    return QtGui.QIcon(pmSelectLogo())
-
+    return iget("SelectLogo")
 
 def pmSelect():
-    return PM(957074,957728)
-
+    return iget("pmSelect")
 
 def Select():
-    return QtGui.QIcon(pmSelect())
-
+    return iget("Select")
 
 def pmSelectClose():
-    return PM(957728,958500)
-
+    return iget("pmSelectClose")
 
 def SelectClose():
-    return QtGui.QIcon(pmSelectClose())
-
+    return iget("SelectClose")
 
 def pmSelectHome():
-    return PM(958500,959282)
-
+    return iget("pmSelectHome")
 
 def SelectHome():
-    return QtGui.QIcon(pmSelectHome())
-
+    return iget("SelectHome")
 
 def pmSelectHistory():
-    return PM(959282,959834)
-
+    return iget("pmSelectHistory")
 
 def SelectHistory():
-    return QtGui.QIcon(pmSelectHistory())
-
+    return iget("SelectHistory")
 
 def pmSelectExplorer():
-    return PM(959834,960567)
-
+    return iget("pmSelectExplorer")
 
 def SelectExplorer():
-    return QtGui.QIcon(pmSelectExplorer())
-
+    return iget("SelectExplorer")
 
 def pmSelectFolderCreate():
-    return PM(960567,961486)
-
+    return iget("pmSelectFolderCreate")
 
 def SelectFolderCreate():
-    return QtGui.QIcon(pmSelectFolderCreate())
-
+    return iget("SelectFolderCreate")
 
 def pmSelectFolderRemove():
-    return PM(961486,962513)
-
+    return iget("pmSelectFolderRemove")
 
 def SelectFolderRemove():
-    return QtGui.QIcon(pmSelectFolderRemove())
-
+    return iget("SelectFolderRemove")
 
 def pmSelectReload():
-    return PM(962513,964167)
-
+    return iget("pmSelectReload")
 
 def SelectReload():
-    return QtGui.QIcon(pmSelectReload())
-
+    return iget("SelectReload")
 
 def pmSelectAccept():
-    return PM(964167,964968)
-
+    return iget("pmSelectAccept")
 
 def SelectAccept():
-    return QtGui.QIcon(pmSelectAccept())
-
+    return iget("SelectAccept")
 
 def pmWiki():
-    return PM(964968,966085)
-
+    return iget("pmWiki")
 
 def Wiki():
-    return QtGui.QIcon(pmWiki())
-
+    return iget("Wiki")
 
 def pmCircle():
-    return PM(966085,967545)
-
+    return iget("pmCircle")
 
 def Circle():
-    return QtGui.QIcon(pmCircle())
-
+    return iget("Circle")
 
 def pmSortAZ():
-    return PM(967545,968309)
-
+    return iget("pmSortAZ")
 
 def SortAZ():
-    return QtGui.QIcon(pmSortAZ())
-
+    return iget("SortAZ")
 
 def pmReference():
-    return PM(968309,969420)
-
+    return iget("pmReference")
 
 def Reference():
-    return QtGui.QIcon(pmReference())
-
+    return iget("Reference")
 
 def pmLanguageNew():
-    return PM(969420,970147)
-
+    return iget("pmLanguageNew")
 
 def LanguageNew():
-    return QtGui.QIcon(pmLanguageNew())
-
+    return iget("LanguageNew")
 
 def pmODT():
-    return PM(970147,971262)
-
+    return iget("pmODT")
 
 def ODT():
-    return QtGui.QIcon(pmODT())
-
+    return iget("ODT")
 
 def pmEngines():
-    return PM(971262,972748)
-
+    return iget("pmEngines")
 
 def Engines():
-    return QtGui.QIcon(pmEngines())
-
+    return iget("Engines")
 
 def pmConfEngines():
-    return PM(972748,973944)
-
+    return iget("pmConfEngines")
 
 def ConfEngines():
-    return QtGui.QIcon(pmConfEngines())
-
+    return iget("ConfEngines")
 
 def pmEngine():
-    return PM(973944,975368)
-
+    return iget("pmEngine")
 
 def Engine():
-    return QtGui.QIcon(pmEngine())
-
+    return iget("Engine")
 
 def pmZip():
-    return PM(975368,976264)
-
+    return iget("pmZip")
 
 def Zip():
-    return QtGui.QIcon(pmZip())
-
+    return iget("Zip")
 
 def pmUpdate():
-    return PM(976264,977348)
-
+    return iget("pmUpdate")
 
 def Update():
-    return QtGui.QIcon(pmUpdate())
-
+    return iget("Update")
 
 def pmDGT():
-    return PM(977348,978342)
-
+    return iget("pmDGT")
 
 def DGT():
-    return QtGui.QIcon(pmDGT())
-
+    return iget("DGT")
 
 def pmDGTB():
-    return PM(978342,979044)
-
+    return iget("pmDGTB")
 
 def DGTB():
-    return QtGui.QIcon(pmDGTB())
-
+    return iget("DGTB")
 
 def pmMillenium():
-    return PM(979044,980281)
-
+    return iget("pmMillenium")
 
 def Millenium():
-    return QtGui.QIcon(pmMillenium())
-
+    return iget("Millenium")
 
 def pmCertabo():
-    return PM(980281,981066)
-
+    return iget("pmCertabo")
 
 def Certabo():
-    return QtGui.QIcon(pmCertabo())
-
+    return iget("Certabo")
 
 def pmNovag():
-    return PM(981066,981933)
-
+    return iget("pmNovag")
 
 def Novag():
-    return QtGui.QIcon(pmNovag())
-
+    return iget("Novag")
 
 def pmChessnut():
-    return PM(981933,982708)
-
+    return iget("pmChessnut")
 
 def Chessnut():
-    return QtGui.QIcon(pmChessnut())
-
+    return iget("Chessnut")
 
 def pmSquareOff():
-    return PM(982708,983464)
-
+    return iget("pmSquareOff")
 
 def SquareOff():
-    return QtGui.QIcon(pmSquareOff())
+    return iget("SquareOff")
 
+def pmSaitek():
+    return iget("pmSaitek")
 
+def Saitek():
+    return iget("Saitek")
+
+def pmTabutronic():
+    return iget("pmTabutronic")
+
+def Tabutronic():
+    return iget("Tabutronic")
+
+def pmRodent():
+    return iget("pmRodent")
+
+def Rodent():
+    return iget("Rodent")
+
+def pmKomodo():
+    return iget("pmKomodo")
+
+def Komodo():
+    return iget("Komodo")
+
+def pmLeague():
+    return iget("pmLeague")
+
+def League():
+    return iget("League")
+
+def pmJourney():
+    return iget("pmJourney")
+
+def Journey():
+    return iget("Journey")
+
+def pmClassification():
+    return iget("pmClassification")
+
+def Classification():
+    return iget("Classification")
+
+def pmNAGs():
+    return iget("pmNAGs")
+
+def NAGs():
+    return iget("NAGs")
+
+def pmSeason():
+    return iget("pmSeason")
+
+def Season():
+    return iget("Season")
+
+def pmNAG_0():
+    return iget("pmNAG_0")
+
+def NAG_0():
+    return iget("NAG_0")
+
+def pmNAG_1():
+    return iget("pmNAG_1")
+
+def NAG_1():
+    return iget("NAG_1")
+
+def pmNAG_2():
+    return iget("pmNAG_2")
+
+def NAG_2():
+    return iget("NAG_2")
+
+def pmNAG_3():
+    return iget("pmNAG_3")
+
+def NAG_3():
+    return iget("NAG_3")
+
+def pmNAG_4():
+    return iget("pmNAG_4")
+
+def NAG_4():
+    return iget("NAG_4")
+
+def pmNAG_5():
+    return iget("pmNAG_5")
+
+def NAG_5():
+    return iget("NAG_5")
+
+def pmNAG_6():
+    return iget("pmNAG_6")
+
+def NAG_6():
+    return iget("NAG_6")
+
+def pmInformation():
+    return iget("pmInformation")
+
+def Information():
+    return iget("Information")
+
+def pmCrosstable():
+    return iget("pmCrosstable")
+
+def Crosstable():
+    return iget("Crosstable")

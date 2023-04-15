@@ -1,9 +1,5 @@
 import os.path
 
-import Code
-from Code.TrainBMT import BMT, WindowBMTtrain
-
-Code.BMT = BMT
 from Code import Util
 from Code.Base import Game, Position
 from Code.Odt import WOdt
@@ -14,11 +10,12 @@ from Code.QT import Delegados
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2, SelectFiles
 from Code.QT import QTVarios
+from Code.TrainBMT import BMT, WindowBMTtrain
 from Code.Translations import TrListas
-from Code.QT import LCDialog
 
 
 class WHistorialBMT(LCDialog.LCDialog):
@@ -51,12 +48,12 @@ class WHistorialBMT(LCDialog.LCDialog):
 
         # Lista
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("STATE", "", 26, edicion=Delegados.PmIconosBMT(), centered=True)
-        o_columns.nueva("PUNTOS", _("Score"), 104, centered=True)
-        o_columns.nueva("TIME", _("Time"), 80, centered=True)
-        o_columns.nueva("FFINAL", _("End date"), 90, centered=True)
+        o_columns.nueva("STATE", "", 26, edicion=Delegados.PmIconosBMT(), align_center=True)
+        o_columns.nueva("PUNTOS", _("Score"), 104, align_center=True)
+        o_columns.nueva("TIME", _("Time"), 80, align_center=True)
+        o_columns.nueva("FFINAL", _("End date"), 90, align_center=True)
 
-        self.grid = grid = Grid.Grid(self, o_columns, xid=False, siEditable=True)
+        self.grid = grid = Grid.Grid(self, o_columns, xid=False, is_editable=True)
         # n = grid.anchoColumnas()
         # grid.setMinimumWidth( n + 20 )
         self.register_grid(grid)
@@ -133,7 +130,7 @@ class WBMT(LCDialog.LCDialog):
             None,
             (_("Track record"), Iconos.Historial(), self.historial),
             None,
-            (_("Utilities"), Iconos.Utilidades(), self.utilidades),
+            (_("Utilities"), Iconos.Utilidades(), self.utilities),
         ]
         tb = QTVarios.LCTB(self, li_acciones)
 
@@ -142,36 +139,36 @@ class WBMT(LCDialog.LCDialog):
         # Lista
         o_columns = Columnas.ListaColumnas()
         o_columns.nueva("NOMBRE", _("Name"), 274, edicion=Delegados.LineaTextoUTF8())
-        o_columns.nueva("EXTRA", _("Extra info."), 64, centered=True)
-        o_columns.nueva("HECHOS", _("Made"), 84, centered=True)
-        o_columns.nueva("PUNTOS", _("Score"), 84, centered=True)
-        o_columns.nueva("TIME", _("Time"), 80, centered=True)
-        o_columns.nueva("REPETICIONES", _("Rep."), 50, centered=True)
-        o_columns.nueva("ORDEN", _("Order"), 70, centered=True)
+        o_columns.nueva("EXTRA", _("Extra info."), 64, align_center=True)
+        o_columns.nueva("HECHOS", _("Made"), 84, align_center=True)
+        o_columns.nueva("PUNTOS", _("Score"), 84, align_center=True)
+        o_columns.nueva("TIME", _("Time"), 80, align_center=True)
+        o_columns.nueva("REPETICIONES", _("Rep."), 50, align_center=True)
+        o_columns.nueva("ORDEN", _("Order"), 70, align_center=True)
 
         self.grid = grid = Grid.Grid(
-            self, o_columns, xid="P", siEditable=False, siSelecFilas=True, siSeleccionMultiple=True
+            self, o_columns, xid="P", is_editable=False, siSelecFilas=True, siSeleccionMultiple=True
         )
         self.register_grid(grid)
-        tab.nuevaTab(grid, _("Pending"))
+        tab.new_tab(grid, _("Pending"))
 
         # Terminados
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("STATE", "", 26, edicion=Delegados.PmIconosBMT(), centered=True)
+        o_columns.nueva("STATE", "", 26, edicion=Delegados.PmIconosBMT(), align_center=True)
         o_columns.nueva("NOMBRE", _("Name"), 240)
-        o_columns.nueva("EXTRA", _("Extra info."), 64, centered=True)
-        o_columns.nueva("HECHOS", _("Positions"), 64, centered=True)
-        o_columns.nueva("PUNTOS", _("Score"), 84, centered=True)
-        o_columns.nueva("FFINAL", _("End date"), 90, centered=True)
-        o_columns.nueva("TIME", _("Time"), 80, centered=True)
-        o_columns.nueva("REPETICIONES", _("Rep."), 50, centered=True)
-        o_columns.nueva("ORDEN", _("Order"), 70, centered=True)
+        o_columns.nueva("EXTRA", _("Extra info."), 64, align_center=True)
+        o_columns.nueva("HECHOS", _("Positions"), 64, align_center=True)
+        o_columns.nueva("PUNTOS", _("Score"), 84, align_center=True)
+        o_columns.nueva("FFINAL", _("End date"), 90, align_center=True)
+        o_columns.nueva("TIME", _("Time"), 80, align_center=True)
+        o_columns.nueva("REPETICIONES", _("Rep."), 50, align_center=True)
+        o_columns.nueva("ORDEN", _("Order"), 70, align_center=True)
 
         self.gridT = gridT = Grid.Grid(
-            self, o_columns, xid="T", siEditable=True, siSelecFilas=True, siSeleccionMultiple=True
+            self, o_columns, xid="T", is_editable=True, siSelecFilas=True, siSeleccionMultiple=True
         )
         self.register_grid(gridT)
-        tab.nuevaTab(gridT, _("Finished"))
+        tab.new_tab(gridT, _("Finished"))
 
         self.dicReverse = {}
 
@@ -216,7 +213,7 @@ class WBMT(LCDialog.LCDialog):
                 w = WHistorialBMT(self, dbf)
                 w.exec_()
 
-    def utilidades(self):
+    def utilities(self):
         menu = QTVarios.LCMenu(self)
 
         menu.opcion("cambiar", _("Select/create another file of training"), Iconos.BMT())
@@ -235,7 +232,7 @@ class WBMT(LCDialog.LCDialog):
         menu2.separador()
         menu2.opcion("extraer", _("Extract a range of positions"), Iconos.PuntoAzul())
         menu2.separador()
-        menu2.opcion("juntar", _("Joining selected training"), Iconos.PuntoNaranja())
+        menu2.opcion("juntar", _("Joining selected trainings"), Iconos.PuntoNaranja())
         menu2.separador()
         menu2.opcion("rehacer", _("Analyze again"), Iconos.PuntoAmarillo())
 
@@ -269,6 +266,8 @@ class WBMT(LCDialog.LCDialog):
             return
 
         bmt_lista = Util.zip2var(dbf.leeOtroCampo(recno, "BMT_LISTA"))
+        if bmt_lista is None:
+            return
         bmt_lista.patch()
         bmt_lista.check_color()
 
@@ -286,9 +285,7 @@ class WBMT(LCDialog.LCDialog):
             current_pos = dic["POS"]
             total = dic["TOTAL"]
             if current_pos == -1:
-                wodt.create_document(
-                    "%s - %s: %s" % (_("Lucas Chess"), _("Find best move"), dbf.NOMBRE), True
-                )
+                wodt.create_document("%s - %s: %s" % (_("Lucas Chess"), _("Find best move"), dbf.NOMBRE), True)
                 current_pos += 1
             else:
                 wodt.odt_doc.add_pagebreak()
@@ -660,16 +657,16 @@ class WBMT(LCDialog.LCDialog):
                 um.final()
 
     def juntar(self):
-        grid, dbf, recno = self.actual()
-        orden = dbf.ORDEN
-        name = dbf.NOMBRE
-        extra = dbf.EXTRA
-
         # Lista de recnos
+        grid, dbf, recno = self.actual()
         li = grid.recnosSeleccionados()
 
         if len(li) < 1:
             return
+
+        orden = getattr("dbf", "ORDEN", 0)
+        name = dbf.NOMBRE
+        extra = dbf.EXTRA
 
         # Se pide name y extra
         li_gen = [(None, None)]
@@ -692,7 +689,7 @@ class WBMT(LCDialog.LCDialog):
         config = FormLayout.Combobox(_("Drop answers with minimum score"), liJ)
         li_gen.append((config, 9))
 
-        titulo = "%s (%d)" % (_("Joining selected training"), len(li))
+        titulo = "%s (%d)" % (_("Joining selected trainings"), len(li))
         resultado = FormLayout.fedit(li_gen, title=titulo, parent=self, anchoMinimo=560, icon=Iconos.Opciones())
         if not resultado:
             return

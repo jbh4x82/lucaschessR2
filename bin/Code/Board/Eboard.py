@@ -1,9 +1,11 @@
 import ctypes
 import os
+import time
 
 import Code
 from Code import Util
 from Code.QT import Iconos
+
 
 # Install: Wbase #90
 # Assign toolbar: Wbase #132
@@ -17,6 +19,13 @@ class Eboard:
         self.fen_eboard = None
         self.dispatch = None
         self.allowHumanTB = False
+        self.working_time = None
+
+    def is_working(self):
+        return self.working_time is not None and 1.0 > (time.time() - self.working_time)
+
+    def set_working(self):
+        self.working_time = time.time()
 
     def envia(self, quien, dato):
         # assert Code.prln(quien, dato, self.dispatch)
@@ -60,7 +69,7 @@ class Eboard:
         # assert Code.prln("registerStableBoardFunc", dato)
         self.fen_eboard = self.dgt2fen(dato)
         if self.setup:
-            self.envia("stableBoard", self.dgt2fen(dato))
+            self.envia("stableBoard", self.fen_eboard)
         return 1
 
     def registerStopSetupWTMFunc(self, dato):
@@ -99,19 +108,28 @@ class Eboard:
         self.driver = driver = None
         self.side_takeback = None
         self.dispatch = dispatch
+
+        path_eboards = os.path.join(Code.folder_OS, "DigitalBoards")
+        os.chdir(path_eboards)
+
         if Code.is_linux:
             functype = ctypes.CFUNCTYPE
-            path = os.path.join(Code.folder_OS, "DigitalBoards")
             if Code.configuration.x_digital_board == "DGT-gon":
-                path_so = os.path.join(path, "libdgt.so")
+                path_so = os.path.join(path_eboards, "libdgt.so")
             elif Code.configuration.x_digital_board == "Certabo":
-                path_so = os.path.join(path, "libcer.so")
+                path_so = os.path.join(path_eboards, "libcer.so")
+            elif Code.configuration.x_digital_board == "Chessnut":
+                path_so = os.path.join(path_eboards, "libnut.so")
             elif Code.configuration.x_digital_board == "Millennium":
-                path_so = os.path.join(path, "libmcl.so")
+                path_so = os.path.join(path_eboards, "libmcl.so")
             elif Code.configuration.x_digital_board == "Citrine":
-                path_so = os.path.join(path, "libcit.so")
+                path_so = os.path.join(path_eboards, "libcit.so")
+            elif Code.configuration.x_digital_board == "Saitek":
+                path_so = os.path.join(path_eboards, "libosa.so")
+            elif Code.configuration.x_digital_board == "Tabutronic":
+                path_so = os.path.join(path_eboards, "libtab.so")
             else:
-                path_so = os.path.join(path, "libucb.so")
+                path_so = os.path.join(path_eboards, "libucb.so")
             if os.path.isfile(path_so):
                 try:
                     driver = ctypes.CDLL(path_so)
@@ -119,17 +137,28 @@ class Eboard:
                     driver = None
                     from Code.QT import QTUtil2
 
-                    QTUtil2.message(
-                        None,
-                        """It is not possible to install the driver for the board, one way to solve the problem is to install the libraries:
+                    if Code.configuration.x_digital_board == "Chessnut":
+                        QTUtil2.message(
+                            None,
+                            """It is not possible to install the driver for the board, one way to solve the problem is to install the libraries:
+    sudo apt install libqt5pas1
+    sudo apt install libhidapi-dev
+    or
+    sudo dnf install qt5pas-devel
+    sudo dnf install hidapi-devel""",
+                        )
+                    else:
+                        QTUtil2.message(
+                            None,
+                            """It is not possible to install the driver for the board, one way to solve the problem is to install the libraries:
     sudo apt install libqt5pas1
     or
     sudo dnf install qt5pas-devel""",
-                    )
+                        )
 
         else:
             functype = ctypes.WINFUNCTYPE
-            for path in (
+            for path_eboards in (
                 os.path.join(Code.folder_OS, "DigitalBoards"),
                 "",
                 "C:/Program Files (x86)/DGT Projects/",
@@ -139,29 +168,35 @@ class Eboard:
             ):
                 try:
                     if Code.configuration.x_digital_board == "DGT":
-                        path_dll = os.path.join(path, "DGTEBDLL.dll")
+                        path_dll = os.path.join(path_eboards, "DGTEBDLL.dll")
                     elif Code.configuration.x_digital_board == "Certabo":
-                        path_dll = os.path.join(path, "CER_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "CER_DLL.dll")
                     elif Code.configuration.x_digital_board == "Chessnut":
-                        path_dll = os.path.join(path, "NUT_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "NUT_DLL.dll")
                     elif Code.configuration.x_digital_board == "DGT-gon":
-                        path_dll = os.path.join(path, "DGT_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "DGT_DLL.dll")
                     elif Code.configuration.x_digital_board == "Pegasus":
-                        path_dll = os.path.join(path, "PEG_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "PEG_DLL.dll")
                     elif Code.configuration.x_digital_board == "Millennium":
-                        path_dll = os.path.join(path, "MCL_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "MCL_DLL.dll")
                     elif Code.configuration.x_digital_board == "Citrine":
-                        path_dll = os.path.join(path, "CIT_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "CIT_DLL.dll")
+                    elif Code.configuration.x_digital_board == "Saitek":
+                        path_dll = os.path.join(path_eboards, "OSA_DLL.dll")
                     elif Code.configuration.x_digital_board == "Square Off":
-                        path_dll = os.path.join(path, "SOP_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "SOP_DLL.dll")
+                    elif Code.configuration.x_digital_board == "Tabutronic":
+                        path_dll = os.path.join(path_eboards, "TAB_DLL.dll")
                     else:
-                        path_dll = os.path.join(path, "UCB_DLL.dll")
+                        path_dll = os.path.join(path_eboards, "UCB_DLL.dll")
                     if os.path.isfile(path_dll):
                         driver = ctypes.WinDLL(path_dll)
                         break
                 except:
                     pass
+
         if driver is None:
+            os.chdir(Code.current_dir)
             return False
 
         cmpfunc = functype(ctypes.c_int, ctypes.c_char_p)
@@ -248,6 +283,9 @@ class Eboard:
             except:
                 pass
 
+        driver._DGTDLL_ShowDialog(ctypes.c_int(1))
+
+        os.chdir(Code.current_dir)
         self.driver = driver
         return True
 
@@ -255,6 +293,10 @@ class Eboard:
         if self.driver:
             # assert Code.prln("deactivate")
             self.driver._DGTDLL_HideDialog(ctypes.c_int(1))
+            if Code.is_windows:
+                handle = self.driver._handle
+                ctypes.windll.kernel32.FreeLibrary(handle)
+
             del self.driver
             self.driver = None
             return True
@@ -276,6 +318,7 @@ class Eboard:
             # log( "Enviado a la DGT" + cposicion )
             self.driver._DGTDLL_WritePosition(cposicion.encode())
             self.fen_eboard = cposicion
+            # self.envia("stableBoard", cposicion.encode())
             Code.eboard.allowHumanTB = False
 
     def writeClocks(self, wclock, bclock):
@@ -345,7 +388,20 @@ class Eboard:
             return Iconos.Chessnut()
         elif board == "Millennium":
             return Iconos.Millenium()
+        elif board == "Saitek":
+            return Iconos.Saitek()
         elif board == "Square Off":
             return Iconos.SquareOff()
+        elif board == "Tabutronic":
+            return Iconos.Tabutronic()
         else:
             return Iconos.Novag()
+
+
+def version():
+    path_version = os.path.join(Code.folder_OS, "DigitalBoards", "version")
+    xversion = "0"
+    if os.path.isfile(path_version):
+        with open(path_version, "rt") as f:
+            xversion = f.read().strip()
+    return xversion

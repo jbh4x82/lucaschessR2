@@ -10,10 +10,12 @@ from Code.Base.Constantes import (
     GOOD_MOVE,
     MISTAKE,
     VERY_GOOD_MOVE,
+    INTERESTING_MOVE,
     BLUNDER,
     INACCURACY,
 )
 from Code.Openings import OpeningsStd
+from Code.Nags import Nags
 
 
 def calc_formula(cual, cp, mrm):  # , limit=200.0):
@@ -75,10 +77,6 @@ def calc_formula(cual, cp, mrm):  # , limit=200.0):
         formula = formula.replace("xcompl", "%f" % calc_formula("complexity", cp, mrm))
     try:
         x = float(eval(formula))
-        # if x < 0.0:
-        # x = -x
-        # if x > limit:
-        # x = limit
         return x
     except:
         return 0.0
@@ -217,55 +215,6 @@ def calc_gamestage(cp, mrm):
     return calc_formula("gamestage", cp, mrm)
 
 
-# def get_test1(cp, mrm):
-#     return txt_formula("Test 1", calc_test1, cp, mrm)
-
-# def tp_test1(cp, mrm):
-#     return tp_formula("Test 1", calc_test1, cp, mrm)
-
-# def calc_test1(cp, mrm):
-#     return calc_formula("test1", cp, mrm)
-
-# def get_test1(cp, mrm):
-#     return txt_formula("Test 1", calc_test1, cp, mrm)
-
-# def tp_test2(cp, mrm):
-#     return tp_formula("Test 2", calc_test2, cp, mrm)
-
-# def calc_test2(cp, mrm):
-#     return calc_formula("test2", cp, mrm)
-
-# def get_test2(cp, mrm):
-#     return txt_formula("Test 2", calc_test2, cp, mrm)
-
-# def tp_test3(cp, mrm):
-#     return tp_formula("Test 3", calc_test3, cp, mrm)
-
-# def calc_test3(cp, mrm):
-#     return calc_formula("test3", cp, mrm)
-
-# def get_test3(cp, mrm):
-#     return txt_formula("Test 3", calc_test3, cp, mrm)
-
-# def tp_test4(cp, mrm):
-#     return tp_formula("Test 4", calc_test4, cp, mrm)
-
-# def calc_test4(cp, mrm):
-#     return calc_formula("test4", cp, mrm)
-
-# def get_test4(cp, mrm):
-#     return txt_formula("Test 4", calc_test4, cp, mrm)
-
-# def tp_test5(cp, mrm):
-#     return tp_formula("Test 5", calc_test5, cp, mrm)
-
-# def calc_test5(cp, mrm):
-#     return calc_formula("test5", cp, mrm)
-
-# def get_test5(cp, mrm):
-#     return txt_formula("Test 5", calc_test5, cp, mrm)
-
-
 def get_gamestage(cp, mrm):
     xgst = calc_gamestage(cp, mrm)
     if xgst >= 50:
@@ -293,7 +242,6 @@ def tp_gamestage(cp, mrm):
 
 
 def gen_indexes(game, elos, elos_form, alm):
-
     average = {True: 0, False: 0}
     domination = {True: 0, False: 0}
     complexity = {True: 0.0, False: 0.0}
@@ -302,22 +250,39 @@ def gen_indexes(game, elos, elos_form, alm):
     piecesactivity = {True: 0.0, False: 0.0}
     exchangetendency = {True: 0.0, False: 0.0}
 
+    moves_best = {True: 0, False: 0}
     moves_very_good = {True: 0, False: 0}
     moves_good = {True: 0, False: 0}
-    moves_questionable = {True: 0, False: 0}
-    moves_bad = {True: 0, False: 0}
-    moves_very_bad = {True: 0, False: 0}
+    moves_interestings = {True: 0, False: 0}
+    moves_inaccuracies = {True: 0, False: 0}
+    moves_mistakes = {True: 0, False: 0}
+    moves_blunders = {True: 0, False: 0}
     moves_book = {True: 0, False: 0}
 
-    configuration = Code.configuration
-
     n = {True: 0, False: 0}
+    nmoves_analyzed = {True: 0, False: 0}
     for move in game.li_moves:
         if move.analysis:
             mrm, pos = move.analysis
             rm = mrm.li_rm[pos]
-            nag_move, nag_color = move.nag_color = mrm.set_nag_color(configuration, rm)
+            if (
+                not hasattr(mrm, "dic_depth") or len(mrm.dic_depth) == 0
+            ):  # Generación de gráficos sin un análisis previo con su depth
+                if INTERESTING_MOVE in move.li_nags:
+                    nag_move, nag_color = INTERESTING_MOVE, INTERESTING_MOVE
+                elif VERY_GOOD_MOVE in move.li_nags:
+                    nag_move, nag_color = VERY_GOOD_MOVE, VERY_GOOD_MOVE
+                elif GOOD_MOVE in move.li_nags:
+                    nag_move, nag_color = GOOD_MOVE, GOOD_MOVE
+                else:
+                    nag_move, nag_color = mrm.set_nag_color(rm)
+
+            else:
+                nag_move, nag_color = mrm.set_nag_color(rm)
+            move.nag_color = nag_move, nag_color
+
             is_white = move.is_white()
+            nmoves_analyzed[is_white] += 1
             pts = mrm.li_rm[pos].centipawns_abs()
             if pts > 100:
                 domination[is_white] += 1
@@ -342,16 +307,20 @@ def gen_indexes(game, elos, elos_form, alm):
             fenm2 = move.position.fenm2()
             if OpeningsStd.ap.is_book_fenm2(fenm2):
                 moves_book[is_white] += 1
-            if nag_color == VERY_GOOD_MOVE:
+            if nag_color == GOOD_MOVE:
+                moves_best[is_white] += 1
+            if nag_move == VERY_GOOD_MOVE:
                 moves_very_good[is_white] += 1
-            elif nag_color == GOOD_MOVE:
+            elif nag_move == GOOD_MOVE:
                 moves_good[is_white] += 1
+            elif nag_move == INTERESTING_MOVE:
+                moves_interestings[is_white] += 1
             elif nag_color == MISTAKE:
-                moves_bad[is_white] += 1
+                moves_mistakes[is_white] += 1
             elif nag_color == BLUNDER:
-                moves_very_bad[is_white] += 1
+                moves_blunders[is_white] += 1
             elif nag_color == INACCURACY:
-                moves_questionable[is_white] += 1
+                moves_inaccuracies[is_white] += 1
 
     t = n[True] + n[False]
     for color in (True, False):
@@ -424,7 +393,7 @@ def gen_indexes(game, elos, elos_form, alm):
         elos_form[False][ALLGAME],
         elos_form[None][ALLGAME],
     )
-    for std, tit in ((OPENING, _("Opening")), (MIDDLEGAME, _("Middle game")), (ENDGAME, _("End game"))):
+    for std, tit in ((OPENING, _("Opening")), (MIDDLEGAME, _("Middlegame")), (ENDGAME, _("Endgame"))):
         if elos[None][std]:
             txt += plantilla_c % (tit, int(elos_form[True][std]), int(elos_form[False][std]), int(elos_form[None][std]))
 
@@ -434,15 +403,26 @@ def gen_indexes(game, elos, elos_form, alm):
     def xm(label, var, color):
         return plantilla_e % (color, label, color, var[True], color, var[False], color, var[True] + var[False])
 
-    txt = xm(_("Book"), moves_book, "black")
-    txt += xm(_("Very good moves"), moves_very_good, configuration.x_color_nag3)
-    txt += xm(_("Good moves"), moves_good, configuration.x_color_nag1)
-    txt += xm(_("Questionable moves"), moves_questionable, configuration.x_color_nag6)
-    txt += xm(_("Bad moves"), moves_bad, configuration.x_color_nag2)
-    txt += xm(_("Very bad moves"), moves_very_bad, configuration.x_color_nag4)
+    tmoves = nmoves_analyzed[True] + nmoves_analyzed[False]
+    if tmoves > 0:
+        w = " %.02f%%" % (moves_best[True] * 100 / nmoves_analyzed[True],) if nmoves_analyzed[True] else ""
+        b = " %.02f%%" % (moves_best[False] * 100 / nmoves_analyzed[False],) if nmoves_analyzed[False] else ""
+        t = " %.02f%%" % ((moves_best[True] + moves_best[False]) * 100 / tmoves,)
+        color = "black"
+        best_moves = plantilla_e % (color, _("Best moves"), color, w, color, b, color, t)
+    else:
+        best_moves = ""
+    txt = best_moves
+    txt += xm(_("Book"), moves_book, "black")
+    txt += xm(_("Brilliant moves"), moves_very_good, Nags.nag_color(VERY_GOOD_MOVE))
+    txt += xm(_("Good moves"), moves_good, Nags.nag_color(GOOD_MOVE))
+    txt += xm(_("Interesting moves"), moves_interestings, Nags.nag_color(INTERESTING_MOVE))
+    txt += xm(_("Dubious moves"), moves_inaccuracies, Nags.nag_color(INACCURACY))
+    txt += xm(_("Mistakes"), moves_mistakes, Nags.nag_color(MISTAKE))
+    txt += xm(_("Blunders"), moves_blunders, Nags.nag_color(BLUNDER))
 
     cab = (plantilla_c % ("", cw, cb, ct)).replace("<td", "<th")
-    txt_html_moves = '<table border="1" cellpadding="15" cellspacing="0" >%s%s</table>' % (cab, txt)
+    txt_html_moves = '<table border="1" cellpadding="5" cellspacing="0" >%s%s</table>' % (cab, txt)
 
     plantilla_d = "%s:\n" + cw + "= %.02f%s " + cb + "= %.02f%s\n"
     plantilla_l = "%s:\n" + cw + "= %.02f%s " + cb + "= %.02f%s " + ct + "= %.02f%s\n"

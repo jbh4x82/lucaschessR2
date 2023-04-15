@@ -7,6 +7,7 @@ from Code.Config import Configuration
 from Code.Openings import OpeningsStd
 from Code.QT import Piezas
 from Code.Tournaments import WTournamentRun
+from Code.MainWindow import InitApp
 
 
 def run(user, file_tournament, file_work):
@@ -15,17 +16,13 @@ def run(user, file_tournament, file_work):
     app = QtWidgets.QApplication([])
 
     configuration = Configuration.Configuration(user)
-    configuration.lee()
-    configuration.leeConfBoards()
+    configuration.start()
     configuration.load_translation()
     OpeningsStd.ap.reset()
-    Code.todasPiezas = Piezas.TodasPiezas()
+    Code.all_pieces = Piezas.AllPieces()
 
-    app.setStyle(QtWidgets.QStyleFactory.create(configuration.x_style))
-    QtWidgets.QApplication.setPalette(QtWidgets.QApplication.style().standardPalette())
+    InitApp.init_app_style(app, configuration)
 
     w = WTournamentRun.WTournamentRun(file_tournament, file_work)
     w.show()
-    w.busca_trabajo()
-
-    # app.exec_()
+    w.looking_for_work()

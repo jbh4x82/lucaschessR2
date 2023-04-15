@@ -23,11 +23,10 @@ class WForcingMoves(LCDialog.LCDialog):
 
         conf_board = self.configuration.config_board("RUNCOUNTS", 64)
 
-        # self.board = Board.BoardEstaticoMensaje(self, conf_board, None)
         self.board = Board.BoardEstatico(self, conf_board)
         self.board.crea()
         self.board.set_dispatcher(self.player_has_moved)
-        self.board.dbvisual_set_show_allways(False)
+        self.board.dbvisual_set_show_always(False)
         self.board.enable_all()
         self.li_checks_found = []
         self.li_captures_found = []
@@ -137,7 +136,9 @@ class WForcingMoves(LCDialog.LCDialog):
         if self.pvs[self.level].startswith(celda):
             self.ed_moves.set_text(celda)
         elif self.pvs[self.level].startswith(self.ed_moves.text() + celda):
-            self.board.creaFlechaTmp(self.ed_moves.text(), celda, False)
+            print("Drawing arrow from %s to %s" % (self.ed_moves.text(), celda))
+            self.board.put_arrow_sc(self.ed_moves.text(), celda)
+            # self.board.creaFlechaTmp(self.ed_moves.text(), celda, False)
             self.level += 1
             self.lb_info.set_text(_("PV level %s" % self.level))
             self.ed_moves.set_text("")
@@ -170,83 +171,93 @@ class WForcingMoves(LCDialog.LCDialog):
 
     def show_tb(self, *lista):
         for opc in self.tb.dic_toolbar:
-            self.tb.setAccionVisible(opc, opc in lista)
+            self.tb.set_action_visible(opc, opc in lista)
         QTUtil.refresh_gui()
 
     def begin(self):
         self.seguir()
 
+    def put_message(self, txt):
+        p0 = self.lb_info.pos()
+        p = self.mapToGlobal(p0)
+        QTUtil2.message(self, txt, px=p.x(), py=p.y(), si_bold=True)
+        
+    def ask_question(self, txt):
+        p0 = self.lb_info.pos()
+        p = self.mapToGlobal(p0)
+        return QTUtil2.pregunta(self, txt, px=p.x(), py=p.y())
+
     def ask_is_bm_check(self):
         if self.owner.checks > 0:
-            if QTUtil2.pregunta(self, _("Is one of the checks the best move?")):
+            if self.ask_question(_("Is one of the checks the best move?")):
                 if self.owner.bm_is_check:
                     if self.owner.rm.mate > 0:
-                        QTUtil2.message_bold(self, _("Correct. The best check forces mate! Find it."))
+                        self.put_message(_("Correct. The best check forces mate! Find it."))
                     else:
-                        QTUtil2.message_bold(self, _("Correct! Now play the winning check."))
+                        self.put_message(_("Correct! Now play the winning check."))
                     return True
                 else:
-                    QTUtil2.message_bold(self, _("The best move is not a check."))
+                    self.put_message(_("The best move is not a check."))
                     return False
             else:
                 if self.owner.bm_is_check:
                     if self.owner.rm.mate > 0:
-                        QTUtil2.message_bold(self, _("The best move is a check and forces mate! Find it."))
+                        self.put_message(_("The best move is a check and forces mate! Find it."))
                         return True
                     else:
-                        QTUtil2.message_bold(self, _("The best move is a check. Now play it."))
+                        self.put_message(_("The best move is a check. Now play it."))
                         return True
         return False
 
     def ask_is_bm_capture(self):
         if self.owner.captures > 0:
-            if QTUtil2.pregunta(self, _("Is one of the captures the best move?")):
+            if self.ask_question(_("Is one of the captures the best move?")):
                 if self.owner.bm_is_capture:
                     if self.owner.rm.mate > 0:
-                        QTUtil2.message_bold(self, _("Correct. The best capture forces mate! Find it."))
+                        self.put_message(_("Correct. The best capture forces mate! Find it."))
                     elif self.owner.bm_is_discovered_attack:
-                        QTUtil2.message_bold(self, _("Correct! It creates a discovered attack. Now play the winning capture."))
+                        self.put_message(_("Correct! It creates a discovered attack. Now play the winning capture."))
                     else:
-                        QTUtil2.message_bold(self, _("Correct! Now play the winning capture."))
+                        self.put_message(_("Correct! Now play the winning capture."))
                     return True
                 else:
-                    QTUtil2.message_bold(self, _("The best move is not a capture."))
+                    self.put_message(_("The best move is not a capture."))
                     return False
             else:
                 if self.owner.bm_is_capture:
                     if self.owner.rm.mate > 0:
-                        QTUtil2.message_bold(self, _("The best move is a capture and forces mate! Find it."))
+                        self.put_message(_("The best move is a capture and forces mate! Find it."))
                     elif self.owner.bm_is_discovered_attack:
-                        QTUtil2.message_bold(self, _("The best move is a capture and creates a discovered attack. Now play it."))
+                        self.put_message(_("The best move is a capture and creates a discovered attack. Now play it."))
                     else:
-                        QTUtil2.message_bold(self, _("The best move is a capture. Now play it."))
+                        self.put_message(_("The best move is a capture. Now play it."))
                     return True
             return False
         return False
 
     def ask_is_bm_threat(self):
-        if QTUtil2.pregunta(self, _("Is the best move threatening anything new?")):
+        if self.ask_question(_("Is the best move threatening anything new?")):
             if not self.owner.bm_is_threat and self.owner.rm.mate == 0:
-                QTUtil2.message_bold(self, _("The best move is not threatening anything new - try to find it."))
+                self.put_message(_("The best move is not threatening anything new - try to find it."))
             else:
                 if self.owner.rm.mate > 0:
-                    QTUtil2.message_bold(self, _("Correct. The best move forces mate! Find it."))
+                    self.put_message(_("Correct. The best move forces mate! Find it."))
                 elif self.owner.bm_is_mate_threat:
-                    QTUtil2.message_bold(self, _("Correct. The best move threatens mate! Find it."))
+                    self.put_message(_("Correct. The best move threatens mate! Find it."))
                 else:
-                    QTUtil2.message_bold(self, _("Correct. Find it."))
+                    self.put_message(_("Correct. Find it."))
         else:
             if not self.owner.bm_is_threat and self.owner.rm.mate == 0:
-                QTUtil2.message_bold(self, _("Correct."))
+                self.put_message(_("Correct."))
             else:
                 if self.owner.rm.mate > 0:
-                    QTUtil2.message_bold(self, _("The best move forces mate! Find it."))
+                    self.put_message(_("The best move forces mate! Find it."))
                 elif self.owner.bm_is_mate_threat:
-                    QTUtil2.message_bold(self, _("The best move threatens mate! Find it."))
+                    self.put_message(_("The best move threatens mate! Find it."))
                 elif self.owner.bm_is_discovered_attack:
-                    QTUtil2.message_bold(self, _("The best move creates a discovered attack! Find it."))
+                    self.put_message(_("The best move creates a discovered attack! Find it."))
                 else:
-                    QTUtil2.message_bold(self, _("The best move creates a new threat! Find it."))
+                    self.put_message(_("The best move creates a new threat! Find it."))
 
         self.board.remove_arrows()
         arrow_count = 0
@@ -271,6 +282,7 @@ class WForcingMoves(LCDialog.LCDialog):
             self.level = 1
             self.gb_counts.show()
             self.ed_moves.show()
+            self.board.disable_all()
             self.show_tb(self.terminar)
             return
 

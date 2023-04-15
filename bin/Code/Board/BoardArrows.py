@@ -71,14 +71,17 @@ class FlechaSC(BoardBlocks.BloqueEspSC):
         ac = bf.width_square
         tf = self.board.tamFrontera
 
-        f = lambda xy: int(round((float(xy) + ac / 2.0) / float(ac), 0))
+        def f(xy):
+            return int(round((float(xy) + ac / 2.0) / float(ac), 0))
 
         dc = f(physical_pos.x - tf / 2)
         df = f(physical_pos.y - tf / 2)
         hc = f(physical_pos.ancho)
         hf = f(physical_pos.alto)
 
-        bien = lambda fc: (fc < 9) and (fc > 0)
+        def bien(fc):
+            return (fc < 9) and (fc > 0)
+
         if bien(dc) and bien(df) and bien(hc) and bien(hf):
             if dc != hc or df != hf:
                 bf.a1h8 = self.board.fc_a1h8(df, dc, hf, hc)
@@ -225,6 +228,17 @@ class FlechaSC(BoardBlocks.BloqueEspSC):
         resp = paintArrow(painter, bf)
         if resp:
             self.poligonoSizeBottom, self.poligonoMove, self.poligonoSizeTop = resp
+
+            if self.siActivo:
+                pen = QtGui.QPen()
+                pen.setColor(QtGui.QColor("blue"))
+                pen.setWidth(2)
+                pen.setStyle(QtCore.Qt.DashLine)
+                painter.setPen(pen)
+                painter.setBrush(QtGui.QBrush())
+                painter.drawPolygon(self.poligonoSizeBottom)
+                painter.drawPolygon(self.poligonoMove)
+                painter.drawPolygon(self.poligonoSizeTop)
 
 
 def paintArrow(painter, bf):

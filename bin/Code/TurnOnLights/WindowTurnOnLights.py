@@ -67,7 +67,7 @@ class WTurnOnLights(LCDialog.LCDialog):
             self.dicIconos[k] = QtGui.QIcon(pm)
 
         for x in range(self.tol.num_blocks):
-            o_columns.nueva("BLOCK%d" % x, "%d" % (x + 1,), 42, centered=True, edicion=edicionIconos)
+            o_columns.nueva("BLOCK%d" % x, "%d" % (x + 1,), 42, align_center=True, edicion=edicionIconos)
 
         self.grid = grid = Grid.Grid(self, o_columns, altoFila=42, background="white")
         self.grid.setAlternatingRowColors(False)
@@ -246,7 +246,9 @@ class WTurnOnLights(LCDialog.LCDialog):
                 self.cambiar_one_line()
 
     def rebuild(self):
-        if not QTUtil2.pregunta(self, _("Are you sure you want to delete all results of all levels and start again from scratch?")):
+        if not QTUtil2.pregunta(
+            self, _("Are you sure you want to delete all results of all levels and start again from scratch?")
+        ):
             return
         if self.one_line:
             self.tol.new()
@@ -350,7 +352,7 @@ class WConfigOneLineTOL(LCDialog.LCDialog):
 
     def calc_lines_fns(self, fns):
         nl = 0
-        with open(fns) as f:
+        with open(fns, "rt", encoding="utf-8", errors="ignore") as f:
             for linea in f:
                 li = linea.split("|")
                 if len(li) >= 3:

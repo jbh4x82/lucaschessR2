@@ -27,7 +27,7 @@ class WThemes(LCDialog.LCDialog):
 
         self.themes = themes
 
-        self.themes.check(self.st_current_themes)
+        self.themes.verify(self.st_current_themes)
         self.qt_custom = QTUtil.qtColor("#bf5b16")
 
         self.configuration = Code.configuration
@@ -48,9 +48,7 @@ class WThemes(LCDialog.LCDialog):
         o_columns.nueva("THEME", "", 280)
 
         self.o_columnas = o_columns
-        self.grid = Grid.Grid(self, o_columns, siEditable=True, altoCabecera=4)
-        font = Controles.TipoLetra(puntos=Code.configuration.x_pgn_fontpoints)
-        self.grid.ponFuente(font)
+        self.grid = Grid.Grid(self, o_columns, is_editable=True, altoCabecera=4)
 
         lb_right_click = Controles.LB(self, " * %s" % _("More options with right-click"))
 
@@ -129,7 +127,9 @@ class WThemes(LCDialog.LCDialog):
     def add_custom(self):
         li_gen = [(None, None)]
         li_gen.append((_("Name") + ":", ""))
-        resultado = FormLayout.fedit(li_gen, title=_("Add a custom theme"), parent=self, anchoMinimo=560, icon=Iconos.Themes())
+        resultado = FormLayout.fedit(
+            li_gen, title=_("Add a custom theme"), parent=self, anchoMinimo=560, icon=Iconos.Themes()
+        )
 
         if resultado:
             accion, li_gen = resultado

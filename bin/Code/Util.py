@@ -1,18 +1,17 @@
-import os
-import datetime
-import random
-import inspect
-import pickle
-import zlib
-import urllib.request
 import collections
+import datetime
 import glob
 import hashlib
+import inspect
+import os
+import pickle
+import random
 import shutil
-import time
-import psutil
+import urllib.request
+import zlib
 
 import chardet.universaldetector
+import psutil
 
 
 def md5_lc(x: str) -> int:
@@ -124,17 +123,26 @@ def temporary_file(pathTemp: str, ext: str) -> str:
             return fich
 
 
-def list_vars_values(obj):
+def list_vars_values(obj, li_exclude: [list, None] = None):
+    if li_exclude is None:
+        li_exclude = []
     li = []
     for name, value in inspect.getmembers(obj):
-        if not ("__" in name):
+        if not ("__" in name) and name not in li_exclude:
             if not inspect.ismethod(value):
                 li.append((name, value))
     return li
 
 
-def save_obj_pickle(obj):
-    dic = {var: value for var, value in list_vars_values(obj)}
+def restore_list_vars_values(obj, li_vars_values):
+    for name, value in li_vars_values:
+        if hasattr(obj, name):
+            setattr(obj, name, value)
+
+
+def save_obj_pickle(obj, li_exclude: [list, None] = None):
+    li_vars_values = list_vars_values(obj, li_exclude)
+    dic = {var: value for var, value in li_vars_values}
     return pickle.dumps(dic)
 
 
@@ -157,7 +165,7 @@ def ini_dic(file: str) -> dict:
                     n = line.find("=")
                     if n:
                         key = line[:n].strip()
-                        value = line[n + 1 :].strip()
+                        value = line[n + 1:].strip()
                         dic[key] = value
     return dic
 
@@ -166,29 +174,39 @@ def today():
     return datetime.datetime.now()
 
 
-def new_id() -> int:
+ORDERED_NUMBER = [0]
+
+
+def huella() -> str:
     d = datetime.datetime.now()
-    r = random.randint
-    t = (((((r(1, d.year) * 12 + r(1, d.month)) * 31 + d.day) * 24 + d.hour) * 60 + d.minute) * 60 + d.second) * 1000 + r(
-        1, d.microsecond + 737
-    ) // 1000
-    return t
+    ORDERED_NUMBER[0] += 1
+    txt = "%2d%02d%02d%02d%02d%02d%06d%04d" % (
+        d.year % 100,
+        d.month,
+        d.day,
+        d.hour,
+        d.minute,
+        d.second,
+        d.microsecond,
+        ORDERED_NUMBER[0],
+    )
+    if len(txt) % 2 == 1:
+        txt += str(random.randint(0, 9))
 
+    def conv(num100: int) -> str:
+        if num100 < 9:
+            return chr(49 + num100)
+        if num100 < 35:
+            return chr(65 - 9 + num100)
+        if num100 < 61:
+            return chr(97 - 35 + num100)
+        return chr(122) + conv(num100 - 61)
 
-def str_id() -> str:
-    d = datetime.datetime.now()
-    r = random.randint
-    t = (((((r(1, d.year) * 12 + r(1, d.month)) * 31 + d.day) * 24 + d.hour) * 60 + d.minute) * 60 + d.second) * 1000 + r(
-        1, d.microsecond + 737
-    ) // 1000
-    return str(t)
-
-
-def huella():
-    m = hashlib.md5()
-    s = str(random.random()) + str(today())
-    m.update(s.encode("utf-8"))
-    return m.hexdigest()
+    li = []
+    for n in range(len(txt) // 2):
+        num = int(txt[n * 2: n * 2 + 2])
+        li.append(conv(num))
+    return "".join(li)
 
 
 def save_pickle(fich: str, obj) -> bool:
@@ -286,17 +304,14 @@ def dtostr_hm(f):
 
 def stodext(txt):
     if txt and len(txt) == 14 and txt.isdigit():
-        return datetime.datetime(int(txt[:4]), int(txt[4:6]), int(txt[6:8]), int(txt[8:10]), int(txt[10:12]), int(txt[12:]))
+        return datetime.datetime(
+            int(txt[:4]), int(txt[4:6]), int(txt[6:8]), int(txt[8:10]), int(txt[10:12]), int(txt[12:])
+        )
     return None
 
 
 def primera_mayuscula(txt):
     return txt[0].upper() + txt[1:].lower() if len(txt) > 0 else ""
-
-
-def microsegundos_rnd():
-    d = datetime.datetime.now()
-    return random.randint(0, 1000) + 1000 * (d.microsecond + 1000000 * (d.second + 60 * (d.minute + 60 * (d.hour + 24 * d.toordinal()))))
 
 
 def ini2dic(file):
@@ -316,7 +331,7 @@ def ini2dic(file):
                         n = linea.find("=")
                         if n > 0:
                             clave1 = linea[:n].strip()
-                            valor = linea[n + 1 :].strip()
+                            valor = linea[n + 1:].strip()
                             dic[clave1] = valor
 
     return dic_base
@@ -344,7 +359,26 @@ def ini_base2dic(file):
                     n = linea.find("=")
                     if n:
                         key = linea[:n].strip()
-                        valor = linea[n + 1 :].strip()
+                        valor = linea[n + 1:].strip()
+                        dic[key] = valor
+
+    return dic
+
+def ini_base2dicr(file):
+    dic = {}
+
+    if os.path.isfile(file):
+
+        with open(file, "rt", encoding="utf-8", errors="ignore") as f:
+            for linea in f:
+                linea = linea.strip()
+                if linea.startswith("#"):
+                    continue
+                if linea:
+                    n = linea.rfind("=")
+                    if n:
+                        key = linea[:n].strip()
+                        valor = linea[n + 1:].strip()
                         dic[key] = valor
 
     return dic
@@ -352,10 +386,8 @@ def ini_base2dic(file):
 
 def dic2ini_base(file, dic):
     with open(file, "wt", encoding="utf-8", errors="ignore") as f:
-        for k in dic:
-            f.write("[%s]\n" % k)
-            for key in dic[k]:
-                f.write("%s=%s\n" % (key, dic[k][key]))
+        for k, v in dic.items():
+            f.write("%s=%s\n" % (k, v))
 
 
 def secs2str(s):
@@ -557,253 +589,6 @@ def datefile(pathfile):
         return None
 
 
-class Timer:
-    def __init__(self, pending_time):
-        self.pending_time = pending_time
-        self.time_init = None
-        self.txt = ""
-        self.zeitnot_marker = 0
-
-    def texto(self, segs):
-        if segs <= 0.0:
-            segs = 0.0
-        tp = int(segs)
-        txt = "%02d:%02d" % (int(tp / 60), tp % 60)
-        return txt
-
-    def add_extra_seconds(self, segs):
-        self.pending_time += segs
-
-    def get_seconds(self):
-        if self.time_init:
-            tp = self.pending_time - (time.time() - self.time_init)
-        else:
-            tp = self.pending_time
-        if tp <= 0.0:
-            tp = 0
-        return int(tp)
-
-    def get_seconds2(self):
-        if self.time_init:
-            tp2 = int(time.time() - self.time_init)
-            tp = int(self.pending_time) - tp2
-        else:
-            tp = self.pending_time
-            tp2 = 0
-        if tp <= 0.0:
-            tp = 0
-        return int(tp), tp2
-
-    def etiqueta(self):
-        return self.texto(self.get_seconds())
-
-    def etiqueta2(self):
-        tp, tp2 = self.get_seconds2()
-        return self.texto(tp), self.texto(tp2)
-
-    def etiquetaDif(self):
-        nvEti = self.etiqueta()
-        if nvEti != self.txt:
-            self.txt = nvEti
-            return nvEti
-
-        return None
-
-    def etiquetaDif2(self):
-        nvEti, nvEti2 = self.etiqueta2()
-        if nvEti != self.txt:
-            self.txt = nvEti
-            return nvEti, nvEti2
-
-        return None, None
-
-    def label_dgt(self):
-        segs = self.get_seconds()
-        mins = segs // 60
-        segs -= mins * 60
-        hors = mins // 60
-        mins -= hors * 60
-
-        return "%d:%02d:%02d" % (hors, mins, segs)
-
-    def time_is_consumed(self):
-        if self.time_init:
-            if (self.pending_time - (time.time() - self.time_init)) <= 0.0:
-                return True
-        else:
-            return self.pending_time <= 0.0
-        return False
-
-    def is_zeitnot(self):
-        if self.zeitnot_marker:
-            if self.time_init:
-                t = self.pending_time - (time.time() - self.time_init)
-            else:
-                t = self.pending_time
-            if t > 0:
-                resp = t < self.zeitnot_marker
-                if resp:
-                    self.zeitnot_marker = None
-                return resp
-        return False
-
-    def set_zeinot(self, segs):
-        self.zeitnot_marker = segs
-
-    def start_marker(self):
-        self.time_init = time.time()
-
-    def stop_marker(self, tiempoJugada):
-        if self.time_init:
-            self.pending_time -= (time.time() - self.time_init) - tiempoJugada
-            self.time_init = None
-
-    def remove_marker(self):
-        self.time_init = None
-
-    def save(self):
-        return (self.pending_time, self.zeitnot_marker)
-
-    def restore(self, tvar):
-        self.pending_time, self.zeitnot_marker = tvar
-        self.time_init = None
-        self.txt = ""
-
-
-class Timer2:
-    def __init__(self, game, side, total_time, seconds_per_move):
-        self.game = game
-        self.side = side
-        self.total_time = total_time
-        self.pending_time = total_time
-        self.seconds_per_move = seconds_per_move
-        self.time_init = None
-        self.txt = ""
-        self.zeitnot_marker = 0
-
-        self.recalc()
-
-    @staticmethod
-    def texto(segs):
-        if segs <= 0.0:
-            segs = 0.0
-        tp = int(segs)
-        txt = "%02d:%02d" % (int(tp / 60), tp % 60)
-        return txt
-
-    def add_extra_seconds(self, segs):
-        self.pending_time += segs
-        self.total_time += segs
-
-    def get_seconds(self):
-        if self.time_init:
-            tp = self.pending_time - (time.time() - self.time_init)
-        else:
-            tp = self.pending_time
-        if tp <= 0.0:
-            tp = 0
-        return int(tp)
-
-    def get_seconds2(self):
-        if self.time_init:
-            tp2 = int(time.time() - self.time_init)
-            tp = int(self.pending_time) - tp2
-        else:
-            tp = self.pending_time
-            tp2 = 0
-        if tp <= 0.0:
-            tp = 0
-        return int(tp), tp2
-
-    def etiqueta(self):
-        return self.texto(self.get_seconds())
-
-    def etiqueta2(self):
-        tp, tp2 = self.get_seconds2()
-        return self.texto(tp), self.texto(tp2)
-
-    def etiquetaDif(self):
-        nvEti = self.etiqueta()
-        if nvEti != self.txt:
-            self.txt = nvEti
-            return nvEti
-
-        return None
-
-    def etiquetaDif2(self):
-        nvEti, nvEti2 = self.etiqueta2()
-        if nvEti != self.txt:
-            self.txt = nvEti
-            return nvEti, nvEti2
-
-        return None, None
-
-    def label_dgt(self):
-        segs = self.get_seconds()
-        mins = segs // 60
-        segs -= mins * 60
-        hors = mins // 60
-        mins -= hors * 60
-
-        return "%d:%02d:%02d" % (hors, mins, segs)
-
-    def time_is_consumed(self):
-        if self.time_init:
-            if (self.pending_time - (time.time() - self.time_init)) <= 0.0:
-                return True
-        else:
-            return self.pending_time <= 0.0
-        return False
-
-    def is_zeitnot(self):
-        if self.zeitnot_marker:
-            if self.time_init:
-                t = self.pending_time - (time.time() - self.time_init)
-            else:
-                t = self.pending_time
-            if t > 0:
-                resp = t < self.zeitnot_marker
-                if resp:
-                    self.zeitnot_marker = None
-                return resp
-        return False
-
-    def set_zeinot(self, segs):
-        self.zeitnot_marker = segs
-
-    def start_marker(self):
-        self.recalc()
-        self.time_init = time.time()
-
-    def stop_marker(self):
-        if self.time_init:
-            self.pending_time -= (time.time() - self.time_init) - self.seconds_per_move
-            self.time_init = None
-
-    def remove_marker(self):
-        self.recalc()
-        self.time_init = None
-
-    def recalc(self):
-        ms = 0
-        num_moves = 0
-        for move in self.game.li_moves:
-            if move.is_white() == self.side:
-                ms += move.time_ms
-                num_moves += 1
-        self.pending_time = self.total_time - ms/1000.0 + num_moves * self.seconds_per_move
-
-    def save(self):
-        self.recalc()
-        return self.total_time, self.pending_time, self.zeitnot_marker
-
-    def restore(self, tvar):
-        self.total_time, self.pending_time, self.zeitnot_marker = tvar
-        self.recalc()
-        self.time_init = None
-        self.txt = ""
-
-
 def fideELO(eloJugador, eloRival, resultado):
     if resultado == +1:
         resultado = 1.0
@@ -844,32 +629,6 @@ def listfiles(*lista):
 
 def listdir(txt):
     return os.scandir(txt)
-
-
-class Timekeeper:
-    def __init__(self):
-        self._begin = None
-        self._accumulated = 0.0
-
-    def start(self):
-        self._begin = time.time()
-        self._accumulated = 0.0
-
-    def stop(self):
-        if self._begin:
-            secs = time.time() - self._begin + self._accumulated
-            self._begin = None
-            return secs
-        else:
-            return self._accumulated
-
-    def pause(self):
-        if self._begin:
-            self._accumulated = time.time() - self._begin
-            self._begin = None
-
-    def restart(self):
-        self._begin = time.time()
 
 
 class OpenCodec:
@@ -1000,7 +759,6 @@ def div_list(list, max_group):
     xfrom = 0
     li_groups = []
     while xfrom < nlist:
-        li_groups.append(list[xfrom : xfrom + max_group])
+        li_groups.append(list[xfrom: xfrom + max_group])
         xfrom += max_group
     return li_groups
-

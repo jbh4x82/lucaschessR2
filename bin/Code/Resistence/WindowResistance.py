@@ -45,8 +45,8 @@ class WResistance(LCDialog.LCDialog):
         # Lista
         o_columns = Columnas.ListaColumnas()
         o_columns.nueva("ENGINE", _("Engine"), 198)
-        o_columns.nueva("WHITE", _("White"), 200, centered=True)
-        o_columns.nueva("BLACK", _("Black"), 200, centered=True)
+        o_columns.nueva("WHITE", _("White"), 200, align_center=True)
+        o_columns.nueva("BLACK", _("Black"), 200, align_center=True)
 
         self.grid = grid = Grid.Grid(self, o_columns, siSelecFilas=True, background=None)
         self.grid.coloresAlternados()
@@ -66,7 +66,10 @@ class WResistance(LCDialog.LCDialog):
 
     def set_textAyuda(self):
         txt = self.resistance.rotuloActual(True)
-        self.lb.set_text('<center><b>%s<br><font color="red">%s</red></b></center>' % (txt, _("Double click in any cell to begin to play")))
+        self.lb.set_text(
+            '<center><b>%s<br><font color="red">%s</red></b></center>'
+            % (txt, _("Double click in any cell to begin to play"))
+        )
 
     def grid_num_datos(self, grid):
         return self.resistance.num_engines()
@@ -104,17 +107,23 @@ class WResistance(LCDialog.LCDialog):
 
         li_gen = [separador]
 
-        config = FormLayout.Spinbox(_("Time in seconds"), 1, 99999, 80)
+        config = FormLayout.Spinbox(_("Time engines think in seconds") + ":\n %s=5.0" % _("By default"), 1, 99999, 80)
         li_gen.append((config, seconds))
 
         li_gen.append(separador)
 
-        config = FormLayout.Spinbox(_("Max lost centipawns in total"), 10, 99999, 80)
+        config = FormLayout.Spinbox(_("Max lost centipawns in total") + ":\n %s= 100" % _("By default"), 10, 99999, 80)
         li_gen.append((config, puntos))
 
         li_gen.append(separador)
 
-        config = FormLayout.Spinbox(_("Max lost centipawns in a single move") + ":\n" + _("0 = not consider this limit"), 0, 1000, 80)
+        config = FormLayout.Spinbox(
+            _("Max lost centipawns in a single move")
+            + ":\n%s= %s" % (_("By default"), _("0 = not consider this limit")),
+            0,
+            1000,
+            80,
+        )
         li_gen.append((config, maxerror))
 
         resultado = FormLayout.fedit(li_gen, title=_("Config"), parent=self, icon=Iconos.Configurar())

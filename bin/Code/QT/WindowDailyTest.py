@@ -23,7 +23,7 @@ from Code.SQL import UtilSQL
 class WDailyTestBase(LCDialog.LCDialog):
     def __init__(self, procesador):
 
-        LCDialog.LCDialog.__init__(self, procesador.main_window, _("Your daily test"), Iconos.DailyTest(), "nivelBase")
+        LCDialog.LCDialog.__init__(self, procesador.main_window, _("Your daily test"), Iconos.DailyTest(), "nivelBase1")
 
         self.procesador = procesador
         self.configuration = procesador.configuration
@@ -35,13 +35,13 @@ class WDailyTestBase(LCDialog.LCDialog):
 
         # Historico
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("FECHA", _("Date"), 120, centered=True)
-        o_columns.nueva("MPUNTOS", _("Centipawns lost"), 100, centered=True)
-        o_columns.nueva("MTIEMPOS", _("Time"), 80, centered=True)
-        o_columns.nueva("ENGINE", _("Engine"), 120, centered=True)
-        o_columns.nueva("SEGUNDOS", _("Second(s)"), 80, centered=True)
-        o_columns.nueva("PRUEBAS", _("N. of tests"), 80, centered=True)
-        o_columns.nueva("FNS", _("File"), 150, centered=True)
+        o_columns.nueva("FECHA", _("Date"), 120, align_center=True)
+        o_columns.nueva("MPUNTOS", _("Average centipawns lost"), 180, align_center=True)
+        o_columns.nueva("MTIEMPOS", _("Average time (seconds)"), 180, align_center=True)
+        o_columns.nueva("ENGINE", _("Engine"), 120, align_center=True)
+        o_columns.nueva("SEGUNDOS", _("Second(s)"), 80, align_center=True)
+        o_columns.nueva("PRUEBAS", _("N. of tests"), 80, align_center=True)
+        o_columns.nueva("FNS", _("File"), 150, align_center=True)
         self.ghistorico = Grid.Grid(self, o_columns, siSelecFilas=True, siSeleccionMultiple=True)
         self.ghistorico.setMinimumWidth(self.ghistorico.anchoColumnas() + 20)
 
@@ -105,7 +105,7 @@ class WDailyTestBase(LCDialog.LCDialog):
             if fns:
                 return os.path.basename(fns)
             else:
-                return _("Default")
+                return _("By default")
 
     def calcListaHistorico(self):
         self.li_histo = self.historico.keys(si_ordenados=True, si_reverse=True)
@@ -143,7 +143,9 @@ class WDailyTestBase(LCDialog.LCDialog):
         li_gen.append((config, self.pruebas))
 
         # Fichero
-        config = FormLayout.Fichero(_("File"), "%s (*.fns);;%s PGN (*.pgn)" % (_("List of FENs"), _("File")), False, anchoMinimo=280)
+        config = FormLayout.Fichero(
+            _("File"), "%s (*.fns);;%s PGN (*.pgn)" % (_("List of FENs"), _("File")), False, anchoMinimo=280
+        )
         li_gen.append((config, self.fns))
 
         # Editamos
@@ -189,7 +191,14 @@ class WDailyTestBase(LCDialog.LCDialog):
                 with open(fns, "rt") as f:
                     for linea in f:
                         linea = linea.strip()
-                        if linea[0].isalnum() and linea[-1].isdigit() and ((" w " in linea) or (" b " in linea)) and linea.count("/") == 7:
+                        if "|" in linea:
+                            linea = linea.split("|")[0]
+                        if (
+                            linea[0].isalnum()
+                            and linea[-1].isdigit()
+                            and ((" w " in linea) or (" b " in linea))
+                            and linea.count("/") == 7
+                        ):
                             li.append(linea)
             if len(li) >= self.pruebas:
                 liR = random.sample(li, self.pruebas)
@@ -378,7 +387,12 @@ class WDailyTest(LCDialog.LCDialog):
         self.lbColor.set_text("")
         self.lbJuego.set_text("")
 
-        mens = "<h3>%s : %0.2f</h3><h3>%s : %0.2f</h3>" % (_("Centipawns lost"), mpuntos, _("Time in seconds"), mtiempos)
+        mens = "<h3>%s : %0.2f</h3><h3>%s : %0.2f</h3>" % (
+            _("Average centipawns lost"),
+            mpuntos,
+            _("Average time (seconds)"),
+            mtiempos,
+        )
         QTUtil2.message(self, mens, titulo=_("Result"))
 
         self.accept()
@@ -473,7 +487,7 @@ class WDailyTest(LCDialog.LCDialog):
 
     def analizar(self):
         Analysis.show_analysis(
-            self.procesador, self.xtutor, self.move, self.position.is_white, 9999999, 1, main_window=self, must_save=False
+            self.procesador, self.xtutor, self.move, self.position.is_white, 1, main_window=self, must_save=False
         )
 
 

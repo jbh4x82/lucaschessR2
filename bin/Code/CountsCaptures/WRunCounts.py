@@ -24,9 +24,9 @@ class WRunCounts(LCDialog.LCDialog):
         self.board.crea()
 
         # Rotulo informacion
-        self.lb_info_game = Controles.LB(self, self.count.game.titulo("DATE", "EVENT", "WHITE", "BLACK", "RESULT")).ponTipoLetra(
-            puntos=self.configuration.x_pgn_fontpoints
-        )
+        self.lb_info_game = Controles.LB(
+            self, self.count.game.titulo("DATE", "EVENT", "WHITE", "BLACK", "RESULT")
+        )  # .ponTipoLetra(puntos=self.configuration.x_pgn_fontpoints)
 
         # Movimientos
         self.ed_moves = Controles.ED(self, "").ponTipoLetra(puntos=32)
@@ -40,7 +40,10 @@ class WRunCounts(LCDialog.LCDialog):
 
         self.lb_result = Controles.LB(self).ponTipoLetra(puntos=10, peso=500).anchoFijo(254).altoFijo(32).set_wrap()
         self.lb_info = (
-            Controles.LB(self).ponTipoLetra(puntos=14, peso=500).set_foreground_backgound("white", "#496075").align_center()
+            Controles.LB(self)
+            .ponTipoLetra(puntos=14, peso=500)
+            .set_foreground_backgound("white", "#496075")
+            .align_center()
         )
 
         # Botones
@@ -48,7 +51,7 @@ class WRunCounts(LCDialog.LCDialog):
             (_("Close"), Iconos.MainMenu(), self.terminar),
             None,
             (_("Begin"), Iconos.Empezar(), self.begin),
-            (_("Verify"), Iconos.Check(), self.check),
+            (_("Verify"), Iconos.Check(), self.verify),
             (_("Continue"), Iconos.Pelicula_Seguir(), self.seguir),
         )
         self.tb = QTVarios.LCTB(self, li_acciones, style=QtCore.Qt.ToolButtonTextBesideIcon, icon_size=32)
@@ -91,14 +94,23 @@ class WRunCounts(LCDialog.LCDialog):
         if num_move >= len(self.count.game):
             self.position_obj = self.count.game.move(-1).position
         else:
-            self.position_obj = self.count.game.move(self.count.current_posmove + self.count.current_depth).position_before
+            self.position_obj = self.count.game.move(
+                self.count.current_posmove + self.count.current_depth
+            ).position_before
         self.board.set_position(self.move_base.position_before)
         self.ed_moves.setFocus()
 
     def pon_info_posic(self):
         self.lb_info.set_text(
             "%s: %d + %s: %d<br>%s: %d"
-            % (_("Position"), self.count.current_posmove, _("Depth"), self.count.current_depth, _("Total moves"), len(self.count.game))
+            % (
+                _("Position"),
+                self.count.current_posmove,
+                _("Depth"),
+                self.count.current_depth,
+                _("Total moves"),
+                len(self.count.game),
+            )
         )
 
     def closeEvent(self, event):
@@ -111,7 +123,7 @@ class WRunCounts(LCDialog.LCDialog):
 
     def show_tb(self, *lista):
         for opc in self.tb.dic_toolbar:
-            self.tb.setAccionVisible(opc, opc in lista)
+            self.tb.set_action_visible(opc, opc in lista)
         QTUtil.refresh_gui()
 
     def begin(self):
@@ -145,7 +157,7 @@ class WRunCounts(LCDialog.LCDialog):
                 QTUtil.refresh_gui()
 
         # Ponemos el toolbar
-        self.show_tb(self.check, self.terminar)
+        self.show_tb(self.verify, self.terminar)
 
         # Activamos capturas
         self.gb_counts.setEnabled(True)
@@ -155,12 +167,13 @@ class WRunCounts(LCDialog.LCDialog):
 
         self.ed_moves.setFocus()
 
-    def check(self):
+    def verify(self):
         tiempo = time.time() - self.time_base
 
         moves = FasterCode.get_exmoves_fen(self.position_obj.fen())
 
-        num_moves_calculated = int(self.ed_moves.texto())
+        cmoves = self.ed_moves.texto().strip()
+        num_moves_calculated = int(cmoves) if cmoves.isdigit() else 0
         ok = num_moves_calculated == len(moves)
         xtry = self.count.current_posmove, self.count.current_depth, ok, tiempo
         self.count.tries.append(xtry)
@@ -181,7 +194,9 @@ class WRunCounts(LCDialog.LCDialog):
                 if self.count.current_posmove < 0:
                     self.count.current_posmove = 0
                 self.count.current_depth = 0
-                self.lb_result.set_text("%s (%d)" % (_("Wrong, return to the last position solved"), self.count.current_posmove + 1))
+                self.lb_result.set_text(
+                    "%s (%d)" % (_("Wrong, return to the last position solved"), self.count.current_posmove + 1)
+                )
                 self.lb_result.set_foreground("red")
             else:
                 self.lb_result.set_text(_("Wrong, you must repeat this position"))

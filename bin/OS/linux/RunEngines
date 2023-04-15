@@ -20,7 +20,7 @@ echo ">> Daydreamer" && chmod 755 ./Engines/daydreamer/Daydreamer-1.75
 echo ">> Delocto" && chmod 755 ./Engines/delocto/Delocto-0.61n
 echo ">> Discocheck" && chmod 755 ./Engines/discocheck/Discocheck-5.2.1
 echo ">> Dragontooth" && chmod 755 ./Engines/dragontooth/Dragontooth-0.2
-echo ">> Drofa" && chmod 755 ./Engines/drofa/Drofa-2.2.0
+echo ">> Drofa" && chmod 755 ./Engines/drofa/Drofa-3.3.0
 echo ">> Ethereal" && chmod 755 ./Engines/ethereal/Ethereal-12.75
 echo ">> FracTal" && chmod 755 ./Engines/fractal/FracTal-1.0
 echo ">> Fruit" && chmod 755 ./Engines/fruit/Fruit-2.1
@@ -37,8 +37,8 @@ echo ">> Igel" && chmod 755 ./Engines/igel/Igel-3.0.10
 echo ">> Irina" && chmod 755 ./Engines/irina/Irina-0.15
 echo ">> Jabba" && chmod 755 ./Engines/jabba/Jabba-1.0
 echo ">> K2" && chmod 755 ./Engines/k2/K2-0.99
-echo ">> Komodo" && chmod 755 ./Engines/komodo/Komodo-12.1.1-bmi2
-echo ">> Komodo" && chmod 755 ./Engines/komodo/Komodo-12.1.1
+echo ">> Komodo" && chmod 755 ./Engines/komodo/komodo-13.02-linux
+echo ">> Komodo" && chmod 755 ./Engines/komodo/komodo-13.02-linux-bmi2
 echo ">> Laser" && chmod 755 ./Engines/laser/Laser-1.17
 echo ">> Lc0" && chmod 755 ./Engines/lc0/Lc0-0.27.0
 echo ">> Maia" && chmod 755 ./Engines/maia/Lc0-0.27.0
@@ -57,8 +57,8 @@ echo ">> Simplex" && chmod 755 ./Engines/simplex/Simplex-0.9.8
 echo ">> Sissa" && chmod 755 ./Engines/sissa/Sissa-2.0
 echo ">> SpaceDog" && chmod 755 ./Engines/spacedog/SpaceDog-0.97.7
 echo ">> Stash" && chmod 755 ./Engines/stash/Stash-29.0
-echo ">> Stockfish" && chmod 755 ./Engines/stockfish/Stockfish_14_1_x64
-echo ">> Stockfish" && chmod 755 ./Engines/stockfish/Stockfish_14_1_x64-bmi2
+echo ">> Stockfish" && chmod 755 ./Engines/stockfish/Stockfish-15_1_x64
+echo ">> Stockfish" && chmod 755 ./Engines/stockfish/Stockfish-15_1_x64-bmi2
 echo ">> Supernova" && chmod 755 ./Engines/supernova/Supernova-2.3
 echo ">> Teki" && chmod 755 ./Engines/teki/Teki-2
 echo ">> Texel" && chmod 755 ./Engines/texel/Texel-1.06

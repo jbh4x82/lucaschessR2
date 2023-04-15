@@ -1,5 +1,3 @@
-from PySide2 import QtCore
-
 from Code import Manager
 from Code.Base import Move, Position
 from Code.Base.Constantes import (
@@ -20,7 +18,6 @@ from Code.Engines import EngineResponse
 from Code.Openings import Opening
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
-from Code.QT import WindowJuicio
 from Code.Tutor import Tutor
 from Code.Washing import Washing
 
@@ -75,7 +72,7 @@ class ManagerWashingReplay(Manager.Manager):
         self.book = Opening.OpeningPol(999, elo=engine.elo)
 
         is_white = self.engine.color
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
         self.set_position(self.game.last_position)
         self.put_pieces_bottom(is_white)
@@ -89,11 +86,16 @@ class ManagerWashingReplay(Manager.Manager):
 
         player = self.configuration.nom_player()
         other = self.engine.name
-        w, b = (player, other) if self.human_side else (other, player)
+        w, b = (player, other) if self.is_human_side_white else (other, player)
         self.game.set_tag("White", w)
         self.game.set_tag("Black", b)
-        self.game.tag_timestart()
+        self.game.add_tag_timestart()
         QTUtil.refresh_gui()
+
+        self.tc_player = self.tc_white if self.is_human_side_white else self.tc_black
+        self.tc_rival = self.tc_white if self.is_engine_side_white else self.tc_black
+        self.tc_player.config_as_time_keeper()
+        self.tc_rival.config_as_time_keeper()
 
         self.check_boards_setposition()
 
@@ -109,7 +111,7 @@ class ManagerWashingReplay(Manager.Manager):
             self.configurar(siSonidos=True, siCambioTutor=False)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         else:
             Manager.Manager.rutinaAccionDef(self, key)
@@ -135,12 +137,12 @@ class ManagerWashingReplay(Manager.Manager):
         if siRival:
             move = self.gameObj.move(self.posJugadaObj)
             self.posJugadaObj += 1
-            self.play_rival(move.from_sq, move.to_sq, move.promotion)
+            self.rival_has_moved(move.from_sq, move.to_sq, move.promotion)
             self.play_next_move()
 
         else:
             self.human_is_playing = True
-            self.timekeeper.start()
+            self.tc_player.start()
             self.activate_side(is_white)
 
     def end_game(self):
@@ -157,7 +159,7 @@ class ManagerWashingReplay(Manager.Manager):
             mens = _("Congratulations, this washing is done")
         else:
             mens = "%s<br>%s: %d" % (_("Done with errors."), _("Errors"), self.errores)
-        self.mensajeEnPGN(mens)
+        self.message_on_pgn(mens)
 
     def player_has_moved(self, from_sq, to_sq, promotion=""):
         move = self.check_human_move(from_sq, to_sq, promotion)
@@ -165,7 +167,10 @@ class ManagerWashingReplay(Manager.Manager):
             return False
 
         movUsu = move.movimiento().lower()
-        self.dbwashing.add_time(self.timekeeper.stop())
+        time_s = self.tc_player.stop()
+        self.dbwashing.add_time(time_s)
+        move.set_time_ms(time_s * 1000)
+        move.set_clock_ms(self.tc_player.pending_time * 1000)
 
         jgObj = self.gameObj.move(self.posJugadaObj)
         movObj = jgObj.movimiento().lower()
@@ -186,7 +191,7 @@ class ManagerWashingReplay(Manager.Manager):
                         self.dbwashing.add_hint()
 
                 else:
-                    lic.append("%s: %s (?) %s" % (_("Played now"), move.pgn_translated(), _("Bad move")))
+                    lic.append("%s: %s - %s" % (_("Played now"), move.pgn_translated(), _("Bad move")))
                     self.errores += 1
                     self.dbwashing.add_hint()
 
@@ -199,17 +204,18 @@ class ManagerWashingReplay(Manager.Manager):
                 if siBookUsu:
                     lic.append("%s: %s (%s)" % (_("Played now"), move.pgn_translated(), bmove))
                 else:
-                    lic.append("%s: %s (?) %s" % (_("Played now"), move.pgn_translated(), _("Bad move")))
+                    lic.append("%s: %s - %s" % (_("Played now"), move.pgn_translated(), _("Bad move")))
                     self.errores += 1
                     self.dbwashing.add_hint()
 
             comment = "<br>".join(lic)
-            w = WindowJuicio.MensajeF(self.main_window, comment)
-            w.mostrar()
+            QTUtil2.message_result(self.main_window, comment)
             self.set_position(move.position_before)
 
         # Creamos un move sin analysis
-        ok, self.error, move = Move.get_game_move(self.game, self.game.last_position, jgObj.from_sq, jgObj.to_sq, jgObj.promotion)
+        ok, self.error, move = Move.get_game_move(
+            self.game, self.game.last_position, jgObj.from_sq, jgObj.to_sq, jgObj.promotion
+        )
 
         self.move_the_pieces(move.liMovs)
         self.add_move(move, True)
@@ -232,7 +238,7 @@ class ManagerWashingReplay(Manager.Manager):
         self.pgnRefresh(self.game.last_position.is_white)
         self.refresh()
 
-    def play_rival(self, from_sq, to_sq, promotion):
+    def rival_has_moved(self, from_sq, to_sq, promotion):
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.add_move(move, False)
         self.move_the_pieces(move.liMovs, True)
@@ -287,15 +293,18 @@ class ManagerWashingTactics(Manager.Manager):
         self.game.set_position(cp)
 
         is_white = cp.is_white
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
         self.set_position(self.game.last_position)
         self.put_pieces_bottom(is_white)
-        # r1 = self.line.label
-        self.set_label1("")
+        r1 = self.line.label
+        self.set_label1(r1)
         r2 = "<b>%s: %d</b>" % (_("Pending"), self.num_lines)
         self.set_label2(r2)
         self.pgnRefresh(True)
+
+        self.tc_keeper = self.tc_white
+        self.tc_keeper.config_as_time_keeper()
 
         self.game.pending_opening = False
 
@@ -312,16 +321,13 @@ class ManagerWashingTactics(Manager.Manager):
             self.end_game()
 
         elif key == TB_HELP:
-            self.ayuda()
-
-        elif key == TB_REINIT:
-            self.reiniciar()
+            self.get_help()
 
         elif key == TB_CONFIG:
             self.configurar(siSonidos=True, siCambioTutor=False)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key == TB_NEXT:
             self.next_line()
@@ -353,14 +359,14 @@ class ManagerWashingTactics(Manager.Manager):
         if siRival:
             pv = self.line.get_move(self.num_move)
             from_sq, to_sq, promotion = pv[:2], pv[2:4], pv[4:]
-            self.play_rival(from_sq, to_sq, promotion)
+            self.rival_has_moved(from_sq, to_sq, promotion)
             self.play_next_move()
 
         else:
             self.ayudasEsteMov = 0
             self.erroresEsteMov = 0
             self.human_is_playing = True
-            self.timekeeper.start()
+            self.tc_keeper.start()
             self.activate_side(is_white)
 
     def end_line(self):
@@ -387,9 +393,11 @@ class ManagerWashingTactics(Manager.Manager):
             if self.num_lines == 0:
                 mens = "%s\n%s" % (mens, _("You have solved all puzzles"))
 
-            self.mensajeEnPGN(mens)
+            self.message_on_pgn(mens)
         else:
-            QTUtil2.message_error(self.main_window, "%s: %d, %s: %d" % (_("Errors"), self.errores, _("Hints"), self.hints))
+            QTUtil2.message_error(
+                self.main_window, "%s: %d, %s: %d" % (_("Errors"), self.errores, _("Hints"), self.hints)
+            )
 
     def player_has_moved(self, from_sq, to_sq, promotion=""):
         move = self.check_human_move(from_sq, to_sq, promotion)
@@ -402,7 +410,7 @@ class ManagerWashingTactics(Manager.Manager):
             self.move_the_pieces(move.liMovs)
             self.add_move(move, True)
             self.error = ""
-            self.time_used += self.timekeeper.stop()
+            self.time_used += self.tc_keeper.stop()
             self.play_next_move()
             return True
 
@@ -421,13 +429,13 @@ class ManagerWashingTactics(Manager.Manager):
         self.pgnRefresh(self.game.last_position.is_white)
         self.refresh()
 
-    def play_rival(self, from_sq, to_sq, promotion):
+    def rival_has_moved(self, from_sq, to_sq, promotion):
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.add_move(move, False)
         self.move_the_pieces(move.liMovs, True)
         self.error = ""
 
-    def ayuda(self):
+    def get_help(self):
         self.set_label1(self.line.label)
         self.hints += 1
         mov = self.line.get_move(self.num_move).lower()
@@ -459,14 +467,14 @@ class ManagerWashingCreate(Manager.Manager):
         self.state = ST_PLAYING
 
         is_white = self.engine.color
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
         self.is_competitive = True
 
         self.opening = Opening.OpeningPol(30, self.engine.elo)
 
         self.is_tutor_enabled = True
-        self.siAnalizando = False
+        self.if_analyzing = False
         # self.main_window.set_activate_tutor(self.is_tutor_enabled)
 
         rival = self.configuration.buscaRival(self.engine.key)
@@ -489,7 +497,8 @@ class ManagerWashingCreate(Manager.Manager):
         self.put_pieces_bottom(is_white)
 
         self.set_label1(
-            "%s: %s\n%s: %s\n %s: %s" % (_("Opponent"), self.engine.name, _("Task"), self.engine.lbState(), _("Tutor"), self.xtutor.name)
+            "%s: %s\n%s: %s\n%s: %s"
+            % (_("Opponent"), self.engine.name, _("Task"), self.engine.lbState(), _("Tutor"), self.xtutor.name)
         )
         self.put_data_label()
 
@@ -506,13 +515,18 @@ class ManagerWashingCreate(Manager.Manager):
         else:
             player = self.configuration.nom_player()
             other = self.xrival.name
-            w, b = (player, other) if self.human_side else (other, player)
+            w, b = (player, other) if self.is_human_side_white else (other, player)
             self.game.set_tag("Event", _("The Washing Machine"))
             self.game.set_tag("White", w)
             self.game.set_tag("Black", b)
-            self.game.tag_timestart()
+            self.game.add_tag_timestart()
 
         self.check_boards_setposition()
+
+        self.tc_player = self.tc_white if self.is_human_side_white else self.tc_black
+        self.tc_rival = self.tc_white if self.is_engine_side_white else self.tc_black
+        self.tc_player.config_as_time_keeper()
+        self.tc_rival.config_as_time_keeper()
 
         self.play_next_move()
 
@@ -540,7 +554,7 @@ class ManagerWashingCreate(Manager.Manager):
         is_white = self.game.is_white()
 
         if self.game.is_finished():
-            self.muestra_resultado()
+            self.show_result()
             return
 
         self.set_side_indicator(is_white)
@@ -549,15 +563,17 @@ class ManagerWashingCreate(Manager.Manager):
         siRival = is_white == self.is_engine_side_white
 
         if siRival:
-            if self.juegaRival():
+            if self.play_rival():
                 self.play_next_move()
 
         else:
-            self.juegaHumano(is_white)
+            self.play_human(is_white)
 
-    def juegaRival(self):
+    def play_rival(self):
         self.thinking(True)
         self.disable_all()
+
+        self.tc_rival.start()
 
         from_sq = to_sq = promotion = ""
         siEncontrada = False
@@ -582,16 +598,20 @@ class ManagerWashingCreate(Manager.Manager):
             self.game, self.game.last_position, self.rm_rival.from_sq, self.rm_rival.to_sq, self.rm_rival.promotion
         )
         if ok:
+            time_s = self.tc_rival.stop()
+            move.set_time_ms(time_s * 1000)
+            move.set_clock_ms(self.tc_rival.pending_time * 1000)
+
             self.add_move(move, False)
             self.move_the_pieces(move.liMovs, True)
             return True
         else:
             return False
 
-    def juegaHumano(self, is_white):
+    def play_human(self, is_white):
         self.human_is_playing = True
         self.analyze_begin()
-        self.timekeeper.start()
+        self.tc_player.start()
         self.activate_side(is_white)
 
     def run_action(self, key):
@@ -608,49 +628,43 @@ class ManagerWashingCreate(Manager.Manager):
             self.configurar(siSonidos=True)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         else:
             Manager.Manager.rutinaAccionDef(self, key)
 
     def analyze_begin(self):
-        self.siAnalizando = False
+        self.is_analyzing = False
         self.is_analyzed_by_tutor = False
-        if self.continueTt:
-            if not self.is_finished():
+        if not self.is_finished():
+            if self.continueTt:
                 self.xtutor.ac_inicio(self.game)
-                self.siAnalizando = True
-                QtCore.QTimer.singleShot(200, self.analizaSiguiente)
-        else:
-            self.analizaTutor()
-            self.is_analyzed_by_tutor = True
+            else:
+                self.xtutor.ac_inicio_limit(self.game)
+            self.is_analyzing = True
 
-    def analizaSiguiente(self):
-        if self.siAnalizando:
-            if self.human_is_playing and self.state == ST_PLAYING:
-                if self.xtutor.engine:
-                    mrm = self.xtutor.ac_estado()
-                    if mrm:
-                        QtCore.QTimer.singleShot(1000, self.analizaSiguiente)
-
-    def analyze_end(self):
-        estado = self.siAnalizando
-        self.siAnalizando = False
+    def analyze_end(self, is_mate=False):
+        if is_mate:
+            if self.is_analyzing:
+                self.xtutor.stop()
+            return
         if self.is_analyzed_by_tutor:
             return
-        if self.continueTt and estado:
-            self.thinking(True)
-            self.mrmTutor = self.xtutor.ac_final(max(self.xtutor.mstime_engine, 5000))
-            self.thinking(False)
+        self.is_analyzing = False
+        self.thinking(True)
+        if self.continueTt:
+            self.mrmTutor = self.xtutor.ac_final(self.xtutor.mstime_engine)
         else:
-            self.mrmTutor = self.analizaTutor()
+            self.mrmTutor = self.xtutor.ac_final_limit()
+        self.thinking(False)
+        self.is_analyzed_by_tutor = True
 
     def analizaTerminar(self):
-        if self.siAnalizando:
-            self.siAnalizando = False
+        if self.is_analyzing:
+            self.is_analyzing = False
             self.xtutor.ac_final(-1)
 
-    def sigueHumanoAnalisis(self):
+    def continue_analysis_human_move(self):
         self.analyze_begin()
         Manager.Manager.sigueHumano(self)
 
@@ -660,7 +674,8 @@ class ManagerWashingCreate(Manager.Manager):
             return False
 
         movimiento = move.movimiento()
-        self.add_time()
+        time_s = self.tc_player.stop()
+        self.add_time(time_s)
 
         siAnalisis = False
 
@@ -675,13 +690,13 @@ class ManagerWashingCreate(Manager.Manager):
 
         self.analyze_end()  # tiene que acabar siempre
         if not is_selected:
-            rmUser, n = self.mrmTutor.buscaRM(movimiento)
-            if not rmUser:
-                rmUser = self.xtutor.valora(self.game.last_position, from_sq, to_sq, move.promotion)
-                if not rmUser:
-                    self.sigueHumanoAnalisis()
+            rm_user, n = self.mrmTutor.buscaRM(movimiento)
+            if not rm_user:
+                rm_user = self.xtutor.valora(self.game.last_position, from_sq, to_sq, move.promotion)
+                if not rm_user:
+                    self.continue_analysis_human_move()
                     return False
-                self.mrmTutor.agregaRM(rmUser)
+                self.mrmTutor.agregaRM(rm_user)
             siAnalisis = True
             pointsBest, pointsUser = self.mrmTutor.difPointsBest(movimiento)
             if (pointsBest - pointsUser) > 0:
@@ -692,13 +707,18 @@ class ManagerWashingCreate(Manager.Manager):
                         from_sq = tutor.from_sq
                         to_sq = tutor.to_sq
                         promotion = tutor.promotion
-                        ok, mens, jgTutor = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
+                        ok, mens, jgTutor = Move.get_game_move(
+                            self.game, self.game.last_position, from_sq, to_sq, promotion
+                        )
                         if ok:
                             move = jgTutor
                             self.add_hint()
                     del tutor
 
         self.move_the_pieces(move.liMovs)
+        move.set_time_ms(time_s * 1000)  # puede haber cambiado
+        move.set_clock_ms(self.tc_player.pending_time * 1000)
+
 
         if siAnalisis:
             rm, nPos = self.mrmTutor.buscaRM(move.movimiento())
@@ -738,10 +758,11 @@ class ManagerWashingCreate(Manager.Manager):
         self.dbwashing.add_hint()
         self.put_data_label()
 
-    def add_time(self):
-        secs = self.timekeeper.stop()
-        if secs:
-            self.dbwashing.add_time(secs)
+    def add_time(self, time_s=None):
+        if time_s is None:
+            time_s = self.tc_player.stop()
+        if time_s:
+            self.dbwashing.add_time(time_s)
             self.put_data_label()
 
     def add_game(self):
@@ -758,7 +779,7 @@ class ManagerWashingCreate(Manager.Manager):
     def takeback(self):
         if len(self.game):
             self.analizaTerminar()
-            self.game.anulaUltimoMovimiento(self.human_side)
+            self.game.anulaUltimoMovimiento(self.is_human_side_white)
             self.game.assign_opening()
             self.goto_end()
             self.opening = Opening.OpeningPol(30, self.engine.elo)
@@ -776,15 +797,15 @@ class ManagerWashingCreate(Manager.Manager):
         self.add_game()
         self.game.set_position()
         self.dbwashing.saveGame(None, False)
-
+        self.main_window.activaInformacionPGN(False)
         self.start(self.dbwashing, self.washing, self.engine)
 
-    def muestra_resultado(self):
+    def show_result(self):
         self.state = ST_ENDGAME
         self.disable_all()
         self.human_is_playing = False
 
-        mensaje, beep, player_win = self.game.label_resultado_player(self.human_side)
+        mensaje, beep, player_win = self.game.label_resultado_player(self.is_human_side_white)
 
         self.beepResultado(beep)
         QTUtil.refresh_gui()

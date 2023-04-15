@@ -70,16 +70,21 @@ class SelectFile(LCDialog.LCDialog):
                 title = _("Open Directory")
             filter = QtCore.QDir.Dirs | QtCore.QDir.NoDotAndDotDot
         else:
+            if not extension:
+                extension = "*"
             if not title:
-                title = _("Open file")
+                title = _("Open file ||To open a disk file")
                 if extension:
                     title += " *.%s" % extension
+
             filter = QtCore.QDir.Files | QtCore.QDir.AllDirs | QtCore.QDir.NoDotAndDotDot
         LCDialog.LCDialog.__init__(self, owner, title, Iconos.SelectLogo(), "selectfile")
 
         self.select_folder = select_folder
         self.select_multiple = multiple
         self.select_file = not (select_folder or multiple)
+
+        self.go_explorer = None
 
         self.must_exist = must_exist
         self.confirm_overwrite = confirm_overwrite
@@ -89,16 +94,19 @@ class SelectFile(LCDialog.LCDialog):
         self.setFont(font)
 
         lb_folder = Controles.LB(self, _("Folder") + ":")
-        self.ed_folder = Controles.ED(self, "")
+        self.ed_folder = Controles.ED(self, "").capture_enter(self.folder_enter)
         bt_history_folder = Controles.PB(self, "", rutina=self.history_folders).ponIcono(Iconos.SelectHistory(), 24)
+        bt_history_folder.setAutoDefault(False)
 
         if self.select_file:
             lb_file = Controles.LB(self, _("File") + ":")
             self.ed_file = Controles.ED(self)
             bt_history_file = Controles.PB(self, "", rutina=self.history_files).ponIcono(Iconos.SelectHistory(), 24)
+            bt_history_file.setAutoDefault(False)
 
         self.tree_view = TreeViewSelect(self)
         self.filesystem_model = SelectFileModel(self.tree_view)
+        # self.filesystem_model.setOption(self.filesystem_model.DontWatchForChanges)
         self.filesystem_model.setRootPath(QtCore.QDir.rootPath())
 
         if extension:
@@ -128,7 +136,7 @@ class SelectFile(LCDialog.LCDialog):
         tbtools = Controles.TBrutina(self, style=QtCore.Qt.ToolButtonIconOnly, with_text=False)
         tbtools.addSeparator()
         tbtools.new(_("Home"), Iconos.SelectHome(), self.home)
-        tbtools.new(_("Explorer"), Iconos.SelectExplorer(), self.explorer)
+        tbtools.new(_("Use native dialog"), Iconos.SelectExplorer(), self.explorer)
 
         layout_tb = Colocacion.H().control(tb).relleno().control(tbtools)
         if self.select_file:
@@ -209,10 +217,11 @@ class SelectFile(LCDialog.LCDialog):
         self.assign_path(Code.configuration.carpeta)
 
     def explorer(self):
-        if Code.is_windows:
-            Code.startfile(self.ed_folder.text())
-        elif Code.is_linux:
-            Code.startfile('xdg-open "%s"' % self.ed_folder.text())
+        if self.select_multiple:
+            self.go_explorer = None, self.ed_folder.texto()
+        else:
+            self.go_explorer = self.ed_folder.texto(), self.ed_file.texto()
+        self.accept()
 
     def folder_create(self):
         folder = self.ed_folder.texto().strip()
@@ -224,17 +233,22 @@ class SelectFile(LCDialog.LCDialog):
     def folder_remove(self):
         folder = self.ed_folder.texto().strip()
         if folder and os.path.isdir(folder):
-            if QTUtil2.pregunta(self, _X(_("Delete %1 ?"), folder)):
+            if QTUtil2.pregunta(self, _X(_("Delete %1?"), folder)):
                 try:
                     os.rmdir(folder)
                 except:
                     pass
 
+    def folder_enter(self):
+        folder = self.ed_folder.texto().strip()
+        if folder and os.path.isdir(folder):
+            self.assign_path(folder)
+
     def history_read(self):
         configuration = Code.configuration
         dic = configuration.read_variables(self.key_configuration)
-        li_folders = dic.get("FOLDERS", [])
-        li_files = dic.get("FILES", [])
+        li_folders = [folder for folder in dic.get("FOLDERS", []) if os.path.isdir(folder)]
+        li_files = [file for file in dic.get("FILES", []) if os.path.isfile(file)]
         return li_folders, li_files
 
     def history_write(self, li_folders, li_files):
@@ -309,7 +323,7 @@ class SelectFile(LCDialog.LCDialog):
                 menu.opcion("delete", _("Remove this folder"), Iconos.SelectFolderRemove())
             resp = menu.lanza()
             if resp == "new":
-                form = FormLayout.FormLayout(self, _("Add folder"), Iconos.Opciones(), anchoMinimo=640)
+                form = FormLayout.FormLayout(self, _("Create a subfolder"), Iconos.Opciones(), anchoMinimo=640)
                 form.separador()
                 form.edit(_("Folder"), "")
                 resp = form.run()
@@ -334,13 +348,13 @@ class SelectFile(LCDialog.LCDialog):
         self.assign_path(path)
         return path
 
-    def assign_path(self, path):
+    def assign_path(self, path, again=True):
         if not path:  # could be None
             path = ""
         idx = self.filesystem_model.index(path)
         self.tree_view.setCurrentIndex(idx)
         self.tree_view.resizeColumnToContents(0)
-        if self.filesystem_model.isDir(idx):
+        if os.path.isdir(path):
             if self.select_file or self.select_multiple:
                 self.tree_view.expand(idx)
             folder = os.path.normpath(path)
@@ -357,22 +371,36 @@ class SelectFile(LCDialog.LCDialog):
         self.tree_view.setFocus()
         QTUtil.refresh_gui()
 
+        def xagain():
+            self.assign_path(path, False)
+
+        if again:
+            QtCore.QTimer.singleShot(50, xagain)
+
 
 def getOpenFileName(owner, titulo, carpeta, extension):
     sf = SelectFile(owner, carpeta, titulo, extension=extension, must_exist=True)
-    return sf.path_result if sf.exec_() else None
+    if sf.exec_():
+        return sf.go_explorer if sf.go_explorer else sf.path_result
+    return None
 
 
 def getExistingDirectory(owner, titulo, carpeta):
     sf = SelectFile(owner, carpeta, titulo, select_folder=True, must_exist=True)
-    return sf.path_result if sf.exec_() else None
+    if sf.exec_():
+        return sf.go_explorer if sf.go_explorer else sf.path_result
+    return None
 
 
 def getOpenFileNames(owner, titulo, carpeta, extension):
     sf = SelectFile(owner, carpeta, titulo, must_exist=True, multiple=True, extension=extension)
-    return sf.path_result if sf.exec_() else None
+    if sf.exec_():
+        return sf.go_explorer if sf.go_explorer else sf.path_result
+    return None
 
 
 def getSaveFileName(owner, titulo, carpeta, extension, confirm_overwrite):
     sf = SelectFile(owner, carpeta, titulo, extension=extension, must_exist=False, confirm_overwrite=confirm_overwrite)
-    return sf.path_result if sf.exec_() else None
+    if sf.exec_():
+        return sf.go_explorer if sf.go_explorer else sf.path_result
+    return None

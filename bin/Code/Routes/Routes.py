@@ -125,7 +125,7 @@ class Transsiberian:
         self._km_tactic = KM_TACTIC
         self._is_miles = False
         self._go_fast = False
-        self._key = Util.new_id()
+        self._key = Util.huella()
 
     def read_level(self):
         folder = "%s/level%d" % (self.base, self._level)
@@ -368,7 +368,16 @@ class Transsiberian:
                 x1 = x2 = ""
             li.append(
                 "%s%2d. %s - %s (%s, %d %s) %s"
-                % (x1, line.stage, line.st_from.name, line.st_to.name, km_mi(line.km, self._is_miles), line.num_stations, _("stations"), x2)
+                % (
+                    x1,
+                    line.stage,
+                    line.st_from.name,
+                    line.st_to.name,
+                    km_mi(line.km, self._is_miles),
+                    line.num_stations,
+                    _("stations"),
+                    x2,
+                )
             )
         return "<br>".join(li)
 
@@ -385,7 +394,9 @@ class Transsiberian:
                 x2 = "</b>"
             else:
                 x1 = x2 = ""
-            li.append("%s%2d. %s - %s (%s) %s" % (x1, n, st_from.name, st.name, km_mi(st.km - st_from.km, self._is_miles), x2))
+            li.append(
+                "%s%2d. %s - %s (%s) %s" % (x1, n, st_from.name, st.name, km_mi(st.km - st_from.km, self._is_miles), x2)
+            )
             st_from = st
         return "<br>".join(li)
 
@@ -420,7 +431,7 @@ class Transsiberian:
 
             litxt = [_("To play a complete game.")]
             if opening.label:
-                litxt.append(_("With the opening: %s.") % _F(opening.label))
+                litxt.append(_("With the opening: %s.") % _FO(opening.label))
                 litxt.append(pgn)
             if win:
                 litxt.append(_("You must win to pass this step."))

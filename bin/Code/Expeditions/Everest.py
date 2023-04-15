@@ -76,7 +76,7 @@ class Expedition:
             d["MPOINTS"] = "%d" % (int(times[x][1] / done) if done else 0)
             li_routes.append(d)
 
-        label = (self.reg.NAME, xtrayecto, "%s: %s" % (_("Height"), int(height)))
+        label = (self.reg.NAME, xtrayecto, "%s: %d" % (_("Altitude"), int(height)))
 
         return li_routes, xcurrent, svg, label
 
@@ -151,8 +151,8 @@ class Expedition:
         return "%s%s: %d/%d - %s: %d %s" % (
             self.label_base,
             _("Tries"),
-            self.tries_used,
-            self.max_tries,
+            self.tries_used + 1,
+            self.max_tries + 1,
             _("Tolerance"),
             self.tolerance,
             _("centipawns"),
@@ -290,7 +290,7 @@ class Expeditions:
         reg = Util.Record()
         reg.DATE_INIT = Util.dtosext(Util.today())
         reg.DATE_END = ""
-        reg.NAME = reg_base.tourney["TOURNEY"]
+        reg.NAME = _FO(reg_base.tourney["TOURNEY"])
         reg.TIMES = str([[0, 0]] * 12)
         reg.NUM_GAMES = ngames = len(games)
         reg.NEXT_GAME = 0

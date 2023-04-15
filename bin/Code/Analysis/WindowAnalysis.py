@@ -1,9 +1,11 @@
+import time
 from PySide2 import QtCore, QtWidgets
 
 import Code
+from Code.Base import Move
 from Code import Util
 from Code import XRun
-from Code.Analysis import WindowAnalysisParam
+from Code.Analysis import WindowAnalysisParam, Analysis
 from Code.Base import Game
 from Code.Board import Board
 from Code.QT import Colocacion
@@ -18,9 +20,9 @@ from Code.QT import QTUtil2
 from Code.QT import QTVarios
 
 
-class WMuestra(QtWidgets.QWidget):
+class OneAnalysis(QtWidgets.QWidget):
     def __init__(self, owner, tab_analysis):
-        super(WMuestra, self).__init__(owner)
+        super(OneAnalysis, self).__init__(owner)
 
         self.tab_analysis = tab_analysis
         self.owner = owner
@@ -56,11 +58,10 @@ class WMuestra(QtWidgets.QWidget):
             "JUGADAS",
             "%d %s" % (len(self.list_rm_name), _("Movements")),
             with_col,
-            centered=True,
+            align_center=True,
             edicion=Delegados.EtiquetaPGN(tab_analysis.move.is_white() if self.with_figurines else None),
         )
         self.wrm = Grid.Grid(self, o_columns, siLineas=False)
-        self.wrm.tipoLetra(puntos=configuration.x_pgn_fontpoints)
         n_with = self.wrm.anchoColumnas() + 20
         self.wrm.setFixedWidth(n_with)
         self.wrm.goto(self.tab_analysis.pos_selected, 0)
@@ -75,9 +76,9 @@ class WMuestra(QtWidgets.QWidget):
 
     def activa(self, siActivar):
         color = self.dic_fonts[siActivar]
-        self.lb_engine_m.set_foreground(color)
+        # self.lb_engine_m.set_foreground(color)
         self.lb_tiempo_m.set_foreground(color)
-        self.bt_cancelar.setEnabled(not siActivar)
+        self.bt_cancelar.setVisible(not siActivar)
         self.siTiempoActivo = False
 
         if siActivar:
@@ -99,6 +100,7 @@ class WMuestra(QtWidgets.QWidget):
     def ponBoard(self):
         position, from_sq, to_sq = self.tab_analysis.active_position()
         self.board.set_position(position)
+        self.board.activate_side(position.is_white)
         if from_sq:
             self.board.put_arrow_sc(from_sq, to_sq)
         self.lbPGN.set_text(self.tab_analysis.pgn_active())
@@ -118,12 +120,15 @@ class WMuestra(QtWidgets.QWidget):
         return self.tab_analysis.is_selected(row)
 
     def grid_dato(self, grid, row, o_column):
-        #pgn, color, txt_analysis, indicadorInicial, li_nags
+        # pgn, color, txt_analysis, indicadorInicial, li_nags
         txt = self.list_rm_name[row][1]
-        pgn, resto = txt.split("(")
-        txt_analysis = resto[:-1] # + " %0.02f" % Code.analysis_eval.escala10(self.list_rm_name[row][0])
-        return pgn, self.list_rm_name[row][0].is_white, txt_analysis, None, None
-        # return self.list_rm_name[row][1]
+        if "(" in txt:
+            pgn, resto = txt.split("(")
+            txt_analysis = resto[:-1]
+        else:
+            pgn = txt
+            txt_analysis = ""
+        return pgn, None, txt_analysis, None, None
 
     def grid_color_texto(self, grid, row, o_column):
         rm = self.list_rm_name[row][0]
@@ -173,7 +178,7 @@ class WMuestra(QtWidgets.QWidget):
             QTUtil2.message_bold(self, _("FEN is in clipboard"))
 
     def jugarPosicion(self):
-        position, from_sq, to_sq = self.tab_analysis.active_base_position()
+        position, from_sq, to_sq = self.tab_analysis.active_position()
         game = Game.Game(first_position=position)
         dic_sended = {"ISWHITE": position.is_white, "GAME": game.save()}
 
@@ -187,7 +192,7 @@ class WMuestra(QtWidgets.QWidget):
         if self.siTiempoActivo:
             self.tab_analysis.change_mov_active("Inicio")
             self.ponBoard()
-            QtCore.QTimer.singleShot(400, self.siguienteTiempo)
+            QtCore.QTimer.singleShot(Code.configuration.x_interval_replay, self.siguienteTiempo)
 
     def siguienteTiempo(self):
         if self.siTiempoActivo:
@@ -196,7 +201,9 @@ class WMuestra(QtWidgets.QWidget):
             if self.tab_analysis.is_final_position():
                 self.siTiempoActivo = False
             else:
-                QtCore.QTimer.singleShot(1400, self.siguienteTiempo)
+                if Code.configuration.x_beep_replay:
+                    Code.runSound.playBeep()
+                QtCore.QTimer.singleShot(Code.configuration.x_interval_replay, self.siguienteTiempo)
 
     def grabar(self):
         menu = QTVarios.LCMenu(self)
@@ -226,19 +233,38 @@ class WMuestra(QtWidgets.QWidget):
 
 
 class WAnalisis(LCDialog.LCDialog):
-    def __init__(self, tb_analysis, ventana, is_white, siLibre, must_save, tab_analysis_init):
-        titulo = _("Analysis")
-        icono = Iconos.Tutor()
-        extparam = "analysis"
+    def __init__(self, tb_analysis, ventana, is_white, must_save, tab_analysis_init, subanalysis=False):
+        titulo = _("Subanalysis") if subanalysis else _("Analysis")
+        icono = Iconos.Analizar()
+
+        self.subanalysis = subanalysis
+
+        if subanalysis:
+            st_subanalisis = set()
+            for window in QtWidgets.QApplication.topLevelWidgets():
+                if hasattr(window, "key_video"):
+                    if window.key_video.startswith("subanalysis"):
+                        st_subanalisis.add(int(window.key_video[11:]))
+            num = 1
+            for x in range(1, 100):
+                if x not in st_subanalisis:
+                    num = x
+                    break
+            extparam = "subanalysis%d" % num
+        else:
+            extparam = "analysis"
 
         LCDialog.LCDialog.__init__(self, ventana, titulo, icono, extparam)
 
         self.tb_analysis = tb_analysis
         self.muestraActual = None
+        self.timer = None
 
         configuration = Code.configuration
-        config_board = configuration.config_board("ANALISIS", 48)
-        self.siLibre = siLibre
+
+        config_board = configuration.config_board(
+            "SUBANALYSIS" if subanalysis else "ANALISIS", 32 if subanalysis else 48
+        )
         self.must_save = must_save
         self.is_white = is_white
 
@@ -249,17 +275,18 @@ class WAnalisis(LCDialog.LCDialog):
         self.board = Board.Board(self, config_board)
         self.board.crea()
         self.board.set_side_bottom(is_white)
+        self.board.set_dispatcher(self.player_has_moved)
+
+        self.board.allow_eboard = False
 
         self.lb_engine = Controles.LB(self).align_center()
         self.lb_time = Controles.LB(self).align_center()
-        self.lbPuntuacion = (
-            Controles.LB(self).align_center().ponTipoLetra(puntos=configuration.x_pgn_fontpoints)
-        )
+        self.lbPuntuacion = Controles.LB(self).align_center()
         self.lbPGN = Controles.LB(self)
+        configuration.set_property(self.lbPGN, "pgn")
         self.lbPGN.set_wrap().ponTipoLetra(puntos=configuration.x_pgn_fontpoints)
         self.lbPGN.setAlignment(QtCore.Qt.AlignTop)
         self.lbPGN.setOpenExternalLinks(False)
-        self.lbPGN.setStyleSheet("border:1px solid gray;")
         self.lbPGN.linkActivated.connect(self.change_mov_active)
 
         scroll = QtWidgets.QScrollArea()
@@ -278,10 +305,10 @@ class WAnalisis(LCDialog.LCDialog):
         lytb, self.tb = QTVarios.lyBotonesMovimiento(
             self,
             "",
-            siLibre=siLibre,
+            siLibre=True,
             must_save=must_save,
             siGrabarTodos=must_save,
-            siJugar=tb_analysis.max_recursion > 10,
+            siJugar=True,
             liMasAcciones=li_mas_acciones,
             icon_size=24,
         )
@@ -298,7 +325,7 @@ class WAnalisis(LCDialog.LCDialog):
         lyV.control(scroll)
         lyV.relleno()
 
-        wm = WMuestra(self, tab_analysis_init)
+        wm = OneAnalysis(self, tab_analysis_init)
         tab_analysis_init.wmu = wm
 
         # Layout
@@ -346,10 +373,21 @@ class WAnalisis(LCDialog.LCDialog):
         elif k == QtCore.Qt.Key_Escape:
             self.terminar()
 
+    def toolbar_rightmouse(self):
+        configuration = Code.configuration
+        QTVarios.change_interval(self, configuration)
+
     def closeEvent(self, event):  # Cierre con X
         self.terminar(False)
 
     def terminar(self, siAccept=True):
+        for window in QtWidgets.QApplication.topLevelWidgets():
+            if hasattr(window, "key_video") and window.key_video.startswith("subanalysis"):
+                try:
+                    window.save_video()
+                except:
+                    pass
+
         for una in self.tb_analysis.li_tabs_analysis:
             una.wmu.siTiempoActivo = False
         self.save_video()
@@ -365,7 +403,7 @@ class WAnalisis(LCDialog.LCDialog):
                 una.wmu.activa(una == tab_analysis)
 
     def create_analysis(self, tab_analysis):
-        wm = WMuestra(self, tab_analysis)
+        wm = OneAnalysis(self, tab_analysis)
         self.ly.control(wm)
         wm.show()
 
@@ -393,18 +431,75 @@ class WAnalisis(LCDialog.LCDialog):
             self.muestraActual.wmu.process_toolbar(key)
 
     def start_clock(self, funcion):
-        if not hasattr(self, "timer"):
+        if self.tiomer is None:
             self.timer = QtCore.QTimer(self)
             self.timer.timeout.connect(funcion)
         self.timer.start(1000)
 
     def stop_clock(self):
-        if hasattr(self, "timer"):
+        if self.timer:
             self.timer.stop()
-            delattr(self, "timer")
+            self.timer = None
 
     def crear(self):
         alm = WindowAnalysisParam.analysis_parameters(self, Code.configuration, False, siTodosMotores=True)
         if alm:
             tab_analysis = self.tb_analysis.create_show(self, alm)
             self.create_analysis(tab_analysis)
+
+    def player_has_moved(self, from_sq, to_sq, promotion=""):
+        game = self.muestraActual.wmu.tab_analysis.get_game()
+        if not promotion and game.last_position.siPeonCoronando(from_sq, to_sq):
+            promotion = self.board.peonCoronando(game.last_position.is_white)
+            if promotion is None:
+                return False
+
+        ok, error, move = Move.get_game_move(game, game.last_position, from_sq, to_sq, promotion)
+        if ok:
+            game.add_move(move)
+            xanalyzer = Code.procesador.XAnalyzer()
+            si_cancelar = xanalyzer.mstime_engine > 1000 or xanalyzer.depth_engine > 8
+            mens = _("Analyzing the move....")
+            me = QTUtil2.mensEspera.start(
+                self, mens, siCancelar=si_cancelar, titCancelar=_("Stop thinking"), opacity=1.0
+            )
+
+            if si_cancelar:
+                ya_cancelado = [False]
+                tm_ini = time.time()
+
+                def test_me(rm):
+                    if ya_cancelado[0]:
+                        return False
+                    if me.cancelado():
+                        stop = not ya_cancelado[0]
+                    else:
+                        tm = time.time() - tm_ini
+                        me.label('%s\n%s: %d %s: %.01f"' % (mens, _("Depth"), rm.depth, _("Time"), tm))
+                        stop = xanalyzer.mstime_engine and tm * 1000 > xanalyzer.mstime_engine
+                    if stop:
+                        xanalyzer.stop()
+                        ya_cancelado[0] = True
+                        return False
+                    return True
+
+                xanalyzer.set_gui_dispatch(test_me)
+            mrm, pos = xanalyzer.analizaJugadaPartida(
+                game, len(game) - 1, xanalyzer.mstime_engine, xanalyzer.depth_engine, window=self
+            )
+            move.analysis = mrm, pos
+            me.final()
+            xanalyzer.set_gui_dispatch(None)
+
+            Analysis.show_analysis(
+                Code.procesador,
+                xanalyzer,
+                move,
+                self.board.is_white_bottom,
+                len(game) - 1,
+                main_window=self,
+                must_save=False,
+                subanalysis=True,
+            )
+
+        return False

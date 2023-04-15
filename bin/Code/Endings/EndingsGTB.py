@@ -29,7 +29,7 @@ class DBendings:
         return key
 
     def keylist(self, examples=True, own=True):
-        pzs_gaviota = Code.configuration.piezas_gaviota()
+        pzs_gaviota = Code.configuration.pieces_gaviota()
         lst = []
         if examples:
             lst.extend(self.db_examples.keys())
@@ -59,7 +59,9 @@ class DBendings:
         if order == "random":
             random.shuffle(self.current_listfen)
         elif order == "difficulty":
-            self.current_listfen.sort(key=lambda x: self.current_dicfen[x]["MATE"] if self.current_dicfen[x]["MATE"] > 0 else 999)
+            self.current_listfen.sort(
+                key=lambda x: self.current_dicfen[x]["MATE"] if self.current_dicfen[x]["MATE"] > 0 else 999
+            )
 
         return len(self.current_listfen)
 
@@ -108,8 +110,7 @@ class DBendings:
             else:
                 label = _("Time")
 
-            dif = " (%.1f)" % ((ms - ms_previo) / 1000,) if ms_previo is not None else ""
-            mensaje += "%s: %.1f%s\n" % (label, ms / 1000, dif)
+            mensaje += "%s: %.1f\n" % (label, ms / 1000)
 
             moves_previo = dic_fen.get("MOVES")
             if (moves_previo is None) or (moves < moves_previo):
@@ -117,12 +118,7 @@ class DBendings:
                 dic_fen["MOVES"] = moves
             else:
                 label = _("Number of movements")
-            if moves_previo:
-                xdif = moves - moves_previo
-                dif = " (%d)" % (xdif,) if xdif < 0 else " (=)"
-            else:
-                dif = ""
-            mensaje += "%s: %d%s\n" % (label, moves, dif)
+            mensaje += "%s: %d\n" % (label, moves)
         self.db_data[self.current_key] = self.current_dicfen
         return success, mensaje
 
@@ -202,6 +198,8 @@ class DBendings:
 
         def haz(key):
             dic_data = self.db_data[key]
+            if dic_data is None:
+                return
             changed = False
             for fen_m2, dic_fenm2 in dic_data.items():
                 for field in li_fields:
@@ -214,13 +212,23 @@ class DBendings:
         if only_current_key:
             haz(self.current_key)
         else:
-            for key in self.db_data:
+            for key in self.db_data.keys():
                 haz(key)
 
         self.db_data.set_normal_mode()
 
     def remove_positions(self, only_current_key):
+        def haz(key):
+            dic_data = self.db_data[key]
+            if dic_data is None:
+                return
+            li_borrar = [fen_m2 for fen_m2, dic_fenm2 in dic_data.items() if dic_fenm2["ORIGIN"] == "manual"]
+            for fen_m2 in li_borrar:
+                del dic_data[fen_m2]
+            self.db_data[key] = dic_data
+
         if only_current_key:
-            del self.db_data[self.current_key]
+            haz(self.current_key)
         else:
-            self.db_data.zap()
+            for key in self.db_data.keys():
+                haz(key)

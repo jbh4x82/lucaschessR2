@@ -1,11 +1,11 @@
 import copy
 import time
 
-from Code.Board import BoardTypes
-from Code.Translations import TrListas
-from Code import Util
-from Code.SQL import UtilSQL
 import Code
+from Code import Util
+from Code.Board import BoardTypes
+from Code.SQL import UtilSQL
+from Code.Translations import TrListas
 
 
 class PFlecha(BoardTypes.Flecha):
@@ -43,29 +43,29 @@ class PMarker(BoardTypes.Marker):
         self.id = None
 
 
-TP_FLECHA, TP_MARCO, TP_TEXTO, TP_SVG, TP_MARKER, TP_PIEZACREA, TP_PIEZAMUEVE, TP_PIEZABORRA, TP_ACTION, TP_CONFIGURATION, TP_CIRCLE = (
-    "F",
-    "M",
-    "T",
-    "S",
-    "X",
-    "PC",
-    "PM",
-    "PB",
-    "A",
-    "C",
-    "D",
-)
+(
+    TP_FLECHA,
+    TP_MARCO,
+    TP_TEXTO,
+    TP_SVG,
+    TP_MARKER,
+    TP_PIEZACREA,
+    TP_PIEZAMUEVE,
+    TP_PIEZABORRA,
+    TP_ACTION,
+    TP_CONFIGURATION,
+    TP_CIRCLE,
+) = ("F", "M", "T", "S", "X", "PC", "PM", "PB", "A", "C", "D")
 
 
 class GTarea:
     def __init__(self, guion, tp):
         self.guion = guion
-        self._id = Util.str_id()
+        self._id = Util.huella()
         self._tp = tp
         self._marcado = False
         self._orden = 0
-        self._nombre = None
+        self._name = None
         self._registro = None
         self.xmarcadoOwner = False
 
@@ -87,8 +87,8 @@ class GTarea:
 
     def name(self, name=None):
         if name is not None:
-            self._nombre = name
-        return self._nombre if self._nombre else ""
+            self._name = name
+        return self._name if self._name else ""
 
     def registro(self, valores=None):
         if valores:
@@ -123,6 +123,8 @@ class GT_Item(GTarea):
     def itemSC(self, sc=None):
         if sc is not None:
             self._itemSC = sc
+            if self._bloqueDatos is None:
+                self._bloqueDatos = self.bloqueDatos()
         return self._itemSC
 
     def borraItemSCOwner(self):
@@ -143,14 +145,14 @@ class GT_Item(GTarea):
 
     def name(self, name=None):
         if name is not None:
-            self._nombre = name
-        if self._nombre:
-            return self._nombre
-        return self._nombre if self._nombre else getattr(self._itemSC.bloqueDatos, "name", "")
+            self._name = name
+        if self._name:
+            return self._name
+        return self._name if self._name else getattr(self._itemSC.bloqueDatos, "name", "")
 
     def coordina(self):
         if self.xitemSCOwner:
-            if self.tp() == "S":
+            if self.tp() == TP_SVG:
                 self.xitemSCOwner.coordinaPosicionOtro(self._itemSC)
                 self.xitemSCOwner.update()
             else:
@@ -210,12 +212,13 @@ class GT_Flecha(GT_Item):
         return bd.a1h8
 
     def run(self):
-        sc = self.guion.board.creaFlecha(self._bloqueDatos)
-        sc.ponRutinaPulsada(None, self.id())
-        self.itemSC(sc)
-        self.marcado(True)
-        if self._itemSC:
-            self._itemSC.show()
+        if self._bloqueDatos:
+            sc = self.guion.board.creaFlecha(self._bloqueDatos)
+            sc.ponRutinaPulsada(None, self.id())
+            self.itemSC(sc)
+            self.marcado(True)
+            if self._itemSC:
+                self._itemSC.show()
 
 
 class GT_Marco(GT_Item):
@@ -268,7 +271,9 @@ class GT_SVG(GT_Item):
         return _("Image")
 
     def info(self):
-        return "(%.02f,%.02f)-(%.02f,%.02f)" % self.get_datos()
+        x, y, w, h = self.get_datos()
+        a1h8 = self.guion.board.fc_a1h8(int(y) + 1, int(x) + 1, int(y + h) + 1, int(x + w) + 1)
+        return "%s+[%.02f,%.02f]    ➝ %.02f   ↓ %.02f" % (a1h8[:2], x - int(x), y - int(y), w, h)
 
     def get_datos(self):
         bd = self._itemSC.bloqueDatos
@@ -328,13 +333,13 @@ class GT_Marker(GT_Item):
 
 class GT_Action(GTarea):
     def __init__(self, guion):
-        self.GTA_INICIO, self.GTA_MAINARROW_REMOVE, self.GTA_PIECES_REMOVEALL, self.GTA_GRAPHICS_REMOVEALL, self.GTA_PIZARRA_REMOVE = (
-            "I",
-            "MAR",
-            "PRA",
-            "GRA",
-            "PR",
-        )
+        (
+            self.GTA_INICIO,
+            self.GTA_MAINARROW_REMOVE,
+            self.GTA_PIECES_REMOVEALL,
+            self.GTA_GRAPHICS_REMOVEALL,
+            self.GTA_PIZARRA_REMOVE,
+        ) = ("I", "MAR", "PRA", "GRA", "PR")
         self.dicTxt = {
             self.GTA_INICIO: _("Initial physical pos"),
             self.GTA_MAINARROW_REMOVE: _("Remove main arrow"),
@@ -432,6 +437,9 @@ class GT_PiezaMueve(GTarea):
     def info(self):
         return self._desde + " -> " + self._hasta
 
+    def run(self):
+        self.guion.mueve_pieza(self._desde, self._hasta)
+
 
 class GT_PiezaCrea(GTarea):
     def __init__(self, guion):
@@ -458,6 +466,9 @@ class GT_PiezaCrea(GTarea):
         pz = TrListas.letterPiece(self._pieza)
         return (pz if pz.isupper() else pz.lower()) + " -> " + self._desde
 
+    def run(self):
+        self.guion.crea_pieza(self._pieza, self._desde)
+
 
 class GT_PiezaBorra(GTarea):
     def __init__(self, guion):
@@ -481,6 +492,9 @@ class GT_PiezaBorra(GTarea):
     def info(self):
         pz = TrListas.letterPiece(self._pieza)
         return (pz if pz.isupper() else pz.lower()) + " -> " + self._desde
+
+    def run(self):
+        self.guion.borra_pieza(self._desde)
 
 
 class Guion:
@@ -513,9 +527,9 @@ class Guion:
 
         self.board_activasPiezas = self.board.pieces_are_active, self.board.side_pieces_active
 
-    def restoreBoard(self):
+    def restoreBoard(self, siBorraMoviblesAhora=False):
         self.board.dirvisual = None
-        self.board.set_position(self.board_last_position, siBorraMoviblesAhora=False)
+        self.board.set_position(self.board_last_position, siBorraMoviblesAhora=siBorraMoviblesAhora)
         if self.board_flechaSC:
             from_sq, to_sq = self.board_flechaSC
             self.board.put_arrow_sc(from_sq, to_sq)
@@ -541,7 +555,11 @@ class Guion:
     def writePizarra(self, tarea):
         if self.pizarra is None:
             self.pizarra = BoardTypes.Pizarra(
-                self, self.board, self.anchoPizarra, edit_mode=self.winDirector is not None, with_continue=tarea.continuar()
+                self,
+                self.board,
+                self.anchoPizarra,
+                edit_mode=self.winDirector is not None,
+                with_continue=tarea.continuar(),
             )
             self.pizarra.mensaje.setFocus()
         self.pizarra.write(tarea)
@@ -560,11 +578,12 @@ class Guion:
 
     def nuevaCopia(self, ntarea):
         tarea = copy.copy(self.tarea(ntarea))
-        tarea._id = Util.str_id()
+        tarea._id = Util.huella()
         return self.nuevaTarea(tarea, ntarea + 1)
 
     def borra(self, nTarea):
-        del self.liGTareas[nTarea]
+        if nTarea < len(self.liGTareas):
+            del self.liGTareas[nTarea]
 
     def cambiaMarcaTarea(self, nTarea, valor):
         tarea = self.liGTareas[nTarea]
@@ -590,8 +609,10 @@ class Guion:
         return li
 
     def itemTarea(self, nTarea):
-        tarea = self.liGTareas[nTarea]
-        return tarea.itemSC() if isinstance(tarea, GT_Item) else None
+        if nTarea < len(self.liGTareas):
+            tarea = self.liGTareas[nTarea]
+            return tarea.itemSC() if isinstance(tarea, GT_Item) else None
+        return None
 
     def itemTareaOwner(self, nTarea):
         tarea = self.liGTareas[nTarea]
@@ -737,12 +758,14 @@ class Guion:
                     buscar = (bd.tpid[0], bd.tpid[1], bd.a1h8)
                     if not (buscar in stPrevios):
                         self.recuperaReg(reg)
+                else:
+                    self.recuperaReg(reg)
 
         if self.winDirector:
             for tarea in self.liGTareas:
                 if not (tarea.tp() in (TP_ACTION, TP_CONFIGURATION, TP_TEXTO)):
-                    if not tarea.itemSC():
-                        tarea.run()
+                    # if not hasattr("tarea", "_itemSC") or not tarea._itemSC():
+                    #      tarea.run()
                     tarea.marcado(True)
                 else:
                     tarea.marcado(False)
@@ -750,7 +773,7 @@ class Guion:
     def play(self):
         self.cerrado = False
         for tarea in self.liGTareas:
-            if not tarea.itemSC():
+            if not hasattr("tarea", "itemSC") or not tarea.itemSC():
                 tarea.run()
             if tarea.tp() == TP_TEXTO and tarea.continuar():
                 while self.pizarra is not None and self.pizarra.is_blocked():
@@ -758,12 +781,24 @@ class Guion:
             if self.cerrado:
                 return
 
+    def mueve_pieza(self, xfrom, xto):
+        self.board.muevePieza(xfrom, xto)
+        self.board.put_arrow_sc(xfrom, xto)
+
+    def borra_pieza(self, xfrom):
+        self.board.borraPieza(xfrom)
+
+    def crea_pieza(self, pieza, xfrom):
+        self.board.creaPieza(pieza, xfrom)
+
 
 class DBManagerVisual:
-    def __init__(self, file, show_allways=False, saveAllways=False):
-        self._dbFEN = self._dbConfig = self._dbFlechas = self._dbMarcos = self._dbSVGs = self._dbMarkers = self._dbCircles = None
-        self._show_allways = show_allways
-        self._saveAllways = saveAllways
+    def __init__(self, file, show_always=False, save_always=False):
+        self._dbFEN = (
+            self._dbConfig
+        ) = self._dbFlechas = self._dbMarcos = self._dbSVGs = self._dbMarkers = self._dbCircles = None
+        self._show_always = show_always
+        self._save_always = save_always
         self.set_file(file)
 
     def saveMoviblesBoard(self, board):
@@ -783,21 +818,15 @@ class DBManagerVisual:
         guion.recuperaMoviblesBoard()
         self.dbFEN[fenm2] = guion.guarda()
 
-    def save_allways(self, yesno=None):
+    def save_always(self, yesno=None):
         if yesno is not None:
-            self._saveAllways = yesno
-        return self._saveAllways
+            self._save_always = yesno
+        return self._save_always
 
-    def show_allways(self, yesno=None):
+    def show_always(self, yesno=None):
         if yesno is not None:
-            self._show_allways = yesno
-        return self._show_allways
-
-    # def getConfig(self, key, default=None):
-    #     return self.dbConfig.get(key, default)
-
-    # def setConfig(self, key, value):
-    #     self.dbConfig[key] = value
+            self._show_always = yesno
+        return self._show_always
 
     def set_file(self, file):
         self.close()
@@ -805,22 +834,26 @@ class DBManagerVisual:
         if not Util.exist_file(self._fichero):
             Util.file_copy(Code.path_resource("IntFiles", "recursos.dbl"), self._fichero)
 
-        # li = self.dbConfig[b"SELECTBANDA"]
-        # if li is None:
-        #     dbr = DBManagerVisual("Code..resources/IntFiles/recursos.dbl", False)
-        #     li = dbr.dbConfig["SELECTBANDA"]
-        #     self.dbConfig["SELECTBANDA"] = li
-        #     for xid, pos in li:
-        #         key = xid[3:]
-        #         if xid.startswith("_F"):
-        #             self.dbFlechas[key] = dbr.dbFlechas[key]
-        #         elif xid.startswith("_M"):
-        #             self.dbMarcos[key] = dbr.dbMarcos[key]
-        #         elif xid.startswith("_S"):
-        #             self.dbSVGs[key] = dbr.dbSVGs[key]
-        #         elif xid.startswith("_X"):
-        #             self.dbMarkers[key] = dbr.dbMarkers[key]
-        #     dbr.close()
+    def reset(self):
+        self.close()
+
+        def reset_table(name, zap):
+            path_resources = Code.path_resource("IntFiles", "recursos.dbl")
+            with UtilSQL.DictRawSQL(self._fichero, tabla=name) as dba, UtilSQL.DictRawSQL(
+                path_resources, tabla=name
+            ) as dbr:
+                if zap:
+                    dba.zap()
+                for k, v in dbr.as_dictionary().items():
+                    dba[k] = v
+
+        for table_name in ("Config", "Flechas", "Marcos", "Circles", "SVGs", "Markers"):  # Todos menos FEN
+            reset_table(table_name, table_name != "Config")
+
+    def remove_fens(self):
+        self.close()
+        with UtilSQL.DictRawSQL(self._fichero, tabla="FEN") as dbf:
+            dbf.zap()
 
     @property
     def file(self):
@@ -869,10 +902,20 @@ class DBManagerVisual:
         return self._dbMarkers
 
     def close(self):
-        for db in (self._dbFEN, self._dbConfig, self._dbFlechas, self._dbMarcos, self._dbCircles, self._dbSVGs, self._dbMarkers):
+        for db in (
+            self._dbFEN,
+            self._dbConfig,
+            self._dbFlechas,
+            self._dbMarcos,
+            self._dbCircles,
+            self._dbSVGs,
+            self._dbMarkers,
+        ):
             if db is not None:
                 db.close()
-        self._dbFEN = self._dbConfig = self._dbFlechas = self._dbMarcos = self._dbCircles = self._dbSVGs = self._dbMarkers = None
+        self._dbFEN = (
+            self._dbConfig
+        ) = self._dbFlechas = self._dbMarcos = self._dbCircles = self._dbSVGs = self._dbMarkers = None
 
 
 # def readGraphLive(configuration):

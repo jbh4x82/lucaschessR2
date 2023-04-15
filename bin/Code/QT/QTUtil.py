@@ -22,13 +22,13 @@ class GarbageCollector(QtCore.QObject):
         QtCore.QObject.__init__(self, None)
 
         self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.check)
+        self.timer.timeout.connect(self.verify)
 
         self.threshold = gc.get_threshold()
         gc.disable()
         self.timer.start(self.INTERVAL)
 
-    def check(self):
+    def verify(self):
         # num = gc.collect()
         l0, l1, l2 = gc.get_count()
         num = 0
@@ -140,30 +140,36 @@ def centraWindow(window):
 
 def escondeWindow(window):
     pos = window.pos()
+    screen = QtWidgets.QDesktopWidget().screenGeometry()
     if Code.is_windows:
-        screen = QtWidgets.QDesktopWidget().screenGeometry()
         window.move(screen.width() * 10, 0)
     else:
-        window.hide()
+        window.showMinimized()
     return pos
 
 
 class EscondeWindow:
     def __init__(self, window):
         self.window = window
+        self.is_maximized = self.window.isMaximized()
 
     def __enter__(self):
-        self.pos = self.window.pos()
         if Code.is_windows:
+            self.pos = self.window.pos()
             screen = QtWidgets.QDesktopWidget().screenGeometry()
             self.window.move(screen.width() * 10, 0)
         else:
-            self.window.hide()
+            self.window.showMinimized()
         return self
 
     def __exit__(self, type, value, traceback):
-        self.window.move(self.pos)
-        self.window.show()
+        if Code.is_windows:
+            self.window.move(self.pos)
+        if self.is_maximized:
+            self.window.showMaximized()
+        else:
+            self.window.showNormal()
+        refresh_gui()
 
 
 def colorIcon(xcolor, ancho, alto):
@@ -206,6 +212,21 @@ def ponPortapapeles(dato, tipo="t"):
 def traePortapapeles():
     cb = QtWidgets.QApplication.clipboard()
     return cb.text()
+
+
+def get_clipboard():
+    clipboard = QtWidgets.QApplication.clipboard()
+    mimedata = clipboard.mimeData()
+
+    if mimedata.hasImage():
+        return "p", mimedata.imageData()
+    elif mimedata.hasHtml():
+        return "h", mimedata.html()
+    elif mimedata.hasHtml():
+        return "h", mimedata.html()
+    elif mimedata.hasText():
+        return "t", mimedata.text()
+    return None, None
 
 
 def shrink(widget):

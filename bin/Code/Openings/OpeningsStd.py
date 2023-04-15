@@ -1,15 +1,16 @@
+import collections
+
 import FasterCode
 
 import Code
+from Code import Util
 from Code.Base import Position
 from Code.Translations import TrListas
-from Code import Util
 
 
 class Opening:
     def __init__(self, key):
         self.name = key
-        self.tr_name = key
         self.parent_fm2 = ""
         self.children_fm2 = []
         self.a1h8 = ""
@@ -17,6 +18,10 @@ class Opening:
         self.eco = ""
         self.is_basic = False
         self.fm2 = None
+
+    @property
+    def tr_name(self):
+        return _FO(self.name)
 
     def tr_pgn(self):
         p = ""
@@ -34,8 +39,8 @@ class Opening:
 
 class ListaOpeningsStd:
     def __init__(self):
-        self.st_fenm2_test = self.read_fenm2_test()
-        self.dic_fenm2_op = self.read_fenm2_op()
+        self.st_fenm2_test = set()
+        self.dic_fenm2_op, self.dic_fenm2_op_move = {}, {}
 
     @staticmethod
     def read_fenm2_test():
@@ -49,29 +54,37 @@ class ListaOpeningsStd:
     def read_fenm2_op():
         path = Code.path_resource("Openings", "openings.lkop")
         dic_fenm2_op = {}
+        dic_fenm2_op_move = collections.defaultdict(list)
+        st_fenm2_test = set()
         with open(path, "rt", encoding="utf-8") as q:
             for linea in q:
-                name, a1h8, pgn, eco, basic, fenm2, hijos, parent = linea.strip().split("|")
+                name, a1h8, pgn, eco, basic, fenm2, hijos, parent, lfenm2 = linea.strip().split("|")
                 dic_fenm2_op[fenm2] = op = Opening(name)
                 op.a1h8 = a1h8
                 op.eco = eco
                 op.pgn = pgn
-                op.children_fm2 = hijos.split(",")
+                # op.children_fm2 = hijos.split(",")
                 op.parent_fm2 = parent
                 op.is_basic = basic == "Y"
                 op.fm2 = fenm2
 
-        return dic_fenm2_op
+                if parent:
+                    st_fenm2_test.add(parent)
+                st_fenm2_test.add(fenm2)
+
+                li_pv = a1h8.split(" ")
+                li_fenm2 = lfenm2.split(",")
+                for x in range(len(li_pv)):
+                    fenm2 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" if x == 0 else li_fenm2[x - 1]
+                    pv = li_pv[x]
+                    dic_fenm2_op_move[fenm2].append([op, pv])
+                    st_fenm2_test.add(fenm2)
+
+        return dic_fenm2_op, dic_fenm2_op_move, st_fenm2_test
 
     def reset(self):
-        self.st_fenm2_test = self.read_fenm2_test()
-        self.dic_fenm2_op = self.read_fenm2_op()
+        self.dic_fenm2_op, self.dic_fenm2_op_move, self.st_fenm2_test = self.read_fenm2_op()
         self.read_personal()
-        self.translate()
-
-    def translate(self):
-        for op in self.dic_fenm2_op.values():
-            op.tr_name = Code.translations.translate_opening(op.name)
 
     def read_personal(self):
         fichero_pers = Code.configuration.file_pers_openings()
@@ -90,7 +103,7 @@ class ListaOpeningsStd:
                 fen = FasterCode.make_pv(pv)
                 fm2 = Position.legal_fenm2(fen)
                 self.st_fenm2_test.add(fm2)
-                if x == num-1:
+                if x == num - 1:
                     self.dic_fenm2_op[fm2] = op
                     op.fm2 = fm2
 
@@ -115,18 +128,19 @@ class ListaOpeningsStd:
 
     def list_possible_openings(self, game):
         li_ap = []
-        if len(game) == 0:
-            for op in self.dic_fenm2_op.values():
-                if not op.parent_fm2:
-                    li_ap.append(op)
-        else:
-            fm2 = game.last_position.fenm2()
-            for op in self.dic_fenm2_op.values():
-                if fm2 == op.parent_fm2:
-                    li_ap.append(op)
-
-        li_ap.sort(key=lambda op: ("A" if op.is_basic else "B") + op.tr_name)
-        return li_ap
+        fm2 = game.last_position.fenm2()
+        if fm2 in self.dic_fenm2_op_move:
+            for op, a1h8 in self.dic_fenm2_op_move[fm2]:
+                li_ap.append(op)
+        li_ap.sort(key=lambda op: op.a1h8)
+        li = []
+        ultima = "zzzz"
+        for op in li_ap:
+            if not op.a1h8.startswith(ultima):
+                ultima = op.a1h8
+                li.append(op)
+        li.sort(key=lambda op: ("A" if op.is_basic else "B") + op.tr_name)
+        return li
 
     def base_xpv(self, xpv):
         lipv = FasterCode.xpv_pv(xpv).split(" ")
@@ -150,16 +164,3 @@ class ListaOpeningsStd:
 
 
 ap = ListaOpeningsStd()
-
-
-# Borrar en la versión 3.0---------------------------------
-
-class OpeningStd(Opening):
-    def __init__(self, key):
-        Opening.__init__(self, key)
-
-    @property
-    def tr_name(self):
-        return self.trNombre
-
-# ^^^^Borrar en la versión 3.0---------------------------------

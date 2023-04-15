@@ -9,7 +9,7 @@ from Code.Base.Position import Position
 
 class T4:
     def __init__(self, configuration):
-        self.tb = chess.gaviota.open_tablebase(configuration.carpeta_gaviota())
+        self.tb = chess.gaviota.open_tablebase(configuration.folder_gaviota())
 
     def better_moves(self, fen, move):
         dic = self.checkFen(fen)
@@ -83,18 +83,18 @@ class T4:
         else:
             lista = []
 
-        if len(lista) > 1:
-            cp = Position()
-            min_ch = 99999
-            pos_ch = -1
-            for pos, mv in enumerate(lista):
-                cp.read_fen(fen)
-                cp.mover(mv[:2], mv[2:4], mv[4:])
-                ch = cp.cohesion()
-                if ch < min_ch:
-                    pos_ch = pos
-                    min_ch = ch
-            lista = [lista[pos_ch]]
+        # if len(lista) > 1:
+        #     cp = Position()
+        #     min_ch = 99999
+        #     pos_ch = -1
+        #     for pos, mv in enumerate(lista):
+        #         cp.read_fen(fen)
+        #         cp.mover(mv[:2], mv[2:4], mv[4:])
+        #         ch = cp.cohesion()
+        #         if ch < min_ch:
+        #             pos_ch = pos
+        #             min_ch = ch
+        #     lista = [lista[pos_ch]]
         return lista
 
     def dtm(self, fen):

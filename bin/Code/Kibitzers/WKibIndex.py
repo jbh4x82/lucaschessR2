@@ -14,7 +14,7 @@ from Code.QT import Iconos
 from Code.QT import Piezas
 from Code.QT import QTUtil
 from Code.QT import QTVarios
-from Code.QT import Voyager
+from Code.Voyager import Voyager
 
 
 class WKibIndex(QtWidgets.QDialog):
@@ -39,35 +39,42 @@ class WKibIndex(QtWidgets.QDialog):
         self.setWindowIcon(Iconos.Engine())
 
         self.setWindowFlags(
-            QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.Dialog | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint
+            QtCore.Qt.WindowCloseButtonHint
+            | QtCore.Qt.Dialog
+            | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowMinimizeButtonHint
         )
 
         self.setBackgroundRole(QtGui.QPalette.Light)
 
-        Code.todasPiezas = Piezas.TodasPiezas()
+        Code.all_pieces = Piezas.AllPieces()
         config_board = cpu.configuration.config_board("kib" + cpu.kibitzer.huella, 24)
         self.board = Board.Board(self, config_board)
         self.board.crea()
         self.board.set_dispatcher(self.mensajero)
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("titulo", "", 110, siDerecha=True)
-        o_columns.nueva("valor", "", 100, centered=True)
+        o_columns.nueva("titulo", "", 110, align_right=True)
+        o_columns.nueva("valor", "", 100, align_center=True)
         o_columns.nueva("info", "", 110)
-        self.grid = Grid.Grid(self, o_columns, dicVideo=dicVideo, siSelecFilas=True, siCabeceraVisible=True, altoCabecera=4)
+        self.grid = Grid.Grid(
+            self, o_columns, dicVideo=dicVideo, siSelecFilas=True, siCabeceraVisible=True, altoCabecera=4
+        )
+        f = Controles.TipoLetra(puntos=self.cpu.configuration.x_pgn_fontpoints)
+        self.grid.ponFuente(f)
 
         li_acciones = (
             (_("Continue"), Iconos.Kibitzer_Play(), self.play),
             (_("Pause"), Iconos.Kibitzer_Pause(), self.pause),
-            (_("Takeback"), Iconos.Atras(), self.takeback),
-            (_("Analyze only color"), Iconos.Kibitzer_Side(), self.color),
+            (_("Takeback"), Iconos.Kibitzer_Back(), self.takeback),
+            (_("Analyze color"), Iconos.Kibitzer_Side(), self.color),
             (_("Show/hide board"), Iconos.Kibitzer_Board(), self.config_board),
             (_("Manual position"), Iconos.Voyager(), self.set_position),
             ("%s: %s" % (_("Enable"), _("window on top")), Iconos.Kibitzer_Up(), self.windowTop),
             ("%s: %s" % (_("Disable"), _("window on top")), Iconos.Kibitzer_Down(), self.windowBottom),
         )
         self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
-        self.tb.setAccionVisible(self.play, False)
+        self.tb.set_action_visible(self.play, False)
 
         ly1 = Colocacion.H().control(self.tb).relleno()
         ly2 = Colocacion.V().otro(ly1).control(self.grid)
@@ -84,7 +91,7 @@ class WKibIndex(QtWidgets.QDialog):
         self.restore_video(dicVideo)
         self.ponFlags()
 
-        self.engine = self.lanzaMotor()
+        self.engine = self.launch_engine()
 
         self.depth = 0
         self.veces = 0
@@ -153,8 +160,8 @@ class WKibIndex(QtWidgets.QDialog):
             flags &= ~QtCore.Qt.WindowStaysOnTopHint
         flags |= QtCore.Qt.WindowCloseButtonHint
         self.setWindowFlags(flags)
-        self.tb.setAccionVisible(self.windowTop, not self.siTop)
-        self.tb.setAccionVisible(self.windowBottom, self.siTop)
+        self.tb.set_action_visible(self.windowTop, not self.siTop)
+        self.tb.set_action_visible(self.windowBottom, self.siTop)
         self.show()
 
     def windowTop(self):
@@ -171,14 +178,14 @@ class WKibIndex(QtWidgets.QDialog):
 
     def pause(self):
         self.siPlay = False
-        self.tb.setPosVisible(0, True)
-        self.tb.setPosVisible(1, False)
+        self.tb.set_pos_visible(0, True)
+        self.tb.set_pos_visible(1, False)
         self.stop()
 
     def play(self):
         self.siPlay = True
-        self.tb.setPosVisible(0, False)
-        self.tb.setPosVisible(1, True)
+        self.tb.set_pos_visible(0, False)
+        self.tb.set_pos_visible(1, True)
         self.reset()
 
     def stop(self):
@@ -203,7 +210,7 @@ class WKibIndex(QtWidgets.QDialog):
     def grid_bold(self, grid, row, o_column):
         return o_column.key in ("Titulo",)
 
-    def lanzaMotor(self):
+    def launch_engine(self):
         self.nom_engine = self.kibitzer.name
         exe = self.kibitzer.path_exe
         args = self.kibitzer.args
@@ -338,9 +345,9 @@ class WKibIndex(QtWidgets.QDialog):
             self.reset()
 
     def set_position(self):
-        resp = Voyager.voyager_position(self, self.game.last_position)
-        if resp is not None:
-            game = Game.Game(first_position=resp)
+        position, is_white_bottom = Voyager.voyager_position(self, self.game.last_position)
+        if position is not None:
+            game = Game.Game(first_position=position)
             self.orden_game(game)
 
     def reset(self):

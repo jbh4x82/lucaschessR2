@@ -55,12 +55,11 @@ def letterPiece(piece):
     return dConvTR[0].get(p, p)
 
 
-
-
 def dicTraining():
     d = {
         "Checkmates by Eduardo Sadier": _("Checkmates by Eduardo Sadier"),
-        "%d positions of mate in two" % Code.mate_en_dos: _("50000 positions of mate in two").replace("50000", "%d" % Code.mate_en_dos),
+        "%d positions of mate in two"
+        % Code.mate_en_dos: _("50000 positions of mate in two").replace("50000", "%d" % Code.mate_en_dos),
         "Mate in one (derived from mate in two)": _("Mate in one (derived from mate in two)"),
         "Checkmates from FICS database": _("Checkmates from FICS database"),
         "Attacking the king in the castle M1": _("Attacking the king in the castle M1"),
@@ -140,11 +139,17 @@ def dicTraining():
         "Discovered attack": _("Discovered attack"),
         "Annihilation of defense": _("Annihilation of defense"),
         "Double attack": _("Double attack"),
-        "Attacking Defender": _("Attacking defender"),
+        "Attacking Defender": _("Attacking Defender"),
         "All tactics": _("All tactics"),
         "Pawn endings": _("Pawn endings"),
         "Singular moves to equalize": _("Singular moves to equalize"),
         "Singular moves to win": _("Singular moves to win"),
+        "Queen + Rook": "%s + %s" % (_("Queen"), _("Rook")),
+        "Queen + Bishop": "%s + %s" % (_("Queen"), _("Bishop")),
+        "Queen + Knight": "%s + %s" % (_("Queen"), _("Knight")),
+        "Rook + Bishop": "%s + %s" % (_("Rook"), _("Bishop")),
+        "Rook + Knight": "%s + %s" % (_("Rook"), _("Knight")),
+        "Knight + Bishop": "%s + %s" % (_("Knight"), _("Bishop")),
     }
 
     for n in range(1, 10):
@@ -170,7 +175,7 @@ def STS():
         _("Activity of the King"),
         _("Center Control"),
         _("Pawn Play in the Center"),
-        _("Queens and Rooks to the 7th rank"),
+        _("Queens and Rooks to the 7th Rank"),
         _("Avoid Pointless Exchange"),
     ]
 
@@ -362,3 +367,7 @@ def transsiberian():
 
 def maps():
     return {"Africa": _("Africa map"), "WorldMap": _("World map")}
+
+
+def styles():
+    return [_("By default"), _("Dark"), _("Light")]

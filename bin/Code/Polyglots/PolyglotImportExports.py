@@ -6,12 +6,7 @@ import FasterCode
 from PySide2 import QtCore, QtWidgets
 
 from Code import Util
-from Code.Base.Constantes import (
-    CALCWEIGHT_NUMGAMES,
-    CALCWEIGHT_SCORE,
-    FEN_INITIAL,
-    CALCWEIGHT_NUMGAMES_SCORE,
-)
+from Code.Base.Constantes import CALCWEIGHT_NUMGAMES, CALCWEIGHT_SCORE, FEN_INITIAL, CALCWEIGHT_NUMGAMES_SCORE
 from Code.Databases import DBgames
 from Code.QT import Colocacion
 from Code.QT import Controles
@@ -114,7 +109,9 @@ class PolyglotImport:
 
     def menu_collisions(self):
         menu = QTVarios.LCMenu(self.wpolyglot)
-        menu.opcion("", _("What to do in case of collisions"), is_disabled=True, tipoLetra=Controles.TipoLetra(peso=700))
+        menu.opcion(
+            "", _("What to do in case of collisions"), is_disabled=True, tipoLetra=Controles.TipoLetra(peso=700)
+        )
         menu.separador()
         menu.opcion("replace", _("Replace"), Iconos.Recuperar())
         menu.separador()
@@ -369,7 +366,9 @@ class ImportarPGNDB(QtWidgets.QDialog):
                 minutos = previsto // 60
                 seconds = previsto % 60
                 lb_min = _("minutes") if minutos > 1 else _("minute")
-                self.lb_previsto.set_text("%s: %d %s %d %s" % (_("Pending time"), minutos, lb_min, seconds, _("seconds")))
+                self.lb_previsto.set_text(
+                    "%s: %d %s %d %s" % (_("Pending time"), minutos, lb_min, seconds, _("seconds"))
+                )
 
         QTUtil.refresh_gui()
         return not self.is_canceled
@@ -407,7 +406,7 @@ def fuente_dbbig(db, min_games, min_score, calc_weight, save_score):
             e.move = imove
             score = (sum / num) / 2.0 if num > 0.0 else 0.0
             if calc_weight == CALCWEIGHT_NUMGAMES:
-                e.weight = sum
+                e.weight = num
             elif calc_weight == CALCWEIGHT_NUMGAMES_SCORE:
                 e.weight = int(sum * score)
             else:

@@ -8,7 +8,7 @@ from Code.Kibitzers import Kibitzers
 from Code.QT import Piezas
 from Code.Board import Board
 from Code.QT import Delegados
-from Code.QT import Voyager
+from Code.Voyager import Voyager
 from Code.QT import QTUtil
 from Code.QT import QTVarios
 from Code.QT import Iconos
@@ -37,12 +37,15 @@ class WKibCommon(QtWidgets.QDialog):
         self.nArrows = self.dicVideo.get("NARROWS", 1 if cpu.tipo == Kibitzers.KIB_THREATS else 2)
 
         self.setWindowFlags(
-            QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.Dialog | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint
+            QtCore.Qt.WindowCloseButtonHint
+            | QtCore.Qt.Dialog
+            | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowMinimizeButtonHint
         )
 
         self.setBackgroundRole(QtGui.QPalette.Light)
 
-        Code.todasPiezas = Piezas.TodasPiezas()
+        Code.all_pieces = Piezas.AllPieces()
         config_board = cpu.configuration.config_board("kib" + cpu.kibitzer.huella, 24)
         self.board = Board.Board(self, config_board)
         self.board.crea()
@@ -131,8 +134,8 @@ class WKibCommon(QtWidgets.QDialog):
             flags &= ~QtCore.Qt.WindowStaysOnTopHint
         flags |= QtCore.Qt.WindowCloseButtonHint
         self.setWindowFlags(flags)
-        self.tb.setAccionVisible(self.windowTop, not self.siTop)
-        self.tb.setAccionVisible(self.windowBottom, self.siTop)
+        self.tb.set_action_visible(self.windowTop, not self.siTop)
+        self.tb.set_action_visible(self.windowBottom, self.siTop)
         self.show()
 
     def windowTop(self):
@@ -149,13 +152,13 @@ class WKibCommon(QtWidgets.QDialog):
 
     def pause(self):
         self.siPlay = False
-        self.tb.setPosVisible(1, True)
-        self.tb.setPosVisible(2, False)
+        self.tb.set_pos_visible(1, True)
+        self.tb.set_pos_visible(2, False)
 
     def play(self):
         self.siPlay = True
-        self.tb.setPosVisible(1, False)
-        self.tb.setPosVisible(2, True)
+        self.tb.set_pos_visible(1, False)
+        self.tb.set_pos_visible(2, True)
         self.orden_game(self.game)
 
     def closeEvent(self, event):
@@ -165,9 +168,9 @@ class WKibCommon(QtWidgets.QDialog):
         self.save_video()
 
     def set_position(self):
-        resp = Voyager.voyager_position(self, self.game.last_position)
-        if resp is not None:
-            game = Game.Game(first_position=resp)
+        position, is_white_bottom = Voyager.voyager_position(self, self.game.last_position)
+        if position is not None:
+            game = Game.Game(first_position=position)
             self.orden_game(game)
 
     def color(self):
@@ -195,4 +198,3 @@ class WKibCommon(QtWidgets.QDialog):
     def stop(self):
         # Para que no den error los que no lo incluyen
         pass
-

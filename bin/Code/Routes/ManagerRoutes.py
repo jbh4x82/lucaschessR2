@@ -31,7 +31,7 @@ class GR_Engine:
         self.level = nlevel
         if nlevel == 0:
             self.manager = None
-            self._nombre = self._label
+            self._name = self._label
         else:
             dEngines = self.elos()
             x = +1 if nlevel < 6 else -1
@@ -45,8 +45,8 @@ class GR_Engine:
                         nlevel = 1
             rival = self.configuration.buscaRival(nom_engine)
             self.manager = procesador.creaManagerMotor(rival, None, depth)
-            self._nombre = "%s %s %d" % (rival.name, _("Depth"), depth)
-            self._label += "\n%s\n%s: %d" % (self._nombre, _("Estimated elo"), elo)
+            self._name = "%s %s %d" % (rival.name, _("Depth"), depth)
+            self._label += "\n%s\n%s: %d" % (self._name, _("Estimated elo"), elo)
 
     def close(self):
         if self.manager and self.manager != self:
@@ -59,7 +59,7 @@ class GR_Engine:
 
     @property
     def name(self):
-        return self._nombre
+        return self._name
 
     def play(self, fen):
         if self.manager:
@@ -175,7 +175,7 @@ class ManagerRoutesPlay(ManagerRoutes):
         self.human_is_playing = False
         self.state = ST_PLAYING
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.main_window.set_activate_tutor(False)
@@ -190,7 +190,7 @@ class ManagerRoutesPlay(ManagerRoutes):
 
         self.set_label1(self.engine.label)
         if self.must_win:
-            self.set_label2(_("You must win to pass this game"))
+            self.set_label2(_("You must win to pass this step."))
 
         self.set_dispatcher(self.player_has_moved)
         self.set_position(self.game.last_position)
@@ -205,10 +205,12 @@ class ManagerRoutesPlay(ManagerRoutes):
         self.game.set_tag("Event", _("Transsiberian Railway"))
         lbe = self.engine.name
         white, black = self.configuration.x_player, lbe
-        if not self.human_side:
+        if not self.is_human_side_white:
             white, black = black, white
         self.game.set_tag("White", white)
         self.game.set_tag("Black", black)
+
+        self.game.add_tag_timestart()
 
         self.play_next_move()
 
@@ -229,7 +231,7 @@ class ManagerRoutesPlay(ManagerRoutes):
             self.configurar(siSonidos=True)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key in self.procesador.li_opciones_inicio:
             self.procesador.run_action(key)
@@ -257,12 +259,12 @@ class ManagerRoutesPlay(ManagerRoutes):
 
         siRival = is_white == self.is_engine_side_white
         if siRival:
-            self.juegaRival()
+            self.play_rival()
         else:
             self.human_is_playing = True
             self.activate_side(is_white)
 
-    def juegaRival(self):
+    def play_rival(self):
         if self.is_opening:
             pv = self.liPVopening[self.posOpening]
             self.posOpening += 1
@@ -302,7 +304,9 @@ class ManagerRoutesPlay(ManagerRoutes):
                     QTUtil2.mensajeTemporal(self.main_window, _("Wrong move"), 2)
                     self.run_action(TB_REINIT)
                 else:
-                    QTUtil2.message_error(self.main_window, "%s\n%s" % (_("Wrong move"), _("Right move: %s") % Game.pv_san(fen, op_pv)))
+                    QTUtil2.message_error(
+                        self.main_window, "%s\n%s" % (_("Wrong move"), _("Right move: %s") % Game.pv_san(fen, op_pv))
+                    )
                     self.sigueHumano()
                 return False
             self.posOpening += 1
@@ -326,8 +330,8 @@ class ManagerRoutesPlay(ManagerRoutes):
         self.set_toolbar(li_options)
         jgUlt = self.game.last_jg()
 
-        siwin = (jgUlt.is_white() == self.human_side) and not jgUlt.is_draw
-        mensaje, beep, player_win = self.game.label_resultado_player(self.human_side)
+        siwin = (jgUlt.is_white() == self.is_human_side_white) and not jgUlt.is_draw
+        mensaje, beep, player_win = self.game.label_resultado_player(self.is_human_side_white)
 
         self.beepResultado(beep)
 
@@ -338,7 +342,7 @@ class ManagerRoutesPlay(ManagerRoutes):
                 mensaje = _("Congratulations, you have completed the game.")
             else:
                 mensaje = _("Well done")
-            self.mensajeEnPGN(mensaje)
+            self.message_on_pgn(mensaje)
         else:
             if self.must_win:
                 QTUtil2.message_error(self.main_window, _("You must win to pass this step."))
@@ -381,7 +385,7 @@ class ManagerRoutesEndings(ManagerRoutes):
         self.human_is_playing = False
         self.state = ST_PLAYING
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.main_window.set_activate_tutor(False)
@@ -426,7 +430,7 @@ class ManagerRoutesEndings(ManagerRoutes):
             self.configurar(siSonidos=True, siCambioTutor=True)
 
         elif key == TB_HELP:
-            self.ayuda()
+            self.get_help()
 
         elif key == TB_NEXT:
             if self.route.km_pending():
@@ -436,7 +440,7 @@ class ManagerRoutesEndings(ManagerRoutes):
                 self.procesador.showRoute()
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key in self.procesador.li_opciones_inicio:
             self.procesador.run_action(key)
@@ -475,7 +479,7 @@ class ManagerRoutesEndings(ManagerRoutes):
             else:
                 fen = self.game.last_position.fen()
                 pv = self.t4.best_move(fen)
-            self.play_rival(pv[:2], pv[2:4], pv[4:])
+            self.rival_has_moved(pv[:2], pv[2:4], pv[4:])
             self.play_next_move()
         else:
             self.human_is_playing = True
@@ -501,7 +505,7 @@ class ManagerRoutesEndings(ManagerRoutes):
                     pgn = Game.pv_pgn(jgSel.position_before.fen(), pvObj)
                     self.show_mens(_("You have selected one correct move, but the line use %s") % pgn)
                     self.put_arrow_sc(pvObj[:2], pvObj[2:4])
-                    self.ayuda(False)
+                    self.get_help(False)
                 else:
                     self.show_error(_("Wrong move"))
                     self.warnings += 1
@@ -531,13 +535,13 @@ class ManagerRoutesEndings(ManagerRoutes):
         self.play_next_move()
         return True
 
-    def play_rival(self, from_sq, to_sq, promotion):
+    def rival_has_moved(self, from_sq, to_sq, promotion):
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.add_move(move, False)
         self.move_the_pieces(move.liMovs, True)
         return True
 
-    def ayuda(self, siWarning=True):
+    def get_help(self, siWarning=True):
         if self.is_guided:
             pvObj = self.li_pv[self.posPV]
             li = pvObj.split("-")
@@ -558,16 +562,15 @@ class ManagerRoutesEndings(ManagerRoutes):
         jgUlt = self.game.last_jg()
         if jgUlt.is_draw:
             mensaje = "%s<br>%s" % (_("Draw"), _("You must repeat the puzzle."))
-            self.mensajeEnPGN(mensaje)
+            self.message_on_pgn(mensaje)
             self.start(self.route)
         elif self.warnings <= self.max_warnings:
             self.set_toolbar([TB_CLOSE, TB_UTILITIES, TB_NEXT])
-            self.mensajeEnPGN(_("Done"))
+            self.message_on_pgn(_("Done"))
             self.route.end_ending()
         else:
             mensaje = "%s<br>%s" % (_("Done with errors."), _("You must repeat the puzzle."))
-            QTUtil2.message_bold(self.main_window, mensaje)
-            self.mensajeEnPGN(mensaje)
+            self.message_on_pgn(mensaje)
             self.start(self.route)
 
     def current_pgn(self):
@@ -602,7 +605,7 @@ class ManagerRoutesTactics(ManagerRoutes):
         self.human_is_playing = False
         self.state = ST_PLAYING
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.main_window.set_activate_tutor(False)
@@ -636,7 +639,7 @@ class ManagerRoutesTactics(ManagerRoutes):
             self.configurar(siSonidos=True, siCambioTutor=True)
 
         elif key == TB_HELP:
-            self.ayuda()
+            self.get_help()
 
         elif key == TB_NEXT:
             if self.route.km_pending():
@@ -646,7 +649,7 @@ class ManagerRoutesTactics(ManagerRoutes):
                 self.procesador.showRoute()
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key in self.procesador.li_opciones_inicio:
             self.procesador.run_action(key)
@@ -678,7 +681,7 @@ class ManagerRoutesTactics(ManagerRoutes):
         siRival = is_white == self.is_engine_side_white
         if siRival:
             move = self.jugadaObjetivo()
-            self.play_rival(move.from_sq, move.to_sq, move.promotion)
+            self.rival_has_moved(move.from_sq, move.to_sq, move.promotion)
             self.play_next_move()
         else:
             self.human_is_playing = True
@@ -701,7 +704,7 @@ class ManagerRoutesTactics(ManagerRoutes):
                         3,
                         physical_pos="ad",
                     )
-                    self.ayuda(False)
+                    self.get_help(False)
                     self.sigueHumano()
                     return False
             QTUtil2.mensajeTemporal(self.main_window, _("Wrong move"), 0.8, physical_pos="ad")
@@ -718,13 +721,13 @@ class ManagerRoutesTactics(ManagerRoutes):
         self.play_next_move()
         return True
 
-    def play_rival(self, from_sq, to_sq, promotion):
+    def rival_has_moved(self, from_sq, to_sq, promotion):
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.add_move(move, False)
         self.move_the_pieces(move.liMovs, True)
         return True
 
-    def ayuda(self, siQuitarPuntos=True):
+    def get_help(self, siQuitarPuntos=True):
         jgObj = self.jugadaObjetivo()
         liMovs = [(jgObj.from_sq, jgObj.to_sq, True)]
         for variation in jgObj.variations.li_variations:
@@ -741,7 +744,7 @@ class ManagerRoutesTactics(ManagerRoutes):
         km = self.route.end_tactic()
         if not self.route.go_fast:
             mensaje = "%s<br>%s" % (_("Done"), _("You have traveled %s") % Routes.km_mi(km, self.route.is_miles))
-            self.mensajeEnPGN(mensaje)
+            self.message_on_pgn(mensaje)
         self.human_is_playing = False
         self.state = ST_ENDGAME
         if self.route.go_fast:

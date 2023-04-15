@@ -41,10 +41,7 @@ class WOdt(LCDialog.LCDialog):
         self.board = Board.BoardEstatico(self, conf_board)
         self.board.crea()
 
-        li_acciones = (
-            (_("Export"), Iconos.ODT(), self.begin),
-            (_("Cancel"), Iconos.Cancelar(), self.reject),
-        )
+        li_acciones = ((_("Export"), Iconos.ODT(), self.begin), (_("Cancel"), Iconos.Cancelar(), self.reject))
         self.tb = QTVarios.LCTB(self, li_acciones, style=QtCore.Qt.ToolButtonTextBesideIcon, icon_size=32)
         self.show_tb(self.begin, self.reject)
 
@@ -79,11 +76,11 @@ class WOdt(LCDialog.LCDialog):
 
     def show_tb(self, *lista):
         for opc in self.tb.dic_toolbar:
-            self.tb.setAccionVisible(opc, opc in lista)
+            self.tb.set_action_visible(opc, opc in lista)
         QTUtil.refresh_gui()
 
     def set_routine(self, routine):
         self.routine = routine
 
-    def pulsada_celda(self, x): #Compatibility
+    def pulsada_celda(self, x):  # Compatibility
         pass

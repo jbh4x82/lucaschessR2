@@ -3,6 +3,7 @@ import FasterCode
 import Code
 from Code.Analysis import Analysis
 from Code.Base import Game
+from Code.Base.Constantes import INACCURACY, MISTAKE, BLUNDER
 from Code.QT import QTUtil2
 from Code.Tutor import WindowTutor
 
@@ -21,13 +22,13 @@ class Tutor:
         self.to_sq = to_sq
         self.mrmTutor = manager.mrmTutor
         self.rm_rival = manager.rm_rival
-        self.is_white = manager.human_side
+        self.is_white = manager.is_human_side_white
         self.siEntrenando = siEntrenando
         self.list_rm = None  # necesario
 
         self.is_moving_time = False
 
-    def elegir(self, siPuntos, liApPosibles=None):
+    def elegir(self, has_hints, li_ap_posibles=None):
 
         self.rmUsuario, posUsuario = self.mrmTutor.buscaRM(self.move.movimiento())
         if self.rmUsuario is None:
@@ -36,8 +37,8 @@ class Tutor:
             me = QTUtil2.mensEspera.start(self.main_window, _("Analyzing the move...."), physical_pos="ad")
 
             fen = self.move.position.fen()
-            mrmUsuario = self.managerTutor.analiza(fen)
-            if len(mrmUsuario.li_rm) == 0:
+            mrm_usuario = self.managerTutor.analiza(fen)
+            if len(mrm_usuario.li_rm) == 0:
                 self.rmUsuario = self.mrmTutor.li_rm[0].copia()
                 self.rmUsuario.from_sq = self.move.from_sq
                 self.rmUsuario.to_sq = self.move.to_sq
@@ -45,7 +46,7 @@ class Tutor:
                 self.rmUsuario.mate = 0
                 self.rmUsuario.puntos = 0
             else:
-                self.rmUsuario = mrmUsuario.li_rm[0]
+                self.rmUsuario = mrm_usuario.li_rm[0]
                 self.rmUsuario.cambiaColor(self.move.position)
 
             me.final()
@@ -58,14 +59,14 @@ class Tutor:
         self.list_rm = self.do_lirm(posUsuario)  # rm,name
 
         # Creamos la ventana
-        siRival = self.rm_rival and " " in self.rm_rival.getPV()
+        si_rival = self.rm_rival and " " in self.rm_rival.getPV()
 
-        self.liApPosibles = liApPosibles
-        in_the_opening = liApPosibles and len(liApPosibles) > 1
+        self.li_ap_posibles = li_ap_posibles
+        in_the_opening = li_ap_posibles and len(li_ap_posibles) > 1
         if in_the_opening:
-            siRival = False
+            si_rival = False
 
-        self.w = w = WindowTutor.WindowTutor(self.manager, self, siRival, in_the_opening, self.is_white, siPuntos)
+        self.w = w = WindowTutor.WindowTutor(self.manager, self, si_rival, in_the_opening, self.is_white, has_hints)
 
         self.cambiadoRM(0)
 
@@ -75,14 +76,19 @@ class Tutor:
         self.posUsuario = 0
         self.max_user = len(self.gameUsuario.li_moves)
         self.boardUsuario.set_position(self.move.position)
-        w.ponPuntuacionUsuario(self.rmUsuario.texto())
 
-        if siRival:
+        message = _("Your move") + "<br><br>" + \
+                  self.gameUsuario.li_moves[0].pgn_html_base(Code.configuration.x_pgn_withfigurines) + \
+                  " " + self.rmUsuario.texto()
+
+        w.ponPuntuacionUsuario(message)
+
+        if si_rival:
             self.rm_rival.cambiaColor()
             pvBloque = self.rm_rival.getPV()
             n = pvBloque.find(" ")
             if n > 0:
-                pvBloque = pvBloque[n + 1 :].strip()
+                pvBloque = pvBloque[n + 1:].strip()
             else:
                 pvBloque = ""
 
@@ -93,8 +99,11 @@ class Tutor:
                 self.maxRival = len(self.gameRival.li_moves) - 1
                 if self.maxRival >= 0:
                     self.boardRival.set_position(self.gameRival.li_moves[0].position)
-                    self.play_rival(True)
-                    w.ponPuntuacionRival(self.rm_rival.texto_rival())
+                    self.rival_has_moved(True)
+                    message = _("Opponent's prediction") + "<br><br>" + \
+                              self.gameRival.li_moves[0].pgn_html_base(Code.configuration.x_pgn_withfigurines) + \
+                              " " + self.rm_rival.texto_rival()
+                    w.ponPuntuacionRival(message)
 
         self.moving_tutor(True)
         self.moving_user(True)
@@ -125,14 +134,16 @@ class Tutor:
             game.read_pv(rm.getPV())
 
             jgvar = game.move(0)
-            jgvar.comment = rm.texto()
+            jgvar.set_comment(rm.texto())
 
             move.add_variation(game)
 
-            txt = self.gameUsuario.pgnBaseRAW(numJugada)
+            game_usuario = Game.Game(self.move.position_before)
+            game_usuario.read_pv(self.rmUsuario.getPV())
+            txt = game_usuario.pgn_translated()
             puntos = self.rmUsuario.texto()
             vusu = "%s : %s" % (puntos, txt)
-            move.comment = vusu.replace("\n", "")
+            move.set_comment(vusu.replace("\n", ""))
 
     def do_lirm(self, posUsuario):
         li = []
@@ -156,7 +167,11 @@ class Tutor:
         self.game_tutor = Game.Game(self.last_position)
         self.game_tutor.read_pv(rm.getPV())
 
-        self.w.ponPuntuacionTutor(rm.texto())
+        message = _("Tutor's suggestion") + "<br><br>" + \
+                  self.game_tutor.li_moves[0].pgn_html_base(Code.configuration.x_pgn_withfigurines) + \
+                  " " + rm.texto()
+
+        self.w.ponPuntuacionTutor(message)
 
         self.pos_tutor = 0
         self.max_tutor = len(self.game_tutor)
@@ -252,13 +267,14 @@ class Tutor:
             self.pos_tutor = self.max_tutor - 1
 
         move = self.game_tutor.move(self.pos_tutor if self.pos_tutor > -1 else 0)
-        if is_base:
-            self.boardTutor.set_position(move.position_before)
-        else:
-            self.boardTutor.set_position(move.position)
-            self.boardTutor.put_arrow_sc(move.from_sq, move.to_sq)
+        if move:
+            if is_base:
+                self.boardTutor.set_position(move.position_before)
+            else:
+                self.boardTutor.set_position(move.position)
+                self.boardTutor.put_arrow_sc(move.from_sq, move.to_sq)
 
-    def play_rival(self, si_inicio=False, n_saltar=0, siFinal=False, is_base=False):
+    def rival_has_moved(self, si_inicio=False, n_saltar=0, siFinal=False, is_base=False):
         if n_saltar:
             pos = self.posRival + n_saltar
             if 0 <= pos < self.maxRival:
@@ -310,14 +326,14 @@ class Tutor:
 
     def cambiarOpening(self, number):
         self.gameOpenings = Game.Game(self.last_position)
-        self.gameOpenings.read_pv(self.liApPosibles[number].a1h8)
+        self.gameOpenings.read_pv(self.li_ap_posibles[number].a1h8)
         self.maxOpening = len(self.gameOpenings)
         if self.maxOpening > 0:
             self.boardOpenings.set_position(self.gameOpenings.move(0).position)
         self.mueveOpening(si_inicio=True)
 
     def opcionesOpenings(self):
-        return [(ap.tr_name, num) for num, ap in enumerate(self.liApPosibles)]
+        return [(ap.tr_name, num) for num, ap in enumerate(self.li_ap_posibles)]
 
     def analiza(self, quien):
         if quien == "Tutor":
@@ -385,14 +401,22 @@ class Tutor:
                     self.boardUsuario.flechaSC.show()
 
 
-def launch_tutor(mrm_tutor, rm_usuario):
-    tp = Code.configuration.x_tutor_diftype
+def launch_tutor(mrm_tutor, rm_usuario, tp=None):
+    if tp is None:
+        tp = Code.configuration.x_tutor_diftype
     rm_tutor = mrm_tutor.mejorMov()
-    if tp == 0: # ALWAYS
-        return (rm_tutor.movimiento() != rm_usuario.movimiento()) and (rm_tutor.centipawns_abs() > rm_usuario.centipawns_abs())
+    if tp == 0:  # ALWAYS
+        return (rm_tutor.movimiento() != rm_usuario.movimiento()) and (
+                rm_tutor.centipawns_abs() > rm_usuario.centipawns_abs()
+        )
     else:
         ev = Code.analysis_eval.evaluate(rm_tutor, rm_usuario)
-        return ev >= tp
+        if tp == INACCURACY:
+            return ev in (INACCURACY, BLUNDER, MISTAKE)
+        elif tp == MISTAKE:
+            return ev in (BLUNDER, MISTAKE)
+        else:
+            return ev == BLUNDER
 
 
 def launch_tutor_movimiento(mrm_tutor, a1h8_user):

@@ -18,9 +18,11 @@ class WGaviota(WKibCommon.WKibCommon):
 
         o_columns = Columnas.ListaColumnas()
         delegado = Delegados.EtiquetaPOS(True, siLineas=False) if self.with_figurines else None
-        o_columns.nueva("MOVE", _("Move"), 80, centered=True, edicion=delegado)
-        o_columns.nueva("DTM", "DTM", 60, centered=True)
+        o_columns.nueva("MOVE", _("Move"), 80, align_center=True, edicion=delegado)
+        o_columns.nueva("DTM", "DTM", 60, align_center=True)
         self.grid = Grid.Grid(self, o_columns, dicVideo=self.dicVideo, siSelecFilas=True)
+        f = Controles.TipoLetra(puntos=self.cpu.configuration.x_pgn_fontpoints)
+        self.grid.ponFuente(f)
 
         li_acciones = (
             (_("Quit"), Iconos.Kibitzer_Close(), self.terminar),
@@ -33,7 +35,7 @@ class WGaviota(WKibCommon.WKibCommon):
             ("%s: %s" % (_("Disable"), _("window on top")), Iconos.Kibitzer_Down(), self.windowBottom),
         )
         self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
-        self.tb.setAccionVisible(self.play, False)
+        self.tb.set_action_visible(self.play, False)
 
         lyH = Colocacion.H().control(self.board).control(self.grid)
         layout = Colocacion.V().control(self.tb).espacio(-8).otro(lyH).margen(3)

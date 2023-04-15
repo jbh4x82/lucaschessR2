@@ -90,7 +90,7 @@ class TrainingDir:
         icoOp = Iconos.PuntoNaranja()
         icoDr = Iconos.Carpeta()
         for folder in self.folders:
-            submenu1 = bmenu.submenu(folder.name, icoDr)
+            submenu1 = bmenu.submenu(_F(folder.name), icoDr)
             folder.menu(submenu1, xopcion)
         for xfile in self.files:
             xopcion(bmenu, "ep_%s" % xfile.path, xfile.name, icoOp)
@@ -139,16 +139,16 @@ class MenuTrainings:
 
         menu_basic.separador()
         self.horsesDef = hd = {
-            1: ("N", "Alpha", _("Basic test")),
+            1: ("N", "Alpha", _("By default")),
             2: ("p", "Fantasy", _("Four pawns test")),
             3: ("Q", "Pirat", _("Jonathan Levitt test")),
-            4: ("n", "Spatial", _("Basic test") + ": a1"),
-            5: ("N", "Cburnett", _("Basic test") + ": e4"),
+            4: ("n", "Spatial", "a1"),
+            5: ("N", "Cburnett", "e4"),
         }
         menu2 = menu_basic.submenu(_("Becoming a knight tamer"), Iconos.Knight())
-        vicon = Code.todasPiezas.icono
+        vicon = Code.all_pieces.icono
         icl, icn, tit = hd[1]
-        menu3 = menu2.submenu(tit, vicon(icl, icn))
+        menu3 = menu2.submenu(_("Basic test"), vicon(icl, icn))
         xopcion(menu3, "horses_1", tit, vicon(icl, icn))
         menu3.separador()
         icl, icn, tit = hd[4]
@@ -359,7 +359,7 @@ class MenuTrainings:
 
         return menu, dicMenu
 
-    def check(self):
+    def verify(self):
         if self.menu is None:
             self.menu, self.dicMenu = self.creaMenu()
 
@@ -367,7 +367,7 @@ class MenuTrainings:
         self.menu, self.dicMenu = self.creaMenu()
 
     def lanza(self):
-        self.check()
+        self.verify()
 
         resp = self.menu.lanza()
         self.menu_run(resp)
@@ -422,7 +422,7 @@ class MenuTrainings:
                 elif resp.startswith("horses_"):
                     test = int(resp[7])
                     icl, icn, tit = self.horsesDef[test]
-                    icon = Code.todasPiezas.icono(icl, icn)
+                    icon = Code.all_pieces.icono(icl, icn)
                     self.horses(test, tit, icon)
 
                 elif resp.startswith("ep_"):
@@ -542,11 +542,11 @@ class MenuTrainings:
                     for x in range(len(lista) - 1):
                         t += "|%s" % lista[x]
                         if not (t in dmenu):
-                            v_trad = dic_training.get(lista[x], lista[x])
+                            v_trad = dic_training.get(lista[x], _F(lista[x]))
                             dmenu[t] = actmenu.submenu(v_trad, nico.otro())
                             actmenu.separador()
                         actmenu = dmenu[t]
-                actmenu.opcion(valor, dic_training.get(lista[-1], lista[-1]), nico.otro())
+                actmenu.opcion(valor, _F(dic_training.get(lista[-1], lista[-1])), nico.otro())
                 actmenu.separador()
             um.final()
             resp = menu.lanza()
@@ -710,7 +710,7 @@ class MenuTrainings:
 
 
 def selectOneFNS(owner, procesador):
-    tpirat = Controles.TipoLetra("Chess Alpha 2", procesador.configuration.x_menu_points + 4)
+    tpirat = Controles.TipoLetra("Chess Alpha 2", procesador.configuration.x_font_points + 4)
 
     def xopcion(menu, key, texto, icono, is_disabled=False):
         if "KP" in texto:

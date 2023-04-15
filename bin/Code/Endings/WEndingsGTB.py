@@ -4,6 +4,8 @@ import time
 import FasterCode
 from PySide2 import QtWidgets, QtCore
 
+import Code
+from Code.Engines import EngineManager
 from Code.Base import Game, Move
 from Code.Board import Board
 from Code.Databases import DBgames
@@ -15,12 +17,12 @@ from Code.QT import Controles
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
 from Code.QT import SelectFiles
-from Code.QT import Voyager
-from Code.QT import LCDialog
+from Code.Voyager import Voyager
 
 PLAY_STOP, PLAY_NEXT_SOLVED, PLAY_NEXT_BESTMOVES = range(3)
 
@@ -33,22 +35,32 @@ class WEndingsGTB(LCDialog.LCDialog):
         self.db = EndingsGTB.DBendings(self.configuration)
         self.t4 = LibChess.T4(self.configuration)
 
-        LCDialog.LCDialog.__init__(self, procesador.main_window, _("Endings with Gaviota Tablebases"), Iconos.Finales(), "endings_gtb")
+        LCDialog.LCDialog.__init__(
+            self, procesador.main_window, _("Endings with Gaviota Tablebases"), Iconos.Finales(), "endings_gtb"
+        )
 
         self.game = Game.Game()
         self.act_recno = -1
 
-        li_acciones = (
+        li_acciones = [
             (_("Close"), Iconos.MainMenu(), self.terminar),
             None,
             (_("Config"), Iconos.Configurar(), self.configurar),
             None,
-            (_("Utilities"), Iconos.Utilidades(), self.utilidades),
+            (_("Utilities"), Iconos.Utilidades(), self.utilities),
             None,
-        )
-        tb = QTVarios.LCTB(self, li_acciones)
+        ]
+        if Code.eboard:
+            li_acciones.append((_("Enable"), Code.eboard.icon_eboard(), self.eboard))
+            li_acciones.append(None)
 
-        ly_bt, self.bt_movs = QTVarios.lyBotonesMovimiento(self, "", siTiempo=True, siLibre=False, rutina=self.run_botones, icon_size=24)
+        self.tb_base = QTVarios.LCTB(self, li_acciones)
+
+        self.komodo = None
+
+        ly_bt, self.bt_movs = QTVarios.lyBotonesMovimiento(
+            self, "", siTiempo=True, siLibre=False, rutina=self.run_botones, icon_size=24
+        )
 
         self.chb_help = Controles.CHB(self, _("Help mode"), False).capture_changes(self, self.help_changed)
         self.bt_back = Controles.PB(self, _("Takeback"), self.takeback, plano=False).ponIcono(Iconos.Atras())
@@ -77,18 +89,20 @@ class WEndingsGTB(LCDialog.LCDialog):
         )
         self.tb_run = Controles.TBrutina(self, li_acciones, icon_size=32, puntos=self.configuration.x_tb_fontpoints)
 
-        ly_top = Colocacion.H().control(tb).relleno().control(self.wpzs).relleno().control(self.tb_run)
+        ly_top = Colocacion.H().control(self.tb_base).relleno().control(self.wpzs).relleno().control(self.tb_run)
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUM", _("N."), 50, centered=True)
-        o_columns.nueva("XFEN", _("Position"), 140, centered=True)
-        o_columns.nueva("MATE", _("Mate"), 60, centered=True)
-        o_columns.nueva("TRIES", _("Tries"), 50, centered=True)
-        o_columns.nueva("MOVES", _("Minimum moves"), 120, centered=True)
-        o_columns.nueva("TIMEMS", _("Minimum time"), 120, centered=True)
+        o_columns.nueva("NUM", _("N."), 50, align_center=True)
+        o_columns.nueva("XFEN", _("Position"), 140, align_center=True)
+        o_columns.nueva("MATE", _("Mate"), 60, align_center=True)
+        o_columns.nueva("TRIES", _("Tries"), 50, align_center=True)
+        o_columns.nueva("TRIES_OK", _("Success"), 50, align_center=True)
+        o_columns.nueva("MOVES", _("Moves"), 120, align_center=True)
+        o_columns.nueva("TIMEMS", _("Time"), 120, align_center=True)
+        o_columns.nueva("AVERAGE", "⨊", 100, align_center=True)
         self.grid = Grid.Grid(self, o_columns, siSelecFilas=True)
-        self.grid.tipoLetra(puntos=self.configuration.x_pgn_fontpoints)
-        self.grid.ponAltoFila(self.configuration.x_pgn_rowheight)
         self.grid.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+
+        self.register_grid(self.grid)
 
         ly_pos = Colocacion.V().control(self.grid)
 
@@ -117,7 +131,7 @@ class WEndingsGTB(LCDialog.LCDialog):
         dic = self.configuration.read_variables("endingsGTB")
 
         self.key = key = dic.get("KEY")
-        if (not key) or len(key) > self.configuration.piezas_gaviota():
+        if (not key) or len(key) > self.configuration.pieces_gaviota():
             key = "KPk"
         self.db.set_examples_auto(dic.get("EXAMPLES_AUTO", True))
         self.set_key(key)
@@ -128,6 +142,29 @@ class WEndingsGTB(LCDialog.LCDialog):
         self.pos_game = -1
         self.help_changed()
         self.restart()
+
+    def deactivate_eboard(self, ms):
+        if Code.eboard and Code.eboard.driver:
+
+            def deactivate():
+                Code.eboard.deactivate()
+
+            QTUtil.refresh_gui()
+            QtCore.QTimer.singleShot(ms, deactivate)
+            return True
+        return False
+
+    def eboard(self):
+        title = None
+        if Code.eboard.driver:
+            if self.deactivate_eboard(100):
+                title = _("Enable")
+        else:
+            if Code.eboard.activate(self.board.dispatch_eboard):
+                Code.eboard.set_position(self.board.last_position)
+                title = _("Disable")
+        if title:
+            self.tb_base.set_action_title(self.eboard, title)
 
     def help_changed(self):
         self.test_help()
@@ -158,7 +195,7 @@ class WEndingsGTB(LCDialog.LCDialog):
 
     def nuevo(self):
         self.reset()
-        position = Voyager.voyager_position(self, self.game.first_position)
+        position, is_white_bottom = Voyager.voyager_position(self, self.game.first_position)
         if position is not None:
             fen = position.fen()
             mt = self.t4.dtm(fen)
@@ -182,7 +219,9 @@ class WEndingsGTB(LCDialog.LCDialog):
             self.db.register_empty_try(row)
             self.grid.refresh()
 
-        if self.t4.dtm(self.game.first_position.fen()) is None:  # En el caso de que se desinstale g5 y se trate de resolver un 5pzs
+        if (
+            self.t4.dtm(self.game.first_position.fen()) is None
+        ):  # En el caso de que se desinstale g5 y se trate de resolver un 5pzs
             QTUtil2.message_error(self, _("Invalid, this position is not evaluated by Gaviota Tablebases"))
             return
 
@@ -207,7 +246,7 @@ class WEndingsGTB(LCDialog.LCDialog):
     def remove(self):
         row = self.grid.recno()
         if row >= 0:
-            if QTUtil2.pregunta(self, "Do you want to remove this position?"):
+            if QTUtil2.pregunta(self, _("Do you want to delete this position?")):
                 self.db.remove(row)
                 self.grid.refresh()
                 self.grid_cambiado_registro(None, row, None)
@@ -226,7 +265,7 @@ class WEndingsGTB(LCDialog.LCDialog):
         li_options = (
             (_("Stop"), PLAY_STOP),
             (_("Jump to the next"), PLAY_NEXT_SOLVED),
-            (_("Jump to the next if minimum moves done"), PLAY_NEXT_BESTMOVES),
+            (_("Jump to the next if minimum movements done"), PLAY_NEXT_BESTMOVES),
         )
         play_next = dic_vars.get("PLAY_NEXT", PLAY_STOP)
         form.combobox(_("What to do after solving"), li_options, play_next)
@@ -288,28 +327,43 @@ class WEndingsGTB(LCDialog.LCDialog):
         key = ocol.key
         if key == "NUM":
             return str(row + 1)
+        elif key == "AVERAGE":
+            timems = self.db.current_fen_field(row, "TIMEMS", None)
+            if timems is None:
+                return ""
+            mt = self.db.current_fen_field(row, "MATE")
+            if mt == 0:
+                moves = self.db.current_fen_field(row, "MOVES")
+            else:
+                moves = (mt + 1) // 2
+            factor = timems / (moves * 1000)
+            return "%.1f" % factor
         else:
             data = self.db.current_fen_field(row, ocol.key, None)
             if data is None:
                 return ""
             if key == "MATE":
-                tok = self.db.current_fen_field(row, "TRIES_OK")
+                # tok = self.db.current_fen_field(row, "TRIES_OK")
                 if data == 0:
                     return _("Draw")
                 else:
                     return str((data + 1) // 2)
             elif key == "TIMEMS":
-                mt = self.db.current_fen_field(row, "MATE")
-                if mt == 0:
-                    moves = self.db.current_fen_field(row, "MOVES")
-                else:
-                    moves = (mt + 1) // 2
-                factor = data / (moves * 1000)
-                return "%.1f (%.1f)" % (data / 1000, factor)
+                #     mt = self.db.current_fen_field(row, "MATE")
+                #     if mt == 0:
+                #         moves = self.db.current_fen_field(row, "MOVES")
+                #     else:
+                #         moves = (mt + 1) // 2
+                #     factor = data / (moves * 1000)
+                #     return "%.1f (%.1f)" % (data / 1000, factor)
+                return "%.1f" % (data / 1000,)
 
-            elif key == "TRIES":
-                tok = self.db.current_fen_field(row, "TRIES_OK")
-                return "%d/%d" % (data, tok)
+            # elif key == "TRIES":
+            #     tok = self.db.current_fen_field(row, "TRIES_OK")
+            #     return "%d/%d" % (data, tok)
+            # elif key == "TRIES":
+            #     tok = self.db.current_fen_field(row, "TRIES_OK")
+            #     return "%d/%d" % (data, tok)
             return str(data)
 
     def grid_cambiado_registro(self, grid, row, column):
@@ -343,6 +397,7 @@ class WEndingsGTB(LCDialog.LCDialog):
         self.db.close()
         self.t4.close()
         self.procesador.stop_engines()
+        self.deactivate_eboard(500)
         self.accept()
 
     def closeEvent(self, event):
@@ -402,14 +457,23 @@ class WEndingsGTB(LCDialog.LCDialog):
                     go_next = False
 
                 if not go_next:
-                    QTUtil2.message_accept(self, _("Done"), explanation=mensaje)
+                    QTUtil2.message_accept(self, _("Done"), explanation=mensaje, delayed=True)
             else:
-                QTUtil2.message_error(self, _("Failed attempt") + "\n\n" + self.game.label_termination())
+                QTUtil2.message_error(self, _("Failed attempt") + "\n\n" + self.game.label_termination(), delayed=True)
 
             self.bt_movs.show()
             self.pos_game = len(self.game) - 1
             return True, go_next
         return False, None
+
+    def get_move_komodo(self):
+        if self.komodo is None:
+            self.komodo = EngineManager.EngineManager(self.procesador, self.configuration.buscaRival("komodo"), False)
+            self.komodo.options(0, 7, False)
+            self.komodo.check_engine()
+            self.komodo.engine.put_line("setoption name Personality value Human")
+        self.komodo.engine.put_line("setoption name Armageddon value %s Must Win" % ("White" if self.game.last_position.is_white else "Black"))
+        return self.komodo.play_game(self.game)
 
     def sigueMaquina(self):
         ended, go_next = self.test_final()
@@ -420,7 +484,20 @@ class WEndingsGTB(LCDialog.LCDialog):
         lista = self.t4.best_moves_game(self.game)
         if len(lista) == 0:
             return
-        move = random.choice(lista)
+        if len(lista) > 1:
+            select = None
+            rm = self.get_move_komodo()
+            if rm:
+                a1h8 = rm.movimiento().lower()
+                for pos, mv in enumerate(lista):
+                    if mv.lower() == a1h8:
+                        select = pos
+                        break
+            if select is None:
+                select = random.randint(0, len(lista)-1)
+        else:
+            select = 0
+        move = lista[select]
         from_sq, to_sq, promotion = move[:2], move[2:4], move[4:]
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.game.add_move(move)
@@ -432,6 +509,7 @@ class WEndingsGTB(LCDialog.LCDialog):
             elif movim[0] == "c":
                 self.board.cambiaPieza(movim[1], movim[2])
         self.timer = time.time()
+        self.board.set_raw_last_position(self.game.last_position)
         self.sigueHumano()
 
     def player_has_moved(self, from_sq, to_sq, promotion=""):
@@ -498,7 +576,12 @@ class WEndingsGTB(LCDialog.LCDialog):
         if self.pos_game == len(self.game):
             return
         self.set_position()
+        if self.configuration.x_beep_replay:
+            Code.runSound.playBeep()
         QtCore.QTimer.singleShot(self.configuration.x_interval_replay, self.mover_tiempo)
+
+    def toolbar_rightmouse(self):
+        QTVarios.change_interval(self, self.configuration)
 
     def run_botones(self):
         key = self.sender().key
@@ -523,7 +606,7 @@ class WEndingsGTB(LCDialog.LCDialog):
             self.pos_game = len(self.game) - 1
         self.set_position()
 
-    def utilidades(self):
+    def utilities(self):
         menu = QTVarios.LCMenu(self)
 
         submenu = menu.submenu(_("Import"), Iconos.Import8())
@@ -539,12 +622,16 @@ class WEndingsGTB(LCDialog.LCDialog):
 
         submenu = menu.submenu(_("Remove"), Iconos.Delete())
         submenusubmenu1 = submenu.submenu(_("Positions"), Iconos.TrainPositions())
-        submenusubmenu1.opcion("remp_all", _("Remove all positions"), Iconos.PuntoRojo())
-        submenusubmenu1.opcion("remp_all_group", _("Remove all positions of current group"), Iconos.PuntoRojo())
+        submenusubmenu1.opcion("remp_all", _("Delete all manually added positions"), Iconos.PuntoRojo())
+        submenusubmenu1.opcion(
+            "remp_all_group", _("Delete all manually added positions in the current group"), Iconos.PuntoRojo()
+        )
         submenu.separador()
         submenusubmenu2 = submenu.submenu(_("Results"), Iconos.Reciclar())
         submenusubmenu2.opcion("remr_all", _("Remove results of all positions"), Iconos.PuntoNaranja())
-        submenusubmenu2.opcion("remr_all_group", _("Remove results of all positions of current group"), Iconos.PuntoNaranja())
+        submenusubmenu2.opcion(
+            "remr_all_group", _("Remove results of all positions of current group"), Iconos.PuntoNaranja()
+        )
         menu.separador()
         resp = menu.lanza()
         if resp is None:

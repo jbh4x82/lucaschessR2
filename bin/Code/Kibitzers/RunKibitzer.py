@@ -3,6 +3,7 @@ import time
 
 from PySide2 import QtWidgets
 
+import Code
 from Code import Util
 from Code.Base import Game
 from Code.Base.Constantes import (
@@ -32,7 +33,7 @@ from Code.Kibitzers import WKibStEval
 from Code.Openings import OpeningsStd
 from Code.QT import QTUtil
 from Code.SQL import UtilSQL
-
+from Code.MainWindow import InitApp
 
 class Orden:
     def __init__(self):
@@ -51,6 +52,7 @@ class CPU:
 
         self.ventana = None
         self.engine = None
+        self.orden = None
 
     def run(self):
         # Primero espera la orden de lucas
@@ -72,7 +74,11 @@ class CPU:
         orden.dv = dv
         return orden
 
+    def reprocesa(self):
+        self.procesa(self.orden)
+
     def procesa(self, orden):
+        self.orden = orden
         key = orden.key
         if key == KIBRUN_CONFIGURATION:
             user = orden.dv["USER"]
@@ -129,9 +135,7 @@ class CPU:
 
     def lanzaVentana(self):
         app = QtWidgets.QApplication([])
-
-        app.setStyle(QtWidgets.QStyleFactory.create(self.configuration.x_style))
-        QtWidgets.QApplication.setPalette(QtWidgets.QApplication.style().standardPalette())
+        InitApp.init_app_style(app, self.configuration)
 
         self.configuration.load_translation()
 
@@ -180,7 +184,8 @@ class CPU:
 
 
 def run(fdb):
-    sys.stderr = Util.Log("./bug.kibitzers")
+    if not Code.DEBUG:
+        sys.stderr = Util.Log("./bug.kibitzers")
 
     cpu = CPU(fdb)
     cpu.run()

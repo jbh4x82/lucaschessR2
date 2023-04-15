@@ -13,20 +13,20 @@ from Code.QT import QTVarios
 
 def datos(w_parent, configuration, procesador):
     # Primero determinamos la categoria
-    resp = dameCategoria(w_parent, configuration, procesador)
+    resp = dame_categoria(w_parent, configuration, procesador)
     if resp:
         rival, categorias, categoria = resp
     else:
         return None
 
-    w = wDatos(w_parent, rival, categorias, categoria, configuration)
+    w = WDatos(w_parent, rival, categorias, categoria, configuration)
     if w.exec_():
         return categorias, categoria, w.nivel, w.is_white, w.puntos
     else:
         return None
 
 
-def dameCategoria(w_parent, configuration, procesador):
+def dame_categoria(w_parent, configuration, procesador):
     dbm = CompetitionWithTutor.DBManagerCWT()
     rival_key = dbm.get_current_rival_key()
     li_grupos = dbm.grupos.liGrupos
@@ -39,7 +39,12 @@ def dameCategoria(w_parent, configuration, procesador):
 
     menu.opcion(None, "%s: %d %s" % (_("Total score"), dbm.puntuacion(), _("pts")), Iconos.NuevaPartida())
     menu.separador()
-    menu.opcion(None, "%s: %s [%d %s]" % (_("Opponent"), rival.name, categorias.puntuacion(), _("pts")), Iconos.Engine(), is_disabled=False)
+    menu.opcion(
+        None,
+        "%s: %s [%d %s]" % (_("Opponent"), rival.name, categorias.puntuacion(), _("pts")),
+        Iconos.Engine(),
+        is_disabled=False,
+    )
     menu.separador()
 
     # ---------- CATEGORIAS
@@ -72,45 +77,50 @@ def dameCategoria(w_parent, configuration, procesador):
 
     # ----------- RIVAL
     menu.separador()
-    menuRival = menu.submenu(_("Change opponent"))
+    menu_rival = menu.submenu(_("Change opponent"))
 
     puntuacion = categorias.puntuacion()
 
-    icoNo = Iconos.Motor_No()
-    icoSi = Iconos.Motor_Si()
-    icoActual = Iconos.Motor_Actual()
-    grpNo = Iconos.Grupo_No()
-    grpSi = Iconos.Grupo_Si()
+    ico_no = Iconos.Motor_No()
+    ico_si = Iconos.Motor_Si()
+    ico_actual = Iconos.Motor_Actual()
+    grp_no = Iconos.Grupo_No()
+    grp_si = Iconos.Grupo_Si()
 
     for grupo in li_grupos:
         name = _X(_("%1 group"), grupo.name)
         if grupo.minPuntos > 0:
             name += " (+%d %s)" % (grupo.minPuntos, _("pts"))
 
-        siDes = grupo.minPuntos > puntuacion
-        if siDes:
-            icoG = grpNo
-            icoM = icoNo
+        si_des = grupo.minPuntos > puntuacion
+        if si_des:
+            ico_g = grp_no
+            ico_m = ico_no
         else:
-            icoG = grpSi
-            icoM = icoSi
-        submenu = menuRival.submenu(name, icoG)
+            ico_g = grp_si
+            ico_m = ico_si
+        submenu = menu_rival.submenu(name, ico_g)
 
         for rv in grupo.li_rivales:
-            siActual = rv.key == rival.key
-            ico = icoActual if siActual else icoM
-            submenu.opcion("MT_" + rv.key, "%s: [%d %s]" % (rv.name, dbm.get_puntos_rival(rv.key), _("pts")), ico, siDes or siActual)
-        menuRival.separador()
+            si_actual = rv.key == rival.key
+            ico = ico_actual if si_actual else ico_m
+            submenu.opcion(
+                "MT_" + rv.key,
+                "%s: [%d %s]" % (rv.name, dbm.get_puntos_rival(rv.key), _("pts")),
+                ico,
+                si_des or si_actual,
+            )
+        menu_rival.separador()
 
     # ----------- RIVAL
     menu.separador()
-    menu.opcion("ayuda", _("Help"), Iconos.Ayuda())
+    menu.opcion("get_help", _("Help"), Iconos.Ayuda())
 
     cursor = QtGui.QCursor.pos()
     resp = menu.lanza()
     if resp is None:
         return None
-    elif resp == "ayuda":
+    elif resp == "get_help":
         titulo = _("Competition")
         ancho, alto = QTUtil.tamEscritorio()
         ancho = min(ancho, 700)
@@ -130,9 +140,9 @@ def dameCategoria(w_parent, configuration, procesador):
         return rival, categorias, categoria
 
 
-class wDatos(QtWidgets.QDialog):
+class WDatos(QtWidgets.QDialog):
     def __init__(self, w_parent, rival, categorias, categoria, configuration):
-        super(wDatos, self).__init__(w_parent)
+        super(WDatos, self).__init__(w_parent)
 
         self.setWindowTitle(_("New game"))
         self.setWindowIcon(Iconos.Datos())
@@ -144,16 +154,16 @@ class wDatos(QtWidgets.QDialog):
         flb = Controles.TipoLetra(puntos=10)
 
         self.max_level, self.maxNivelHecho, self.max_puntos = categorias.max_level_by_category(categoria)
-        # self.max_level = max_level = categoria.level_done+1
-        # self.maxNivelHecho = categoria.hecho
-        # self.max_puntos = categoria.max_puntos()
+        self.nivel = None
+        self.is_white = None
+        self.puntos = 0
 
         self.ed = Controles.SB(self, self.max_level, 1, self.max_level).tamMaximo(40)
         lb = Controles.LB(self, categoria.name() + " " + _("Level"))
 
         lb.ponFuente(f)
         self.lbPuntos = Controles.LB(self).align_right()
-        self.ed.valueChanged.connect(self.nivelCambiado)
+        self.ed.valueChanged.connect(self.level_changed)
 
         is_white = not categoria.done_with_white()
         self.rb_white = QtWidgets.QRadioButton(_("White"))
@@ -161,63 +171,80 @@ class wDatos(QtWidgets.QDialog):
         self.rb_black = QtWidgets.QRadioButton(_("Black"))
         self.rb_black.setChecked(not is_white)
 
-        self.rb_white.clicked.connect(self.ponMaxPuntos)
-        self.rb_black.clicked.connect(self.ponMaxPuntos)
+        self.rb_white.clicked.connect(self.set_max_score)
+        self.rb_black.clicked.connect(self.set_max_score)
 
         # Rival
-        lbRMotor = Controles.LB(self, "<b>%s</b> : %s" % (_("Engine"), rival.name)).ponFuente(flb).set_wrap().anchoFijo(400)
-        lbRAutor = Controles.LB(self, "<b>%s</b> : %s" % (_("Author"), rival.autor)).ponFuente(flb).set_wrap().anchoFijo(400)
-        lbRWeb = (
+        lb_r_motor = (
+            Controles.LB(self, "<b>%s</b> : %s" % (_("Engine"), rival.name)).ponFuente(flb).set_wrap().anchoFijo(400)
+        )
+        lb_r_autor = (
+            Controles.LB(self, "<b>%s</b> : %s" % (_("Author"), rival.autor)).ponFuente(flb).set_wrap().anchoFijo(400)
+        )
+        lb_r_web = (
             Controles.LB(self, '<b>%s</b> : <a href="%s">%s</a>' % (_("Web"), rival.url, rival.url))
             .set_wrap()
             .anchoFijo(400)
             .ponFuente(flb)
         )
 
-        ly = Colocacion.V().control(lbRMotor).control(lbRAutor).control(lbRWeb).margen(10)
-        gbR = Controles.GB(self, _("Opponent"), ly).ponFuente(f)
+        ly = Colocacion.V().control(lb_r_motor).control(lb_r_autor).control(lb_r_web).margen(10)
+        gb_r = Controles.GB(self, _("Opponent"), ly).ponFuente(f)
 
         # Tutor
         tutor = configuration.engine_tutor()
-        lbTMotor = Controles.LB(self, "<b>%s</b> : %s" % (_("Engine"), tutor.name)).ponFuente(flb).set_wrap().anchoFijo(400)
-        lbTAutor = Controles.LB(self, "<b>%s</b> : %s" % (_("Author"), tutor.autor)).ponFuente(flb).set_wrap().anchoFijo(400)
-        siURL = hasattr(tutor, "url")
-        if siURL:
-            lbTWeb = (
+        lb_t_motor = (
+            Controles.LB(self, "<b>%s</b> : %s" % (_("Engine"), tutor.name)).ponFuente(flb).set_wrap().anchoFijo(400)
+        )
+        lb_t_autor = (
+            Controles.LB(self, "<b>%s</b> : %s" % (_("Author"), tutor.autor)).ponFuente(flb).set_wrap().anchoFijo(400)
+        )
+        ly = Colocacion.V().control(lb_t_motor).control(lb_t_autor)
+
+        if hasattr(tutor, "url"):
+            lb_t_web = (
                 Controles.LB(self, '<b>%s</b> : <a href="%s">%s</a>' % ("Web", tutor.url, tutor.url))
                 .set_wrap()
                 .anchoFijo(400)
                 .ponFuente(flb)
             )
+            ly.control(lb_t_web)
 
-        ly = Colocacion.V().control(lbTMotor).control(lbTAutor)
-        if siURL:
-            ly.control(lbTWeb)
         ly.margen(10)
-        gbT = Controles.GB(self, _("Tutor"), ly).ponFuente(f)
+        gb_t = Controles.GB(self, _("Tutor"), ly).ponFuente(f)
 
         hbox = Colocacion.H().relleno().control(self.rb_white).espacio(10).control(self.rb_black).relleno()
-        gbColor = Controles.GB(self, _("Side you play with"), hbox).ponFuente(f)
+        gb_color = Controles.GB(self, _("Side you play with"), hbox).ponFuente(f)
 
-        lyNivel = Colocacion.H().control(lb).control(self.ed).espacio(10).control(self.lbPuntos).relleno()
+        ly_nivel = Colocacion.H().control(lb).control(self.ed).espacio(10).control(self.lbPuntos).relleno()
 
-        vlayout = Colocacion.V().otro(lyNivel).espacio(10).control(gbColor).espacio(10).control(gbR).espacio(10).control(gbT).margen(30)
+        vlayout = (
+            Colocacion.V()
+            .otro(ly_nivel)
+            .espacio(10)
+            .control(gb_color)
+            .espacio(10)
+            .control(gb_r)
+            .espacio(10)
+            .control(gb_t)
+            .margen(30)
+        )
 
         layout = Colocacion.V().control(tb).otro(vlayout).margen(3)
 
         self.setLayout(layout)
 
-        self.ponMaxPuntos()
+        self.set_max_score()
 
     def aceptar(self):
         self.nivel = self.ed.value()
         self.is_white = self.rb_white.isChecked()
         self.accept()
 
-    def nivelCambiado(self, nuevo):
-        self.ponMaxPuntos()
+    def level_changed(self, nuevo):
+        self.set_max_score()
 
-    def ponMaxPuntos(self):
+    def set_max_score(self):
         p = 0
         if self.ed.value() >= self.max_level:
             color = "B" if self.rb_white.isChecked() else "N"
@@ -272,4 +299,3 @@ class WNumEntrenamiento(QtWidgets.QDialog):
     def aceptar(self):
         self.number = self.ed.value()
         self.accept()
-

@@ -171,7 +171,7 @@ class WTV_SVGs(LCDialog.LCDialog):
 
         # Lista
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUMBER", _("N."), 60, centered=True)
+        o_columns.nueva("NUMBER", _("N."), 60, align_center=True)
         o_columns.nueva("NOMBRE", _("Name"), 256)
 
         self.grid = Grid.Grid(self, o_columns, xid="M", siSelecFilas=True)
@@ -304,7 +304,7 @@ class WTV_SVGs(LCDialog.LCDialog):
         w = WTV_SVG(self, None, xml=contenido, name=name)
         if w.exec_():
             regSVG = w.regSVG
-            regSVG.id = Util.str_id()
+            regSVG.id = Util.huella()
             regSVG.ordenVista = (self.liPSVGs[-1].ordenVista + 1) if self.liPSVGs else 1
             self.dbSVGs[regSVG.id] = regSVG.save_dic()
             self.liPSVGs.append(regSVG)
@@ -353,7 +353,7 @@ class WTV_SVGs(LCDialog.LCDialog):
                 n += 1
                 name = "%s-%d" % (regSVG.name, n)
             regSVG.name = name
-            regSVG.id = Util.str_id()
+            regSVG.id = Util.huella()
             regSVG.ordenVista = self.liPSVGs[-1].ordenVista + 1
             self.dbSVGs[regSVG.id] = regSVG
             self.liPSVGs.append(regSVG)

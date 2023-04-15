@@ -18,12 +18,12 @@ from Code.QT import QTUtil2
 
 
 class RunEngine:
-    def __init__(self, name, exe, liOpcionesUCI=None, num_multipv=0, priority=None, args=None, log=None):
+    def __init__(self, name, exe, li_options_uci=None, num_multipv=0, priority=None, args=None, log=None):
         self.log = None
         if log:
             self.log_open(log)
 
-        if Code.DEBUG_ENGINE:
+        if Code.DEBUG_ENGINES:
             self.put_line = self.put_line_debug
             self.xstdout_thread = self.xstdout_thread_debug
         else:
@@ -44,6 +44,8 @@ class RunEngine:
         self.minDispatch = 1.0  # seconds
         self.whoDispatch = name
         self.uci_ok = False
+
+        self.emulate_movetime = False
 
         self.uci_lines = []
 
@@ -66,6 +68,7 @@ class RunEngine:
         self.direct_dispatch = None
 
         self.mrm = None
+        self.stopped = False
 
         self.start()
 
@@ -77,8 +80,8 @@ class RunEngine:
         uci_analysismode = False
 
         setoptions = False
-        if liOpcionesUCI:
-            for opcion, valor in liOpcionesUCI:
+        if li_options_uci:
+            for opcion, valor in li_options_uci:
                 if type(valor) == bool:
                     valor = str(valor).lower()
                 self.set_option(opcion, valor)
@@ -107,6 +110,8 @@ class RunEngine:
 
     def put_line_debug(self, line: str):
         if self.working:
+            if line == "stop":
+                self.stopped = True
             Code.xpr(self.name, "put>>> %s\n" % line)
             self.stdin_lock.acquire()
             line = line.encode()
@@ -118,12 +123,17 @@ class RunEngine:
 
     def put_line_base(self, line: str):
         if self.working:
+            if line == "stop":
+                self.stopped = True
             self.stdin_lock.acquire()
             line = line.encode()
             if self.log:
                 self.log.write(">>> %s\n" % line)
             self.stdin.write(line + b"\n")
-            self.stdin.flush()
+            try:
+                self.stdin.flush()
+            except:
+                pass
             self.stdin_lock.release()
 
     def get_lines(self):
@@ -283,12 +293,16 @@ class RunEngine:
         return True
 
     def wait_mrm(self, seektxt, msStop):
+        self.stopped = False
         iniTiempo = time.time()
         stop = False
         while True:
             if self.hay_datos():
                 for line in self.get_lines():
-                    self.mrm.dispatch(line)
+                    if (
+                        not self.stopped
+                    ):  # problema con información que llega tras stop, que no muestra lineas completas de pv en stockfish
+                        self.mrm.dispatch(line)
                     if seektxt in line:
                         if not self.dispatch():
                             self.put_line("stop")
@@ -351,16 +365,22 @@ class RunEngine:
 
     def seek_bestmove(self, max_time, max_depth, is_savelines):
         env = "go"
+        ms_time = None
         if max_depth:
             env += " depth %d" % max_depth
         elif max_time:
-            env += " movetime %d" % max_time
+            if self.emulate_movetime:
+                env += " infinite"
+                ms_time = max_time
+            else:
+                env += " movetime %d" % max_time
 
-        ms_time = 10000
-        if max_time:
-            ms_time = max_time + 5000
-        elif max_depth:
-            ms_time = int(max_depth * ms_time / 3.0) * 100 * 10000000  # non stop
+        if ms_time is None:
+            ms_time = 10000
+            if max_time:
+                ms_time = max_time if max_depth else max_time + 5000
+            elif max_depth:
+                ms_time = 10000000000  # non stop
 
         self.reset()
         if is_savelines:
@@ -524,6 +544,8 @@ class RunEngine:
             self.whoDispatch = whoDispatch
 
     def set_multipv(self, num_multipv):
+        if num_multipv == 0:
+            num_multipv = 1
         self.work_ok("setoption name MultiPV value %s" % num_multipv)
 
     def orden_uci(self):
@@ -626,8 +648,8 @@ class RunEngine:
 
 
 class MaiaEngine(RunEngine):
-    def __init__(self, name, exe, liOpcionesUCI=None, num_multipv=0, priority=None, args=None, log=None, level=0):
-        RunEngine.__init__(self, name, exe, liOpcionesUCI, num_multipv, priority, args, log)
+    def __init__(self, name, exe, li_options_uci=None, num_multipv=0, priority=None, args=None, log=None, level=0):
+        RunEngine.__init__(self, name, exe, li_options_uci, num_multipv, priority, args, log)
         self.stopping = False
         self.level = level
 
@@ -644,6 +666,9 @@ class MaiaEngine(RunEngine):
         self.book_select.extend(["au"] * au)
 
         dic_nodes = {1100: 1, 1200: 2, 1300: 5, 1400: 12, 1500: 30, 1600: 60, 1700: 130, 1800: 300, 1900: 450}
+        if not Code.configuration.x_maia_nodes_exponential:
+            for elo in dic_nodes:
+                dic_nodes[elo] = 1
         self.nodes = dic_nodes.get(level, 1)
 
     def play_bestmove_time(self, play_return, game, time_white, time_black, inc_time_move):
@@ -675,4 +700,3 @@ class MaiaEngine(RunEngine):
         orden = "go nodes %d" % self.nodes
         self.put_line(orden)
         self.wait_mrm("bestmove", msmax_time)
-

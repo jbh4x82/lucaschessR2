@@ -100,7 +100,7 @@ class ManagerEntPos(Manager.Manager):
         self.state = ST_PLAYING
         self.plays_instead_of_me_option = True
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.rm_rival = None
@@ -147,7 +147,7 @@ class ManagerEntPos(Manager.Manager):
 
         player = self.configuration.nom_player()
         other = _("the engine")
-        w, b = (player, other) if self.human_side else (other, player)
+        w, b = (player, other) if self.is_human_side_white else (other, player)
         self.game.set_tag("White", w)
         self.game.set_tag("Black", b)
 
@@ -165,7 +165,7 @@ class ManagerEntPos(Manager.Manager):
         self.current_helps = 0
 
         if self.is_playing_gameobj() and self.advanced:
-            self.board.showCoordenadas(False)
+            self.board.show_coordinates(False)
             self.wsolve = self.main_window.base.wsolve
             self.wsolve.set_game(self.game_obj, self.advanced_return)
 
@@ -174,7 +174,7 @@ class ManagerEntPos(Manager.Manager):
 
     def advanced_return(self, solved):
         self.wsolve.hide()
-        self.board.showCoordenadas(True)
+        self.board.show_coordinates(True)
         if solved:
             for move in self.game_obj.li_moves:
                 self.game.add_move(move)
@@ -218,7 +218,7 @@ class ManagerEntPos(Manager.Manager):
             else:
                 liMasOpciones = [("tactics", _("Create tactics training"), Iconos.Tacticas()), (None, None, None)]
 
-            resp = self.utilidades(liMasOpciones)
+            resp = self.utilities(liMasOpciones)
             if resp == "tactics":
                 self.create_tactics()
 
@@ -256,6 +256,7 @@ class ManagerEntPos(Manager.Manager):
             self.xrival.stop()
         if self.is_analyzing:
             self.xtutor.stop()
+        self.main_window.activaInformacionPGN(False)
         self.start(
             self.pos_training,
             self.num_trainings,
@@ -291,7 +292,7 @@ class ManagerEntPos(Manager.Manager):
             self.ent_siguiente(TB_NEXT)
         elif nkey in (Qt.Key_Minus, Qt.Key_PageUp):
             self.ent_siguiente(TB_PREVIOUS)
-        elif nkey == ord("T"):
+        elif nkey == Qt.Key_T:
             li = self.line_fns.line.split("|")
             li[2] = self.game.pgnBaseRAW()
             self.saveSelectedPosition("|".join(li))
@@ -304,7 +305,7 @@ class ManagerEntPos(Manager.Manager):
         ]
 
     def end_game(self):
-        self.board.showCoordenadas(True)
+        self.board.show_coordinates(True)
         self.procesador.start()
 
     def final_x(self):
@@ -315,7 +316,9 @@ class ManagerEntPos(Manager.Manager):
         if self.is_rival_thinking:
             return
         if len(self.game):
-            self.game.anulaUltimoMovimiento(self.human_side)
+            self.analiza_stop()
+            self.rm_rival = None
+            self.game.anulaUltimoMovimiento(self.is_human_side_white)
             self.goto_end()
             self.is_analyzed_by_tutor = False
             self.state = ST_PLAYING
@@ -434,6 +437,8 @@ class ManagerEntPos(Manager.Manager):
     def analiza_stop(self):
         if self.is_analyzing:
             self.xtutor.stop()
+            self.is_analyzing = False
+
 
     def sigue(self):
         self.state = ST_PLAYING
@@ -488,9 +493,9 @@ class ManagerEntPos(Manager.Manager):
                 ok = True
                 self.pos_obj += 1
             elif is_var:
-                li_movs = [(move_obj.from_sq, move_obj.to_sq, True)]
-                for a1h8_m in move.variations.list_movimientos():
-                    li_movs.append((a1h8_m[:2], a1h8[2:4], False))
+                mens = _("You have selected a correct move, but this line uses another one.")
+                QTUtil2.mensajeTemporal(self.main_window, mens, 2, physical_pos="tb", background="#C3D6E8")
+                li_movs = [(move.from_sq, move.to_sq, False), (move_obj.from_sq, move_obj.to_sq, True)]
                 self.board.ponFlechasTmp(li_movs)
             if not ok:
                 self.beepError()
@@ -505,6 +510,7 @@ class ManagerEntPos(Manager.Manager):
                     self.analizaTutor(True)
                 if self.mrmTutor.mejorMovQue(a1h8):
                     if not move.is_mate:
+                        self.beepError()
                         tutor = Tutor.Tutor(self, move, from_sq, to_sq, False)
 
                         if tutor.elegir(True):
@@ -541,7 +547,7 @@ class ManagerEntPos(Manager.Manager):
         self.refresh()
 
     def pon_resultado(self):
-        mensaje, beep, player_win = self.game.label_resultado_player(self.human_side)
+        mensaje, beep, player_win = self.game.label_resultado_player(self.is_human_side_white)
 
         QTUtil.refresh_gui()
         QTUtil2.message(self.main_window, mensaje)
@@ -630,7 +636,7 @@ class ManagerEntPos(Manager.Manager):
 
         nom_dir = Util.relative_path(os.path.realpath(nom_dir))
 
-        Util.dic2ini_base(nom_ini, dicIni)
+        Util.dic2ini(nom_ini, dicIni)
 
         name = os.path.basename(nom_dir)
 

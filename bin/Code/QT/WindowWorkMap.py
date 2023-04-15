@@ -1,10 +1,9 @@
-from PySide2 import QtWidgets, QtSvg, QtGui
+from PySide2 import QtWidgets, QtSvg
 
 from Code import WorkMap
 from Code.Analysis import Analysis
 from Code.Base import Game, Move, Position
 from Code.Board import Board
-from Code.Translations import TrListas
 from Code.QT import Colocacion
 from Code.QT import Columnas
 from Code.QT import Controles
@@ -12,9 +11,10 @@ from Code.QT import Delegados
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
-from Code.QT import LCDialog
+from Code.Translations import TrListas
 
 
 class WMap(LCDialog.LCDialog):
@@ -24,29 +24,34 @@ class WMap(LCDialog.LCDialog):
         titulo = dic[mapa]
         icono = getattr(Iconos, mapa)()
 
-        LCDialog.LCDialog.__init__(self, procesador.main_window, titulo, icono, mapa)
+        LCDialog.LCDialog.__init__(self, procesador.main_window, titulo, icono, mapa + "01")
 
         self.procesador = procesador
 
         self.playCurrent = None
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("TYPE", "", 24, edicion=Delegados.PmIconosBMT(), centered=True)
-        o_columns.nueva("SELECT", _("Select one to play"), 150)
+        o_columns.nueva("TYPE", "", 24, edicion=Delegados.PmIconosBMT(), align_center=True)
+        o_columns.nueva("SELECT", _("Select a country"), 140)
 
         self.grid = Grid.Grid(self, o_columns, siSelecFilas=True, xid="W")
 
         self.register_grid(self.grid)
 
-        li_acciones = ((_("Close"), Iconos.MainMenu(), self.terminar), None, (_("Play"), Iconos.Empezar(), self.play), None)
+        li_acciones = (
+            (_("Close"), Iconos.MainMenu(), self.terminar),
+            None,
+            (_("Play"), Iconos.Empezar(), self.play),
+            None,
+        )
         tb_work = QTVarios.LCTB(self, li_acciones, icon_size=24)
 
         self.lbInfo = Controles.LB(self)
 
         self.wsvg = wsvg = QtSvg.QSvgWidget()
-        p = wsvg.palette()
-        p.setColor(wsvg.backgroundRole(), QtGui.QColor("#F5F5F5"))
-        wsvg.setPalette(p)
+        # p = wsvg.palette()
+        # p.setColor(wsvg.backgroundRole(), Code.dic_qcolors["MAPS_BACKGROUND"])
+        # wsvg.setPalette(p)
 
         ly = Colocacion.V().control(tb_work).control(self.lbInfo).control(self.grid)
         w = QtWidgets.QWidget()
@@ -58,14 +63,14 @@ class WMap(LCDialog.LCDialog):
         self.register_splitter(splitter, "splitter")
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("ACTIVE", _("Active"), 80, centered=True)
-        o_columns.nueva("TYPE", _("Type"), 110, centered=True)
-        o_columns.nueva("DCREATION", _("Creation date"), 110, centered=True)
-        o_columns.nueva("DONE", _("Done"), 110, centered=True)
-        o_columns.nueva("DEND", _("Ending date"), 110, centered=True)
-        o_columns.nueva("RESULT", _("Result"), 110, centered=True)
+        o_columns.nueva("ACTIVE", _("Active"), 80, align_center=True)
+        o_columns.nueva("TYPE", _("Type"), 110, align_center=True)
+        o_columns.nueva("DCREATION", _("Creation date"), 140, align_center=True)
+        o_columns.nueva("DONE", _("Done"), 110, align_center=True)
+        o_columns.nueva("DEND", _("End date"), 110, align_center=True)
+        o_columns.nueva("RESULT", _("Result"), 110, align_center=True)
 
-        self.gridData = Grid.Grid(self, o_columns, siSelecFilas=True, xid="H")
+        self.gridData = Grid.Grid(self, o_columns, siSelecFilas=True, xid="H", siCabeceraMovible=False)
         self.register_grid(self.gridData)
 
         li_acciones = (
@@ -86,8 +91,8 @@ class WMap(LCDialog.LCDialog):
 
         self.tab = Controles.Tab()
         self.tab.set_position("W")
-        self.tab.nuevaTab(splitter, _("Map"))
-        self.tab.nuevaTab(w, _("Data"))
+        self.tab.new_tab(splitter, _("Map"))
+        self.tab.new_tab(w, _("Data"))
 
         ly = Colocacion.H().control(self.tab).margen(0)
         self.setLayout(ly)
@@ -122,7 +127,9 @@ class WMap(LCDialog.LCDialog):
                 liR = [(str(x), x) for x in range(1, 100)]
                 config = FormLayout.Combobox(_("Model"), liR)
                 li_gen.append((config, "1"))
-                resultado = FormLayout.fedit(li_gen, title=_("STS: Strategic Test Suite"), parent=self, anchoMinimo=160, icon=Iconos.Maps())
+                resultado = FormLayout.fedit(
+                    li_gen, title=_("STS: Strategic Test Suite"), parent=self, anchoMinimo=160, icon=Iconos.Maps()
+                )
                 if resultado is None:
                     return
                 accion, liResp = resultado
@@ -177,9 +184,9 @@ class WMap(LCDialog.LCDialog):
         tipo = self.workmap.db.getTipo()
         txt = '<b><span style="color:#C156F8">%s: %s</span>' % (_("Active"), current) if current else ""
         txt += (
-            '<br><span style="color:brown">%s: %s</span></b>' % (_("Type"), tipo)
-            + '<br><span style="color:teal">%s: %d/%d</span></b>' % (_("Done"), hechos, total)
-            + '<br><span style="color:blue">%s: %s</span></b>' % (_("Result"), info)
+                '<br><span style="color:brown">%s: %s</span></b>' % (_("Type"), tipo)
+                + '<br><span style="color:teal">%s: %d/%d</span></b>' % (_("Done"), hechos, total)
+                + '<br><span style="color:blue">%s: %s</span></b>' % (_("Result"), info if info else "")
         )
         self.lbInfo.set_text(txt)
 
@@ -264,7 +271,7 @@ class WUnSTSMap(LCDialog.LCDialog):
 
     def pon_toolbar(self, *liCurrent):
         for txt, ico, rut in self.li_acciones:
-            self.tb.setAccionVisible(rut, rut in liCurrent)
+            self.tb.set_action_visible(rut, rut in liCurrent)
 
     def ponJuego(self):
         self.pon_toolbar(self.cancelar)
@@ -367,7 +374,9 @@ class WUnSTSMap(LCDialog.LCDialog):
 
     def analizar(self):
         xtutor = self.procesador.XTutor()
-        Analysis.show_analysis(self.procesador, xtutor, self.move, self.position.is_white, 9999999, 1, main_window=self, must_save=False)
+        Analysis.show_analysis(
+            self.procesador, xtutor, self.move, self.position.is_white, 1, main_window=self, must_save=False
+        )
 
 
 def train_map(procesador, mapa):

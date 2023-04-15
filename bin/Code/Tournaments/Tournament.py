@@ -4,13 +4,7 @@ import random
 import Code
 from Code import Util
 from Code.Base import Game, Position
-from Code.Base.Constantes import (
-    RESULT_DRAW,
-    RESULT_WIN_BLACK,
-    RESULT_WIN_WHITE,
-    WHITE,
-    BLACK,
-)
+from Code.Base.Constantes import RESULT_DRAW, RESULT_WIN_BLACK, RESULT_WIN_WHITE, WHITE, BLACK
 from Code.Engines import Engines
 from Code.SQL import UtilSQL
 
@@ -134,12 +128,12 @@ class EngineTournament(Engines.Engine):
 
 class GameTournament(object):
     def __init__(self):
-        self.id_game = Util.new_id()
+        self.id_game = Util.huella()
         self.hwhite = None  # la huella de un engine
         self.hblack = None  # la huella de un engine
         self.game_save = None  # game salvada en formato pk con save
         self.minutos = None
-        self.segundos_jugada = None
+        self.seconds_per_move = None
         self.result = None
         self.date = None
         self.termination = None
@@ -150,7 +144,10 @@ class GameTournament(object):
     def etiTiempo(self):
         if self.minutos:
             wdec = lambda x: ("%f" % x).rstrip("0").rstrip(".")
-            return "%s+%s" % (wdec(self.minutos * 60), wdec(self.segundos_jugada))
+            if self.seconds_per_move:
+                return "%s+%s" % (wdec(self.minutos * 60), wdec(self.seconds_per_move))
+            else:
+                return wdec(self.minutos * 60)
         else:
             return ""
 
@@ -226,10 +223,10 @@ class Tournament:
     def slow_pieces(self, valor=None):
         return self.config("slow_pieces", valor, False)
 
-    def drawMinPly(self, valor=None):
+    def draw_min_ply(self, valor=None):
         return self.config("drawminply", valor, 50)
 
-    def drawRange(self, valor=None):
+    def draw_range(self, valor=None):
         return self.config("drawrange", valor, 10)
 
     def adjudicator_active(self, valor=None):
@@ -384,7 +381,7 @@ class Tournament:
         gm.hwhite = hwhite
         gm.hblack = hblack
         gm.minutos = minutos
-        gm.segundos_jugada = segundosJugada
+        gm.seconds_per_move = segundosJugada
         self.db_games_queued.append(gm)
 
     def __enter__(self):

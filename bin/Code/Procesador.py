@@ -7,26 +7,17 @@ import webbrowser
 import Code
 from Code import Adjournments
 from Code import CPU
-from Code import ManagerAnotar
 from Code import ManagerEntPos
 from Code import ManagerGame
 from Code import ManagerMateMap
-from Code import ManagerPlayGame
-from Code import ManagerSingularM
 from Code import ManagerSolo
 from Code import Update
 from Code import Util
 from Code.About import About
 from Code.Base import Position
 from Code.Base.Constantes import (
-    GT_ALONE,
     ST_PLAYING,
-    GT_AGAINST_PGN,
-    GT_AGAINST_GM,
-    GT_BOOK,
-    GT_ELO,
-    GT_MICELO,
-    TB_Adjournments,
+    TB_ADJOURNMENTS,
     TB_COMPETE,
     TB_INFORMATION,
     TB_OPTIONS,
@@ -34,6 +25,12 @@ from Code.Base.Constantes import (
     TB_QUIT,
     TB_TOOLS,
     TB_TRAIN,
+    TB_REPLAY,
+    GT_AGAINST_GM,
+    GT_BOOK,
+    GT_ELO,
+    GT_MICELO,
+    GT_AGAINST_ENGINE_LEAGUE,
     GT_AGAINST_CHILD_ENGINE,
     GT_AGAINST_ENGINE,
     GT_ALBUM,
@@ -43,7 +40,7 @@ from Code.Base.Constantes import (
     GT_LICHESS,
     OUT_REINIT,
 )
-from Code.Board import WindowColors, Eboard
+from Code.Board import WBoardColors, Eboard
 from Code.CompetitionWithTutor import WCompetitionWithTutor, ManagerCompeticion
 from Code.Competitions import ManagerElo, ManagerFideFics, ManagerMicElo
 from Code.Config import Configuration, WindowConfig, WindowUsuarios
@@ -53,6 +50,9 @@ from Code.Engines import EngineManager, WEngines, WConfEngines, WindowSTS
 from Code.Expeditions import WindowEverest, ManagerEverest
 from Code.GM import ManagerGM
 from Code.Kibitzers import KibitzersManager
+from Code.Leagues import ManagerLeague
+from Code.Leagues import WLeagues
+from Code.LearnGame import WindowPlayGame, ManagerPlayGame, WindowLearnGame
 from Code.MainWindow import MainWindow, Presentacion
 from Code.Menus import MenuTrainings, BasicMenus
 from Code.Openings import ManagerOPLPositions, ManagerOPLEngines, ManagerOPLSequential, ManagerOPLStatic
@@ -67,17 +67,16 @@ from Code.QT import QTUtil
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
 from Code.QT import SelectFiles
-from Code.QT import WindowAnotar
-from Code.QT import WindowLearnGame
+from Code.QT import WColors
 from Code.QT import WindowManualSave
-from Code.QT import WindowPlayGame
-from Code.QT import WindowSingularM
 from Code.QT import WindowWorkMap
 from Code.Routes import Routes, WindowRoutes, ManagerRoutes
+from Code.SingularMoves import WindowSingularM, ManagerSingularM
 from Code.Sound import WindowSonido
 from Code.Tournaments import WTournaments
 from Code.TrainBMT import WindowBMT
 from Code.Washing import ManagerWashing, WindowWashing
+from Code.WritingDown import WritingDown, ManagerWritingDown
 
 
 class Procesador:
@@ -95,7 +94,7 @@ class Procesador:
 
         self.web = "https://lucaschess.pythonanywhere.com"
         self.blog = "https://lucaschess.blogspot.com"
-        self.github = "https://github.com/lukasmonk/lucaschessR"
+        self.github = "https://github.com/lukasmonk/lucaschessR2"
         self.wiki = "https://chessionate.com/lucaswiki"
 
         self.main_window = None
@@ -123,14 +122,13 @@ class Procesador:
         if Code.configuration.x_digital_board:
             Code.eboard = Eboard.Eboard()
 
-
         if len(sys.argv) == 1:  # si no no funcionan los kibitzers en linux
             self.configuration.clean_tmp_folder()
 
         # Tras crear configuración miramos si hay Adjournments
         self.test_opcion_Adjournments()
 
-        Code.todasPiezas = Piezas.TodasPiezas()
+        Code.all_pieces = Piezas.AllPieces()
 
         self.manager = None
 
@@ -149,13 +147,13 @@ class Procesador:
 
     def test_opcion_Adjournments(self):
         must_adjourn = len(Adjournments.Adjournments()) > 0
-        if TB_Adjournments in self.li_opciones_inicio:
+        if TB_ADJOURNMENTS in self.li_opciones_inicio:
             if not must_adjourn:
-                pos = self.li_opciones_inicio.index(TB_Adjournments)
+                pos = self.li_opciones_inicio.index(TB_ADJOURNMENTS)
                 del self.li_opciones_inicio[pos]
         else:
             if must_adjourn:
-                self.li_opciones_inicio.insert(1, TB_Adjournments)
+                self.li_opciones_inicio.insert(1, TB_ADJOURNMENTS)
 
     def set_version(self, version):
         self.version = version
@@ -168,6 +166,10 @@ class Procesador:
                 self.read_pgn(comando)
                 return
 
+        self.entrenamientos = MenuTrainings.MenuTrainings(self)
+        if self.configuration.x_translation_mode:
+            self.entrenamientos.verify()
+
         self.main_window = MainWindow.MainWindow(self)
         self.main_window.set_manager_active(self)  # antes que muestra
         self.main_window.muestra()
@@ -178,25 +180,14 @@ class Procesador:
 
         self.cpu = CPU.CPU(self.main_window)
 
-        self.entrenamientos = MenuTrainings.MenuTrainings(self)
-
         if self.configuration.x_check_for_update:
             Update.test_update(self)
 
         if len(sys.argv) > 1:
             comando = sys.argv[1]
             comandoL = comando.lower()
-            if comandoL.endswith(".pgn"):
-                aplazamiento = {}
-                aplazamiento["TIPOJUEGO"] = GT_AGAINST_PGN
-                aplazamiento["ISWHITE"] = True  # Compatibilidad
-                self.juegaAplazada(aplazamiento)
-                return
-            elif comandoL.endswith(".lcsb"):
-                aplazamiento = {}
-                aplazamiento["TIPOJUEGO"] = GT_ALONE
-                aplazamiento["ISWHITE"] = True  # Compatibilidad
-                self.juegaAplazada(aplazamiento)
+            if comandoL.endswith(".lcsb"):
+                self.jugarSoloExtern(comando)
                 return
             elif comandoL.endswith(".lcdb"):
                 self.externDatabase(comando)
@@ -227,12 +218,13 @@ class Procesador:
         self.test_opcion_Adjournments()
         self.main_window.pon_toolbar(self.li_opciones_inicio, atajos=True)
         self.main_window.activaJuego(False, False)
+        self.main_window.thinking(False)
         self.board.exePulsadoNum = None
         self.board.set_position(self.posicionInicial)
         self.board.borraMovibles()
         self.board.remove_arrows()
         self.main_window.ajustaTam()
-        self.main_window.ponTitulo()
+        self.main_window.set_title()
         self.stop_engines()
 
         self.main_window.current_height = self.main_window.height()
@@ -246,7 +238,7 @@ class Procesador:
         if self.configuration.siPrimeraVez:
             self.cambiaconfigurationPrimeraVez()
             self.configuration.siPrimeraVez = False
-            self.main_window.ponTitulo()
+            self.main_window.set_title()
         if self.siPrimeraVez:
             self.siPrimeraVez = False
             self.presentacion()
@@ -268,39 +260,6 @@ class Procesador:
             self.board.setToolTip("")
             self.board.activaMenuVisual(True)
             Presentacion.ManagerChallenge101(self)
-
-    def juegaAplazada(self, aplazamiento):
-        self.cpu = CPU.CPU(self.main_window)
-
-        type_play = aplazamiento["TIPOJUEGO"]
-        is_white = aplazamiento["ISWHITE"]
-
-        if type_play == GT_COMPETITION_WITH_TUTOR:
-            categoria = self.configuration.rival.categorias.segun_clave(aplazamiento["CATEGORIA"])
-            nivel = aplazamiento["LEVEL"]
-            puntos = aplazamiento["PUNTOS"]
-            self.manager = ManagerCompeticion.ManagerCompeticion(self)
-            self.manager.start(categoria, nivel, is_white, puntos, aplazamiento)
-        elif type_play == GT_AGAINST_ENGINE:
-            if aplazamiento["MODO"] == "Basic":
-                self.entrenaMaquina(aplazamiento)
-            else:
-                self.playPersonAplazada(aplazamiento)
-        elif type_play == GT_ELO:
-            self.manager = ManagerElo.ManagerElo(self)
-            self.manager.start(aplazamiento)
-        elif type_play == GT_MICELO:
-            self.manager = ManagerMicElo.ManagerMicElo(self)
-            self.manager.start(None, 0, 0, aplazamiento)
-        elif type_play == GT_ALBUM:
-            self.manager = ManagerAlbum.ManagerAlbum(self)
-            self.manager.start(None, None, aplazamiento)
-        elif type_play == GT_AGAINST_PGN:
-            self.read_pgn(sys.argv[1])
-        elif type_play in (GT_FICS, GT_FIDE, GT_LICHESS):
-            self.manager = ManagerFideFics.ManagerFideFics(self)
-            self.manager.selecciona(type_play)
-            self.manager.start(aplazamiento["IDGAME"], aplazamiento=aplazamiento)
 
     def XTutor(self):
         if self.xtutor is None or not self.xtutor.activo:
@@ -331,7 +290,7 @@ class Procesador:
 
     def creaXAnalyzer(self):
         xanalyzer = EngineManager.EngineManager(self, self.configuration.engine_analyzer())
-        xanalyzer.function = _("analyzer")
+        xanalyzer.function = _("Analyzer")
         xanalyzer.options(self.configuration.x_analyzer_mstime, self.configuration.x_analyzer_depth, True)
         if self.configuration.x_analyzer_multipv == 0:
             xanalyzer.maximize_multipv()
@@ -341,14 +300,23 @@ class Procesador:
         self.xanalyzer = xanalyzer
         Code.xanalyzer = xanalyzer
 
+    def analyzer_clone(self, mstime, depth, multipv):
+        xclone = EngineManager.EngineManager(self, self.configuration.engine_analyzer())
+        xclone.options(mstime, depth, True)
+        if multipv == 0:
+            xclone.maximize_multipv()
+        else:
+            xclone.set_multipv(multipv)
+        return xclone
+
     def cambiaXAnalyzer(self):
         if self.xanalyzer:
             self.xanalyzer.terminar()
         self.creaXAnalyzer()
 
-    def creaManagerMotor(self, confMotor, vtime, nivel, siMultiPV=False, priority=None):
+    def creaManagerMotor(self, confMotor, vtime, depth, siMultiPV=False, priority=None):
         xmanager = EngineManager.EngineManager(self, confMotor)
-        xmanager.options(vtime, nivel, siMultiPV)
+        xmanager.options(vtime, depth, siMultiPV)
         xmanager.set_priority(priority)
         return xmanager
 
@@ -386,15 +354,14 @@ class Procesador:
         if is_white is None:
             return
 
-        dic = {}
-        dic["ISWHITE"] = is_white
-        dic["RIVAL"] = rival
-
-        dic["SITIEMPO"] = siTiempo and minutos > 0
-        dic["MINUTOS"] = minutos
-        dic["SEGUNDOS"] = seconds
-
-        dic["FASTMOVES"] = fastmoves
+        dic = {
+            "ISWHITE": is_white,
+            "RIVAL": rival,
+            "SITIEMPO": siTiempo and minutos > 0,
+            "MINUTOS": minutos,
+            "SEGUNDOS": seconds,
+            "FASTMOVES": fastmoves,
+        }
 
         self.manager = ManagerPerson.ManagerPerson(self)
         self.manager.start(dic)
@@ -407,7 +374,7 @@ class Procesador:
             self.albumVehicles(name)
 
     def albumAnimales(self, animal):
-        albumes = Albums.AlbumesAnimales()
+        albumes = Albums.AlbumAnimales()
         album = albumes.get_album(animal)
         album.event = _("Album of animals")
         album.test_finished()
@@ -422,7 +389,7 @@ class Procesador:
         self.manager.start(album, cromo)
 
     def albumVehicles(self, character):
-        albumes = Albums.AlbumesVehicles()
+        albumes = Albums.AlbumVehicles()
         album = albumes.get_album(character)
         album.event = _("Album of vehicles")
         album.test_finished()
@@ -550,8 +517,11 @@ class Procesador:
         elif key == TB_INFORMATION:
             self.informacion()
 
-        elif key == TB_Adjournments:
+        elif key == TB_ADJOURNMENTS:
             self.Adjournments()
+
+        elif key == TB_REPLAY:
+            self.manager.replay_direct()
 
     def Adjournments(self):
         menu = QTVarios.LCMenu(self.main_window)
@@ -588,6 +558,8 @@ class Procesador:
                 elif tp in (GT_FIDE, GT_FICS, GT_LICHESS):
                     self.manager = ManagerFideFics.ManagerFideFics(self)
                     self.manager.selecciona(tp)
+                elif tp == GT_AGAINST_ENGINE_LEAGUE:
+                    self.manager = ManagerLeague.ManagerLeague(self)
                 else:
                     return
                 self.manager.run_adjourn(dic)
@@ -652,7 +624,7 @@ class Procesador:
             menu1.opcion(self.folder_change, _("Change the folder"), Iconos.FolderChange())
             if not Configuration.is_default_folder():
                 menu1.separador()
-                menu1.opcion(self.folder_default, _("Set the default"), Iconos.Defecto())
+                menu1.opcion(self.folder_default, _("Reset to default"), Iconos.Defecto())
 
         resp = menu.lanza()
         if resp:
@@ -673,11 +645,12 @@ class Procesador:
             self.reiniciar()
 
     def editColoresBoard(self):
-        w = WindowColors.WColores(self.board)
+        w = WBoardColors.WBoardColors(self.board)
         w.exec_()
 
     def cambiaColores(self):
-        if WindowColors.cambiaColores(self.main_window, self.configuration):
+        w = WColors.WColors(self)
+        if w.exec_():
             self.reiniciar()
 
     def sonidos(self):
@@ -686,7 +659,9 @@ class Procesador:
 
     def folder_change(self):
         carpeta = SelectFiles.get_existing_directory(
-            self.main_window, self.configuration.carpeta, _("Change the folder where all data is saved") + ". " + _("Be careful please")
+            self.main_window,
+            self.configuration.carpeta,
+            _("Change the folder where all data is saved") + ". " + _("Be careful please"),
         )
         if carpeta and os.path.isdir(carpeta):
             self.configuration.changeActiveFolder(carpeta)
@@ -708,10 +683,14 @@ class Procesador:
     def motoresExternos(self):
         w = WConfEngines.WConfEngines(self.main_window)
         w.exec_()
+        self.cambiaXTutor()
+        self.cambiaXAnalyzer()
 
     def engines(self):
         w = WConfEngines.WConfEngines(self.main_window)
         w.exec_()
+        self.cambiaXAnalyzer()
+        self.cambiaXTutor()
 
     def aperturaspers(self):
         w = WindowOpenings.OpeningsPersonales(self)
@@ -767,6 +746,11 @@ class Procesador:
             self.sts()
         elif resp == "kibitzers":
             self.kibitzers_manager.edit()
+        elif resp == "leagues":
+            WLeagues.leagues(self.main_window)
+        elif resp == "conf_engines":
+            self.engines()
+
         elif resp == "manual_save":
             self.manual_save()
 
@@ -811,7 +795,7 @@ class Procesador:
 
     def openings_training_static(self, pathFichero):
         dbop = OpeningLines.Opening(pathFichero)
-        num_linea = WindowOpeningLines.selectLine(self, dbop)
+        num_linea = WindowOpeningLines.select_static_line(self, dbop)
         dbop.close()
         if num_linea is not None:
             self.manager = ManagerOPLStatic.ManagerOpeningLinesStatic(self)
@@ -828,11 +812,11 @@ class Procesador:
         WindowBMT.windowBMT(self)
 
     def anotar(self, game, siblancasabajo):
-        self.manager = ManagerAnotar.ManagerAnotar(self)
+        self.manager = ManagerWritingDown.ManagerWritingDown(self)
         self.manager.start(game, siblancasabajo)
 
     def show_anotar(self):
-        w = WindowAnotar.WAnotar(self)
+        w = WritingDown.WritingDown(self)
         if w.exec_():
             pc, siblancasabajo = w.resultado
             if pc is None:
@@ -977,6 +961,13 @@ class Procesador:
                 db.close()
                 dlTmp.close()
 
+            db = DBgames.DBgames(file_db)
+            if db.all_reccount() == 1:
+                game = db.read_game_recno(0)
+                db.close()
+                return game
+            db.close()
+
             w = WindowDatabase.WBDatabase(self.main_window, self, file_db, True, True)
             if w.exec_():
                 return w.game
@@ -1016,7 +1007,7 @@ class Procesador:
     def polyglot_install(self):
         list_books = Books.ListBooks()
         list_books.restore_pickle(self.configuration.file_books)
-        list_books.check()
+        list_books.verify()
         menu = QTVarios.LCMenu(self.main_window)
         for book in list_books.lista:
             if not Util.same_path(book.path, Code.tbook):
@@ -1027,7 +1018,7 @@ class Procesador:
         if resp:
             orden, book = resp
             if orden == "x":
-                if QTUtil2.pregunta(self.main_window, _("Do you want to delete %s?") % book.name):
+                if QTUtil2.pregunta(self.main_window, _("Are you sure you want to remove %s?") % book.name):
                     list_books.borra(book)
                     list_books.save_pickle(self.configuration.file_books)
             elif orden == "n":
@@ -1055,6 +1046,10 @@ class Procesador:
     def jugarSolo(self):
         self.manager = ManagerSolo.ManagerSolo(self)
         self.manager.start()
+
+    def jugarSoloExtern(self, file_lcsb):
+        self.manager = ManagerSolo.ManagerSolo(self)
+        self.manager.leeFichero(file_lcsb)
 
     def entrenaPos(self, position, nPosiciones, titentreno, liEntrenamientos, entreno, with_tutor, jump, advanced):
         self.manager = ManagerEntPos.ManagerEntPos(self)
@@ -1148,10 +1143,10 @@ class Procesador:
 
     def adPie(self):
         return (
-            "<hr><br><b>%s</b>" % _("Author")
-            + ': <a href="mailto:lukasmonk@gmail.com">Lucas Monge</a> -'
-            + ' <a href="%s">%s</a></a>' % (self.web, self.web)
-            + '(%s <a href="http://www.gnu.org/copyleft/gpl.html"> GPL</a>).<br>' % _("License")
+                "<hr><br><b>%s</b>" % _("Author")
+                + ': <a href="mailto:lukasmonk@gmail.com">Lucas Monge</a> -'
+                + ' <a href="%s">%s</a></a>' % (self.web, self.web)
+                + '(%s <a href="http://www.gnu.org/copyleft/gpl.html"> GPL</a>).<br>' % _("License")
         )
 
     def acercade(self):
@@ -1167,7 +1162,9 @@ class Procesador:
             self.reiniciar()
 
     def unMomento(self, mensaje=None):
-        return QTUtil2.mensEspera.start(self.main_window, mensaje if mensaje else _("One moment please..."), physical_pos="ad")
+        return QTUtil2.mensEspera.start(
+            self.main_window, mensaje if mensaje else _("One moment please..."), physical_pos="ad"
+        )
 
     def num_rows(self):
         return 0
@@ -1188,22 +1185,28 @@ class Procesador:
         return True
 
     def clonVariations(self, window, xtutor=None, is_competitive=False):
-        return ProcesadorVariations(window, xtutor, is_competitive=is_competitive, kibitzers_manager=self.kibitzers_manager)
+        return ProcesadorVariations(
+            window, xtutor, is_competitive=is_competitive, kibitzers_manager=self.kibitzers_manager
+        )
 
-    def manager_game(self, window, game, is_complete, only_consult, father_board, with_previous_next=None, save_routine=None):
-        clon_procesador = ProcesadorVariations(window, self.xtutor, is_competitive=False, kibitzers_manager=self.kibitzers_manager)
+    def manager_game(
+            self, window, game, is_complete, only_consult, father_board, with_previous_next=None, save_routine=None
+    ):
+        clon_procesador = ProcesadorVariations(
+            window, self.xtutor, is_competitive=False, kibitzers_manager=self.kibitzers_manager
+        )
         clon_procesador.manager = ManagerGame.ManagerGame(clon_procesador)
         clon_procesador.manager.start(game, is_complete, only_consult, with_previous_next, save_routine)
 
         board = clon_procesador.main_window.board
         if father_board:
             board.dbvisual_set_file(father_board.dbVisual.file)
-            board.dbvisual_set_show_allways(father_board.dbVisual.show_allways)
+            board.dbvisual_set_show_always(father_board.dbVisual.show_always)
 
-        resp = clon_procesador.main_window.show_variations(clon_procesador.manager.window_title())
+        resp = clon_procesador.main_window.show_variations(game.window_title())
         if father_board:
             father_board.dbvisual_set_file(father_board.dbVisual.file)
-            father_board.dbvisual_set_show_allways(father_board.dbVisual.show_allways())
+            father_board.dbvisual_set_show_always(father_board.dbVisual.show_always())
 
         if resp:
             return clon_procesador.manager.game
@@ -1218,10 +1221,20 @@ class Procesador:
     def gaviota_endings(self):
         WEndingsGTB.train_gtb(self)
 
+    def play_league_human(self, league, xmatch, division):
+        self.manager = ManagerLeague.ManagerLeague(self)
+        adj = Adjournments.Adjournments()
+        key_dic = adj.key_match_league(xmatch)
+        if key_dic:
+            key, dic_adjourn = key_dic
+            adj.remove(key)
+            self.manager.run_adjourn(dic_adjourn)
+        else:
+            self.manager.start(league, xmatch, division)
+
 
 class ProcesadorVariations(Procesador):
     def __init__(self, window, xtutor, is_competitive=False, kibitzers_manager=None):
-
         self.kibitzers_manager = kibitzers_manager
         self.is_competitive = is_competitive
 

@@ -8,14 +8,7 @@ import Code
 from Code import Manager
 from Code import Util
 from Code.Base import Position
-from Code.Base.Constantes import (
-    ST_ENDGAME,
-    ST_PLAYING,
-    TB_CLOSE,
-    TB_CONFIG,
-    TB_PLAY,
-    TB_RESIGN,
-)
+from Code.Base.Constantes import ST_ENDGAME, ST_PLAYING, TB_CLOSE, TB_CONFIG, TB_PLAY, TB_RESIGN
 from Code.CompetitionWithTutor import WCompetitionWithTutor
 from Code.QT import Iconos
 from Code.QT import QTUtil2
@@ -80,7 +73,7 @@ class ControlFindAllMoves:
                 return "-"
             tiempo = vtime / 100.0
             tm = tiempo / (row + 1)
-            return "%0.02f / %0.02f" % (tiempo, tm)
+            return '%0.02f" / %0.02f"' % (tiempo, tm)
         else:
             return "-" if vtime == 0 else str(errores)
 
@@ -102,13 +95,14 @@ class ControlFindAllMoves:
         else:
             siRecord = True
 
-        mensaje = "<b>%s</b> : %d<br><b>%s</b> : %d<br><b>%s</b> : %.02f/%.02f" % (
+        mensaje = "<b>%s</b> : %d<br><b>%s</b> : %d<br><b>%s:</b> %.02f<br><b>%s: </b>%.02f<br>" % (
             _("Level"),
             number + 1,
             _("Errors"),
             errores,
             _("Time"),
             vtime / 100.0,
+            _("Average"),
             tm / 100.0,
         )
         if siRecord:
@@ -140,7 +134,7 @@ class ManagerFindAllMoves(Manager.Manager):
 
         self.pgn = ControlFindAllMoves(self, siJugador)
 
-        self.main_window.columnas60(True)
+        self.main_window.columnas60(True, cBlack="%s / %s" % (_("Time"), _("Avg || Abrev. of Average")))
 
         self.finJuego()
 
@@ -188,7 +182,8 @@ class ManagerFindAllMoves(Manager.Manager):
         if resp:
             if resp == "remove":
                 if QTUtil2.pregunta(
-                    self.main_window, _("Are you sure you want to delete all results of all levels and start again from scratch?")
+                    self.main_window,
+                    _("Are you sure you want to delete all results of all levels and start again from scratch?"),
                 ):
                     self.pgn.remove_all()
                     self.pgnRefresh(True)
@@ -236,7 +231,7 @@ class ManagerFindAllMoves(Manager.Manager):
         self.number = number
         cp = Position.Position()
         cp.read_fen(fen)
-        self.human_side = self.is_white = cp.is_white
+        self.is_human_side_white = self.is_white = cp.is_white
         if self.is_white:
             siP = self.siJugador
         else:
@@ -346,7 +341,7 @@ class ManagerFindAllMoves(Manager.Manager):
             mens = '<b><span style="color:green">%s</span></b>' % _("Congratulations, goal achieved")
             QTUtil2.message(self.main_window, mens)
         else:
-            QTUtil2.mensajeTemporal(self.main_window, mensaje, 3 if siRecord else 2, background="#FFCD43" if siRecord else None)
+            QTUtil2.mensajeTemporal(self.main_window, mensaje, 10, background="#FFCD43" if siRecord else None)
 
     def analize_position(self, row, key):
         if self.state == ST_PLAYING:
@@ -355,7 +350,10 @@ class ManagerFindAllMoves(Manager.Manager):
         if row <= self.pgn.primeroSinHacer():
             pos_with_error = self.pgn.pos_with_error()
             if pos_with_error < row:
-                QTUtil2.message(self.main_window, _("To be able to play at this level, the previous levels must be solved without errors."))
+                QTUtil2.message(
+                    self.main_window,
+                    _("To be able to play at this level, the previous levels must be solved without errors."),
+                )
                 return
             self.jugar(row)
 

@@ -98,7 +98,7 @@ class ManagerTurnOnLights(Manager.Manager):
             self.game.set_position(cp)
 
             is_white = cp.is_white
-            self.human_side = is_white
+            self.is_human_side_white = is_white
             self.is_engine_side_white = not is_white
             self.set_position(self.game.last_position)
             self.put_pieces_bottom(is_white)
@@ -126,7 +126,7 @@ class ManagerTurnOnLights(Manager.Manager):
             self.end_game()
 
         elif key == TB_HELP:
-            self.ayuda()
+            self.get_help()
 
         elif key == TB_REINIT:
             self.reiniciar()
@@ -135,7 +135,7 @@ class ManagerTurnOnLights(Manager.Manager):
             self.configurar(siSonidos=True, siCambioTutor=False)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key == TB_NEXT:
             self.next_line_run()
@@ -151,6 +151,7 @@ class ManagerTurnOnLights(Manager.Manager):
             self.block.new_reinit(self.total_time_used, self.errores, self.hints)
             self.total_time_used = 0.0
             TurnOnLights.write_tol(self.tol)
+        self.main_window.activaInformacionPGN(False)
         self.start(self.num_theme, self.num_block, self.tol)
 
     def play_next_move(self):
@@ -177,7 +178,7 @@ class ManagerTurnOnLights(Manager.Manager):
         if siRival:
             pv = self.line.get_move(self.num_move)
             from_sq, to_sq, promotion = pv[:2], pv[2:4], pv[4:]
-            self.play_rival(from_sq, to_sq, promotion)
+            self.rival_has_moved(from_sq, to_sq, promotion)
             self.play_next_move()
 
         else:
@@ -312,13 +313,13 @@ class ManagerTurnOnLights(Manager.Manager):
         self.pgnRefresh(self.game.last_position.is_white)
         self.refresh()
 
-    def play_rival(self, from_sq, to_sq, promotion):
+    def rival_has_moved(self, from_sq, to_sq, promotion):
         ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
         self.add_move(move, False)
         self.move_the_pieces(move.liMovs, True)
         self.error = ""
 
-    def ayuda(self):
+    def get_help(self):
         self.hints += 1
         mov = self.line.get_move(self.num_move).lower()
         self.board.markPosition(mov[:2])

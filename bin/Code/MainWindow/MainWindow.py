@@ -7,6 +7,7 @@ from Code.QT import Iconos
 from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.Translations import WorkTranslate
+from Code.Board import Eboard
 
 
 class MainWindow(LCDialog.LCDialog):
@@ -74,9 +75,7 @@ class MainWindow(LCDialog.LCDialog):
             F12.activated.connect(self.pressed_shortcut_F12)
             self.trayIcon = None
 
-        self.resizing = None
-
-        self.cursor_pensado = False
+        self.cursor_pensando = False
 
         self.work_translate = None
 
@@ -167,7 +166,7 @@ class MainWindow(LCDialog.LCDialog):
             self.ajustaTam()
             self.show()
 
-        self.ponTitulo()
+        self.set_title()
 
     def save_width_piece(self):
         ct = self.board.config_board
@@ -251,7 +250,7 @@ class MainWindow(LCDialog.LCDialog):
                 self.refresh()
         self.refresh()
 
-    def ponTitulo(self):
+    def set_title(self):
         self.setWindowTitle(Code.lucas_chess)
 
     def set_label1(self, label):
@@ -280,6 +279,9 @@ class MainWindow(LCDialog.LCDialog):
 
     def get_toolbar(self):
         return self.base.get_toolbar()
+
+    def toolbar_enable(self, ok):
+        self.base.tb.setEnabled(ok)
 
     def ponAyudas(self, puntos, with_takeback=True):
         self.base.ponAyudas(puntos, with_takeback)
@@ -312,9 +314,11 @@ class MainWindow(LCDialog.LCDialog):
 
     def hide_pgn(self):
         self.base.pgn.hide()
+        # self.base.pgn.setDisabled(True)
 
     def show_pgn(self):
         self.base.pgn.show()
+        # self.base.pgn.setDisabled(False)
 
     def refresh(self):
         self.update()
@@ -359,8 +363,8 @@ class MainWindow(LCDialog.LCDialog):
         if not self.board.siF11:
             self.ajustaTamH()
 
-    def ponDatosReloj(self, bl, rb, ng, rn):
-        self.base.ponDatosReloj(bl, rb, ng, rn)
+    def set_data_clock(self, bl, rb, ng, rn):
+        self.base.set_data_clock(bl, rb, ng, rn)
 
     def set_clock_white(self, tm, tm2):
         self.base.set_clock_white(tm, tm2)
@@ -386,10 +390,8 @@ class MainWindow(LCDialog.LCDialog):
             del self.timer
             self.timer = None
 
-    def columnas60(self, siPoner, cNivel=None):
-        if cNivel is None:
-            cNivel = _("Level")
-        self.base.columnas60(siPoner, cNivel)
+    def columnas60(self, siPoner, cNivel=None, cWhite=None, cBlack=None):
+        self.base.columnas60(siPoner, cNivel, cWhite, cBlack)
 
     def pressed_shortcut_Ctrl1(self):
         if self.manager and hasattr(self.manager, "control1"):
@@ -416,22 +418,22 @@ class MainWindow(LCDialog.LCDialog):
 
     def thinking(self, si_pensando):
         if si_pensando:
-            if not self.cursor_pensado:
+            if not self.cursor_pensando:
                 QtWidgets.QApplication.setOverrideCursor(self.cursorthinking_rival)
         else:
-            if self.cursor_pensado:
+            if self.cursor_pensando:
                 QtWidgets.QApplication.restoreOverrideCursor()
-        self.cursor_pensado = si_pensando
+        self.cursor_pensando = si_pensando
         self.refresh()
 
     def pensando_tutor(self, si_pensando):
         if si_pensando:
-            if not self.cursor_pensado:
+            if not self.cursor_pensando:
                 QtWidgets.QApplication.setOverrideCursor(self.cursorthinking)
         else:
-            if self.cursor_pensado:
+            if self.cursor_pensando:
                 QtWidgets.QApplication.restoreOverrideCursor()
-        self.cursor_pensado = si_pensando
+        self.cursor_pensando = si_pensando
         self.refresh()
 
     def save_video(self, dic_extended=None):
@@ -492,6 +494,8 @@ class MainWindow(LCDialog.LCDialog):
             def deactive():
                 Code.eboard.deactivate()
                 self.set_title_toolbar_eboard()
+                del Code.eboard
+                Code.eboard = Eboard.Eboard()
 
             if ms > 0:
                 QtCore.QTimer.singleShot(ms, deactive)

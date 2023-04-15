@@ -40,15 +40,15 @@ class ManagerVariations(Manager.Manager):
 
         self.state = ST_PLAYING
 
-        self.main_window.pon_toolbar((TB_ACCEPT, TB_CANCEL, TB_TAKEBACK, TB_REINIT, TB_CONFIG, TB_UTILITIES))
+        self.set_toolbar((TB_ACCEPT, TB_CANCEL, TB_TAKEBACK, TB_REINIT, TB_CONFIG, TB_UTILITIES))
 
-        self.human_side = is_white_bottom
+        self.is_human_side_white = is_white_bottom
         self.main_window.activaJuego(True, False, siAyudas=False)
         self.remove_hints(True, False)
         self.main_window.set_label1(None)
         self.main_window.set_label2(None)
         self.show_side_indicator(True)
-        self.put_pieces_bottom(self.human_side)
+        self.put_pieces_bottom(self.is_human_side_white)
         self.set_dispatcher(self.player_has_moved)
         self.pgnRefresh(True)
         self.ponCapInfoPorDefecto()
@@ -66,7 +66,7 @@ class ManagerVariations(Manager.Manager):
         self.thinking(False)
 
         is_white = self.game.last_position.is_white
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.human_is_playing = True
 
         if with_engine_active and not is_competitive:
@@ -98,7 +98,7 @@ class ManagerVariations(Manager.Manager):
         elif key == TB_UTILITIES:
             liMasOpciones = [("books", _("Consult a book"), Iconos.Libros())]
 
-            resp = self.utilidades(liMasOpciones)
+            resp = self.utilities(liMasOpciones)
             if resp == "books":
                 liMovs = self.librosConsulta(True)
                 if liMovs:
@@ -137,7 +137,7 @@ class ManagerVariations(Manager.Manager):
         self.put_view()
 
         is_white = self.game.last_position.is_white
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.human_is_playing = True
 
         if self.game.is_finished():
@@ -158,7 +158,7 @@ class ManagerVariations(Manager.Manager):
         if self.play_against_engine:
             self.play_against_engine = False
             self.disable_all()
-            self.juegaRival()
+            self.play_rival()
             self.play_against_engine = True  # Como juega por mi pasa por aqui, para que no se meta en un bucle infinito
 
         self.play_next_move()
@@ -177,6 +177,7 @@ class ManagerVariations(Manager.Manager):
         self.refresh()
 
     def reiniciar(self):
+        self.main_window.activaInformacionPGN(False)
         self.start(self.game, self.is_white_bottom, self.with_engine_active, self.is_competitive)
 
     def configurar(self):
@@ -198,9 +199,9 @@ class ManagerVariations(Manager.Manager):
                 self.xrival = None
                 self.play_against_engine = False
             else:
-                self.cambioRival()
+                self.change_rival()
 
-    def juegaRival(self):
+    def play_rival(self):
         if not self.is_finished():
             self.thinking(True)
             rm = self.xrival.play_game(self.game, nAjustado=self.xrival.nAjustarFuerza)
@@ -215,11 +216,11 @@ class ManagerVariations(Manager.Manager):
     def activeEngine(self):
         dicBase = self.configuration.read_variables("ENG_VARIANTES")
         if dicBase:
-            self.ponRival(dicBase)
+            self.set_rival(dicBase)
         else:
-            self.cambioRival()
+            self.change_rival()
 
-    def cambioRival(self):
+    def change_rival(self):
 
         if self.dicRival:
             dicBase = self.dicRival
@@ -228,25 +229,25 @@ class ManagerVariations(Manager.Manager):
 
         import Code.PlayAgainstEngine.WPlayAgainstEngine as WindowEntMaq
 
-        dic = self.dicRival = WindowEntMaq.cambioRival(
-            self.main_window, self.configuration, dicBase, siManagerSolo=True
+        dic = self.dicRival = WindowEntMaq.change_rival(
+            self.main_window, self.configuration, dicBase, is_create_own_game=True
         )
 
         if dic:
-            self.ponRival(dic)
+            self.set_rival(dic)
 
-    def ponRival(self, dic):
+    def set_rival(self, dic):
         dr = dic["RIVAL"]
         rival = dr["CM"]
         if not Util.exist_file(rival.path_exe):
-            return self.cambioRival()
+            return self.change_rival()
         r_t = dr.get("TIME", 0) * 100  # Se guarda en decimas -> milesimas
         r_p = dr.get("DEPTH", 0)
         if r_t <= 0:
             r_t = None
         if r_p <= 0:
             r_p = None
-        if r_t is None and r_p is None and not dic["SITIEMPO"]:
+        if r_t is None and r_p is None and not dic.get("SITIEMPO", False):
             r_t = 1000
 
         nAjustarFuerza = dic["ADJUST"]

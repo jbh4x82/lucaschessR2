@@ -14,10 +14,11 @@ from Code.QT import Controles
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
+from Code.QT import QTUtil
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
 from Code.QT import SelectFiles
-from Code.QT import LCDialog
 
 
 class WNewExpedition(LCDialog.LCDialog):
@@ -32,7 +33,7 @@ class WNewExpedition(LCDialog.LCDialog):
         self.selected = None
 
         # Torneo
-        li = [("%s (%d)" % (_F(tourney["TOURNEY"]), len(tourney["GAMES"])), tourney) for tourney in self.litourneys]
+        li = [("%s (%d)" % (_FO(tourney["TOURNEY"]), len(tourney["GAMES"])), tourney) for tourney in self.litourneys]
         li.sort(key=lambda x: x[0])
         self.cbtourney, lbtourney = QTUtil2.comboBoxLB(self, li, li[0], _("Expedition"))
         btmas = Controles.PB(self, "", self.mas).ponIcono(Iconos.Mas22())
@@ -59,7 +60,7 @@ class WNewExpedition(LCDialog.LCDialog):
         gbtries = Controles.GB(self, _("Tries"), layout)
 
         # color
-        liColors = ((_("Default"), "D"), (_("White"), "W"), (_("Black"), "B"))
+        liColors = ((_("By default"), "D"), (_("White"), "W"), (_("Black"), "B"))
         self.cbcolor = Controles.CB(self, liColors, "D")
         layout = Colocacion.H().relleno(1).control(self.cbcolor).relleno(1)
         gbcolor = Controles.GB(self, _("Color"), layout)
@@ -89,13 +90,13 @@ class WNewExpedition(LCDialog.LCDialog):
         tolerance_min = self.sbtolerance_min.valor()
         self.sbtolerance_max.setMinimum(tolerance_min)
         if self.sbtolerance_max.valor() < tolerance_min:
-            self.sbtolerance_max.ponValor(tolerance_min)
+            self.sbtolerance_max.set_value(tolerance_min)
 
     def tries_changed(self):
         tries_min = self.sbtries_min.valor()
         self.sbtries_max.setMinimum(tries_min)
         if self.sbtries_max.valor() < tries_min:
-            self.sbtries_max.ponValor(tries_min)
+            self.sbtries_max.set_value(tries_min)
 
     def mas(self):
         path_pgn = SelectFiles.select_pgn(self)
@@ -197,6 +198,9 @@ class WExpedition(LCDialog.LCDialog):
 
         self.selected = False
 
+        self.color_negativo = QTUtil.qtColorRGB(255, 0, 0)
+        self.color_positivo = QTUtil.qtColor("#2b7d15")
+
         wsvg = QtSvg.QSvgWidget()
         wsvg.load(QtCore.QByteArray(svg))
         wsvg.setFixedSize(762, int(762.0 * 520.0 / 1172.0))
@@ -210,7 +214,7 @@ class WExpedition(LCDialog.LCDialog):
         )
         tb = Controles.TBrutina(self, li_acciones).vertical()
         if self.current is None:
-            tb.setAccionVisible(self.climb, False)
+            tb.set_action_visible(self.climb, False)
 
         lyRot = Colocacion.H()
         for elem in label:
@@ -222,14 +226,14 @@ class WExpedition(LCDialog.LCDialog):
             lyRot.control(lb_rotulo)
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("ROUTE", _("Route"), 240, centered=True)
-        o_columns.nueva("GAMES", _("Games"), 80, centered=True)
-        o_columns.nueva("DONE", _("Done"), 80, centered=True)
-        o_columns.nueva("TIME", _("Time"), 80, centered=True)
-        o_columns.nueva("MTIME", _("Average time"), 80, centered=True)
-        o_columns.nueva("MPOINTS", _("Average centipawns lost"), 80, centered=True)
-        o_columns.nueva("TRIES", _("Max tries"), 80, centered=True)
-        o_columns.nueva("TOLERANCE", _("Tolerance"), 80, centered=True)
+        o_columns.nueva("ROUTE", _("Route"), 240, align_center=True)
+        o_columns.nueva("GAMES", _("Games"), 80, align_center=True)
+        o_columns.nueva("DONE", _("Done"), 80, align_center=True)
+        o_columns.nueva("TIME", _("Time"), 80, align_center=True)
+        o_columns.nueva("MTIME", _("Average time"), 80, align_center=True)
+        o_columns.nueva("MPOINTS", _("Average cps"), 80, align_center=True)
+        o_columns.nueva("TRIES", _("Max tries"), 80, align_center=True)
+        o_columns.nueva("TOLERANCE", _("Tolerance"), 80, align_center=True)
         grid = Grid.Grid(self, o_columns, siSelecFilas=True, siSeleccionMultiple=False)
         grid.setMinimumWidth(grid.anchoColumnas() + 20)
         grid.coloresAlternados()
@@ -249,7 +253,27 @@ class WExpedition(LCDialog.LCDialog):
         return 12
 
     def grid_dato(self, grid, row, o_column):
-        return self.li_routes[row][o_column.key]
+        key = o_column.key
+        val = self.li_routes[row][key]
+        if key == "MPOINTS":
+            if val:
+                val = int(val)
+                if val:
+                    sym = "↓" if val > 0 else "↑"
+                    val = "%s  %d  %s" % (sym, abs(val), sym)
+                else:
+                    val = "0" if int(self.li_routes[row]["DONE"]) else ""
+        elif key == "TRIES":
+            val = str(int(val) + 1)
+        return val
+
+    def grid_color_texto(self, grid, row, o_column):
+        if o_column.key == "MPOINTS":
+            mpoints = self.li_routes[row]["MPOINTS"]
+            if mpoints:
+                v = int(mpoints)
+                if v:
+                    return self.color_positivo if v < 0 else self.color_negativo
 
     def grid_bold(self, grid, row, o_column):
         return self.current is not None and row == self.current
@@ -309,13 +333,13 @@ class WEverest(LCDialog.LCDialog):
         self.selected = None
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NAME", _("Expedition"), 120, centered=True)
-        o_columns.nueva("DATE_INIT", _("Start date"), 120, centered=True)
-        o_columns.nueva("DATE_END", _("Final date"), 100, centered=True)
-        o_columns.nueva("NUM_GAMES", _("Games"), 80, centered=True)
-        o_columns.nueva("TIMES", _("Time"), 120, centered=True)
-        o_columns.nueva("TOLERANCE", _("Tolerance"), 90, centered=True)
-        o_columns.nueva("TRIES", _("Tries"), 90, centered=True)
+        o_columns.nueva("NAME", _("Expedition"), 120, align_center=True)
+        o_columns.nueva("DATE_INIT", _("Start date"), 120, align_center=True)
+        o_columns.nueva("DATE_END", _("End date"), 100, align_center=True)
+        o_columns.nueva("NUM_GAMES", _("Games"), 80, align_center=True)
+        o_columns.nueva("TIMES", _("Time"), 120, align_center=True)
+        o_columns.nueva("TOLERANCE", _("Tolerance"), 90, align_center=True)
+        o_columns.nueva("TRIES", _("Tries"), 90, align_center=True)
         self.grid = Grid.Grid(self, o_columns, siSelecFilas=True, siSeleccionMultiple=True)
         self.grid.setMinimumWidth(self.grid.anchoColumnas() + 20)
 
@@ -327,6 +351,8 @@ class WEverest(LCDialog.LCDialog):
             (_("New"), Iconos.Nuevo(), self.nuevo),
             None,
             (_("Remove"), Iconos.Borrar(), self.borrar),
+            None,
+            (_("Configuration"), Iconos.Configurar(), self.config),
             None,
         )
         self.tb = QTVarios.LCTB(self, li_acciones)
@@ -410,6 +436,29 @@ class WEverest(LCDialog.LCDialog):
             reg = w.selected
             self.db.new(reg)
             self.grid.refresh()
+
+    def config(self):
+        var_config = "EXPEDITIONS"
+
+        dic = self.configuration.read_variables(var_config)
+
+        form = FormLayout.FormLayout(self, _("Configuration"), Iconos.Opciones(), anchoMinimo=440)
+
+        form.separador()
+
+        li_options = [(_("Always"), None), (_("When moves are different"), True), (_("Never"), False)]
+        form.combobox(_("Show rating"), li_options, dic.get("SHOW_RATING", None))
+        form.separador()
+
+        form.checkbox(_("Show all evaluations"), dic.get("SHOW_ALL", False))
+
+        resultado = form.run()
+        if resultado:
+            accion, resp = resultado
+
+            dic["SHOW_RATING"], dic["SHOW_ALL"] = resp
+            self.configuration.write_variables(var_config, dic)
+
 
 
 def everest(procesador):

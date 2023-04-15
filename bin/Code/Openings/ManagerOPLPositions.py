@@ -1,5 +1,6 @@
 import time
 
+import Code
 from Code import Manager
 from Code import Util
 from Code.Base import Game, Position
@@ -11,15 +12,16 @@ from Code.Base.Constantes import (
     TB_HELP,
     TB_NEXT,
     TB_UTILITIES,
+    TB_COMMENTS,
     GT_OPENING_LINES,
 )
-from Code.Openings import OpeningLines
+from Code.Openings import OpeningLines, ManagerOPL
 from Code.QT import Iconos
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
 
 
-class ManagerOpeningLinesPositions(Manager.Manager):
+class ManagerOpeningLinesPositions(ManagerOPL.ManagerOpeningLines):
     def start(self, pathFichero):
         self.pathFichero = pathFichero
         dbop = OpeningLines.Opening(pathFichero)
@@ -41,7 +43,7 @@ class ManagerOpeningLinesPositions(Manager.Manager):
             for tr in game_info["TRIES"]:
                 self.tm += tr["TIME"]
 
-        self.liMensBasic = ["%s: %d/%d" % (_("Movement"), self.pos_active+1, len(self.li_trainPositions))]
+        self.liMensBasic = ["%s: %d/%d" % (_("Movement"), self.pos_active + 1, len(self.li_trainPositions))]
 
         self.siAyuda = False
         self.with_automatic_jump = self.training.get("AUTOJUMP_TRAINPOSITIONS", True)
@@ -56,7 +58,9 @@ class ManagerOpeningLinesPositions(Manager.Manager):
         self.is_human_side_white = self.training["COLOR"] == "WHITE"
         self.is_engine_side_white = not self.is_human_side_white
 
-        self.main_window.pon_toolbar((TB_CLOSE, TB_HELP, TB_CONFIG))
+        self.dic_comments = self.dbop.dic_fen_comments()
+
+        self.tb_with_comments([TB_CLOSE, TB_HELP, TB_CONFIG])
         self.main_window.activaJuego(True, False, siAyudas=False)
         self.set_dispatcher(self.player_has_moved)
         self.set_position(cp)
@@ -71,16 +75,14 @@ class ManagerOpeningLinesPositions(Manager.Manager):
 
         self.check_boards_setposition()
 
-        self.remove_info()
-
         self.errores = 0
         self.ini_time = time.time()
         self.muestraInformacion()
         self.play_next_move()
 
-    def ayuda(self):
+    def get_help(self):
         self.siAyuda = True
-        self.main_window.pon_toolbar((TB_CLOSE, TB_CONFIG))
+        self.tb_with_comments([TB_CLOSE, TB_CONFIG])
 
         self.muestraAyuda()
         self.muestraInformacion()
@@ -122,8 +124,11 @@ class ManagerOpeningLinesPositions(Manager.Manager):
             self.pos_active += 1
             self.trposition["NOERROR"] += 1
             if self.pos_active >= len(self.li_trainPositions):
-                QTUtil2.message(self.main_window, "%s\n\n%s" % (_("Congratulations, goal achieved"),
-                                                                _("Next time you will start from the first position")))
+                QTUtil2.message(
+                    self.main_window,
+                    "%s\n\n%s"
+                    % (_("Congratulations, goal achieved"), _("Next time you will start from the first position")),
+                )
                 self.pos_active = 0
                 is_finished = True
             self.training["POS_TRAINPOSITIONS"] = self.pos_active
@@ -144,7 +149,7 @@ class ManagerOpeningLinesPositions(Manager.Manager):
                 li_nuevo.insert(salto, self.trposition)
             self.training["LITRAINPOSITIONS"] = li_nuevo
 
-        self.main_window.pon_toolbar((TB_CLOSE, TB_NEXT, TB_CONFIG))
+        self.tb_with_comments([TB_CLOSE, TB_NEXT, TB_CONFIG])
 
         self.dbop.setTraining(self.training)
         self.state = ST_ENDGAME
@@ -177,13 +182,16 @@ class ManagerOpeningLinesPositions(Manager.Manager):
                 self.training["AUTOJUMP_TRAINPOSITIONS"] = self.with_automatic_jump
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key == TB_NEXT:
             self.reinicio(self.dbop)
 
         elif key == TB_HELP:
-            self.ayuda()
+            self.get_help()
+
+        elif key == TB_COMMENTS:
+            self.change_comments()
 
         else:
             Manager.Manager.rutinaAccionDef(self, key)
@@ -228,25 +236,21 @@ class ManagerOpeningLinesPositions(Manager.Manager):
         if not (pvSel in lipvObj):
             self.errores += 1
             mens = "%s: %d" % (_("Error"), self.errores)
-            QTUtil2.mensajeTemporal(self.main_window, mens, 2, physical_pos="ad", background="#FF9B00")
+            background = Code.dic_colors["WLINES_POSITIONS"]
+            QTUtil2.mensajeTemporal(self.main_window, mens, 1.0, physical_pos="ad", background=background)
             self.muestraInformacion()
             self.beepError()
             self.sigueHumano()
             return False
 
-        self.move_the_pieces(move.liMovs)
-
-        self.add_move(move, True)
+        if "LIPV" in self.trposition:
+            self.game = Game.Game()
+            self.game.leerLIPV(self.trposition["LIPV"])
+            self.game.assign_opening()
+            self.add_coments_all_game()
+        else:
+            self.move_the_pieces(move.liMovs)
+            self.add_move(move, True)
+        self.goto_end()
         self.posicionTerminada()
         return True
-
-    def add_move(self, move, siNuestra):
-        self.game.add_move(move)
-        self.check_boards_setposition()
-
-        self.put_arrow_sc(move.from_sq, move.to_sq)
-        self.beepExtendido(siNuestra)
-
-        self.pgnRefresh(self.game.last_position.is_white)
-        self.refresh()
-

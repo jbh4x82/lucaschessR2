@@ -1,13 +1,10 @@
+import os
 from PySide2 import QtCore
 
 import Code
-from Code.Base.Constantes import (
-    MENU_PLAY_ANY_ENGINE,
-    MENU_PLAY_BOTH,
-    MENU_PLAY_YOUNG_PLAYERS,
-)
+from Code.Base.Constantes import MENU_PLAY_ANY_ENGINE, MENU_PLAY_BOTH, MENU_PLAY_YOUNG_PLAYERS
 from Code.QT import FormLayout
-from Code.QT import Iconos
+from Code.QT import Iconos, IconosBase
 from Code.QT import QTUtil2
 
 
@@ -20,6 +17,17 @@ def options(parent, configuration):
     form.edit(_("Player's name"), configuration.x_player)
     form.separador()
     form.combobox(_("Window style"), configuration.estilos(), configuration.x_style)
+
+    li_modes = []
+    for entry in os.scandir(Code.path_resource("Styles")):
+        if entry.name.endswith(".qss"):
+            name = entry.name[:-4]
+            li_modes.append([_F(name), name])
+    form.combobox(_("Mode"), li_modes, configuration.x_style_mode)
+    li_modes = []
+
+    form.combobox(_("Type of icons"), IconosBase.icons.combobox(), configuration.x_style_icons)
+
     form.separador()
 
     li_traducciones = configuration.list_translations()
@@ -28,17 +36,20 @@ def options(parent, configuration):
     for k, trad, porc, author in li_traducciones:
         label = "%s" % trad
         if int(porc) < 90:
-            label += " (%s%%)" % porc
+            label += "    %s%%" % porc
         li.append((label, k))
     form.combobox(_("Language"), li, tr_actual)
-    form.separador()
 
+    form.separador()
     li = [
         (_("Play against an engine"), MENU_PLAY_ANY_ENGINE),
         (_("Opponents for young players"), MENU_PLAY_YOUNG_PLAYERS),
         (_("Both"), MENU_PLAY_BOTH),
     ]
     form.combobox(_("Menu Play"), li, configuration.x_menu_play)
+
+    form.separador()
+    form.checkbox(_("Use native dialog to select files"), not configuration.x_mode_select_lc)
 
     form.separador()
     form.checkbox(_("Activate translator help mode"), configuration.x_translation_mode)
@@ -48,21 +59,26 @@ def options(parent, configuration):
 
     form.checkbox(_("Check for updates at startup"), configuration.x_check_for_update)
 
-
     form.add_tab(_("General"))
 
     # Sonidos ########################################################################################################
     form.separador()
-    form.checkbox(_("Beep after opponent's move"), configuration.x_sound_beep)
+    form.apart(_("After each opponent move"))
+    form.checkbox(_("Sound a beep"), configuration.x_sound_beep)
+    form.checkbox(_("Play customised sounds"), configuration.x_sound_move)
     form.separador()
-    form.apart(_("Sound on in"))
-    form.checkbox(_("Results"), configuration.x_sound_results)
-    form.checkbox(_("Rival moves"), configuration.x_sound_move)
+    form.checkbox(_("The same for player moves"), configuration.x_sound_our)
     form.separador()
-    form.checkbox(_("Activate sounds with our moves"), configuration.x_sound_our)
+    form.checkbox(_("Tournaments between engines"), configuration.x_sound_tournements)
     form.separador()
-    form.checkbox(_("Beep when there is an error in training tactics"), configuration.x_sound_error)
-
+    form.separador()
+    form.apart(_("When finishing the game"))
+    form.checkbox(_("Play customised sounds for the result"), configuration.x_sound_results)
+    form.separador()
+    form.separador()
+    form.apart(_("Others"))
+    form.checkbox(_("Play a beep when there is an error in tactic trainings"), configuration.x_sound_error)
+    form.separador()
     form.add_tab(_("Sounds"))
 
     # Boards #########################################################################################################
@@ -74,7 +90,7 @@ def options(parent, configuration):
     for x in drap:
         drap_v[drap[x]] = x
     form.dial(
-        "%s (%s=1)" % (_("Speed"), _("Default")),
+        "%s (%s=1)" % (_("Speed"), _("By default")),
         1,
         len(drap),
         drap_v.get(configuration.x_pieces_speed, 100),
@@ -88,7 +104,12 @@ def options(parent, configuration):
     ]
     form.combobox(_("Mouse shortcuts"), li_mouse_sh, configuration.x_mouse_shortcuts)
     form.checkbox(_("Show candidates"), configuration.x_show_candidates)
+    li_copy = [(_("CTRL") + " C", True), (_("ALT") + " C", False)]
+    form.combobox(_("Key for copying the FEN to clipboard"), li_copy, configuration.x_copy_ctrl)
+
     form.checkbox(_("Always promote to queen\nALT key allows to change"), configuration.x_autopromotion_q)
+    form.separador()
+
     form.checkbox(_("Show cursor when engine is thinking"), configuration.x_cursor_thinking)
     form.separador()
 
@@ -97,23 +118,28 @@ def options(parent, configuration):
         li_db = [
             (_("None"), ""),
             (_("Certabo") + x, "Certabo"),
-            # (_("Chessnut Air") + x, "Chessnut"),
+            (_("Chessnut") + x, "Chessnut"),
             (_("DGT"), "DGT"),
             (_("DGT (Alternative)") + x, "DGT-gon"),
             (_("DGT Pegasus") + x, "Pegasus"),
             (_("Millennium") + x, "Millennium"),
             (_("Novag Citrine") + x, "Citrine"),
             (_("Novag UCB") + x, "Novag UCB"),
+            (_("Saitek") + x, "Saitek"),
             (_("Square Off Pro") + x, "Square Off"),
+            (_("Tabutronic") + x, "Tabutronic"),
         ]
     else:
         li_db = [
             (_("None"), ""),
             (_("DGT") + x, "DGT-gon"),
             (_("Certabo") + x, "Certabo"),
+            (_("Chessnut") + x, "Chessnut"),
             (_("Millennium") + x, "Millennium"),
             (_("Novag Citrine") + x, "Citrine"),
             (_("Novag UCB") + x, "Novag UCB"),
+            (_("Saitek") + x, "Saitek"),
+            (_("Tabutronic") + x, "Tabutronic"),
         ]
     form.combobox(_("Digital board"), li_db, configuration.x_digital_board)
 
@@ -134,7 +160,9 @@ def options(parent, configuration):
     form.separador()
     form.checkbox(_("By default"), False)
     form.separador()
+    form.apart(_("General"))
     form.font(_("Font"), configuration.x_font_family)
+    form.spinbox(_("Font size"), 3, 64, 60, configuration.x_font_points)
 
     form.separador()
     form.apart(_("Menus"))
@@ -180,7 +208,7 @@ def options(parent, configuration):
     form.separador()
     form.spinbox(_("Lucas-Elo"), 0, 3200, 70, configuration.x_elo)
     form.separador()
-    form.spinbox(_("Club players competition"), 0, 3200, 70, configuration.x_michelo)
+    form.spinbox(_("Tourney-Elo"), 0, 3200, 70, configuration.x_michelo)
     form.separador()
     form.spinbox(_("Fics-Elo"), 0, 3200, 70, configuration.x_fics)
     form.separador()
@@ -190,51 +218,43 @@ def options(parent, configuration):
 
     form.add_tab(_("Change elos"))
 
-    # Gaviota ##############################################################################################
-    form.separador()
-    form.folder(_("Gaviota Tablebases"), configuration.x_carpeta_gaviota, configuration.carpeta_gaviota_defecto())
-
-    form.add_tab(_("Endgame tablebases"))
-
-
     resultado = form.run()
 
     if resultado:
         accion, resp = resultado
 
-        li_gen, li_son, li_b, li_asp1, li_asp2, li_nc, li_gv = resp
+        li_gen, li_son, li_b, li_asp1, li_asp2, li_nc = resp
 
         (
             configuration.x_player,
             configuration.x_style,
+            configuration.x_style_mode,
+            configuration.x_style_icons,
             translator,
             configuration.x_menu_play,
+            mode_native_select,
             configuration.x_translation_mode,
             configuration.x_check_for_update,
         ) = li_gen
+
+        configuration.x_mode_select_lc = not mode_native_select
 
         configuration.set_translator(translator)
 
         por_defecto = li_asp1[0]
         if por_defecto:
-            li_asp1 = ("", 11, False, 11, False, QtCore.Qt.ToolButtonTextUnderIcon)
+            li_asp1 = ("", 10, 11, False, 11, False, QtCore.Qt.ToolButtonTextUnderIcon)
         else:
             del li_asp1[0]
         (
             configuration.x_font_family,
+            configuration.x_font_points,
             configuration.x_menu_points,
             configuration.x_menu_bold,
             configuration.x_tb_fontpoints,
             configuration.x_tb_bold,
             qt_iconstb,
         ) = li_asp1
-
-        form.spinbox(_("Width"), 283, 1000, 70, configuration.x_pgn_width)
-        form.spinbox(_("Height of each row"), 18, 99, 70, configuration.x_pgn_rowheight)
-        form.spinbox(_("Font size"), 3, 99, 70, configuration.x_pgn_fontpoints)
-        form.checkbox(_("PGN always in English"), configuration.x_pgn_english)
-        form.checkbox(_("PGN with figurines"), configuration.x_pgn_withfigurines)
-        form.separador()
 
         por_defecto = li_asp2[0]
         if por_defecto:
@@ -261,24 +281,19 @@ def options(parent, configuration):
 
         (
             configuration.x_sound_beep,
-            configuration.x_sound_results,
             configuration.x_sound_move,
             configuration.x_sound_our,
+            configuration.x_sound_tournements,
+            configuration.x_sound_results,
             configuration.x_sound_error,
         ) = li_son
-
-
-        (
-            configuration.x_carpeta_gaviota,
-        ) = li_gv
-
-
 
         (
             configuration.x_show_effects,
             rapidezMovPiezas,
             configuration.x_mouse_shortcuts,
             configuration.x_show_candidates,
+            configuration.x_copy_ctrl,
             configuration.x_autopromotion_q,
             configuration.x_cursor_thinking,
             dboard,
@@ -291,19 +306,39 @@ def options(parent, configuration):
         configuration.x_pieces_speed = drap[rapidezMovPiezas]
         if configuration.x_digital_board != dboard:
             if dboard:
-                if not QTUtil2.pregunta(
-                    parent,
-                    "%s<br><br>%s %s"
-                    % (
-                        _("Are you sure %s is the correct driver ?") % dboard,
-                        _("WARNING: selecting the wrong driver might cause damage to your board."),
-                        _("Proceed at your own risk."),
-                    ),
-                ):
-                    dboard = ""
+                if dboard == "DGT":
+                    if not QTUtil2.pregunta(
+                        parent,
+                        "%s<br><br>%s %s"
+                        % (
+                            _("Are you sure %s is the correct driver ?") % dboard,
+                            _("WARNING: selecting the wrong driver might cause damage to your board."),
+                            _("Proceed at your own risk."),
+                        ),
+                    ):
+                        dboard = ""
+                else:
+                    if not QTUtil2.pregunta(
+                        parent,
+                        "%s<br><br>%s %s<br><br>%s<br>%s"
+                        % (
+                            _("Are you sure %s is the correct driver ?") % dboard,
+                            _("WARNING: selecting the wrong driver might cause damage to your board."),
+                            _("Proceed at your own risk."),
+                            _("Please read the driver's user manual at:"),
+                            "\u00A0\u00A0\u00A0\u00A0\u00A0 https://goneill.co.nz/chess#eboard",
+                        ),
+                    ):
+                        dboard = ""
             configuration.x_digital_board = dboard
 
-        configuration.x_elo, configuration.x_michelo, configuration.x_fics, configuration.x_fide, configuration.x_lichess = li_nc
+        (
+            configuration.x_elo,
+            configuration.x_michelo,
+            configuration.x_fics,
+            configuration.x_fide,
+            configuration.x_lichess,
+        ) = li_nc
 
         return True
     else:

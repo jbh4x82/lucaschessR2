@@ -122,10 +122,10 @@ class WHorsesBase(LCDialog.LCDialog):
 
         # Historico
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("FECHA", _("Date"), 120, centered=True)
-        o_columns.nueva("MOVES", _("Moves"), 100, centered=True)
-        o_columns.nueva("SECONDS", _("Second(s)"), 80, centered=True)
-        o_columns.nueva("HINTS", _("Hints"), 90, centered=True)
+        o_columns.nueva("FECHA", _("Date"), 120, align_center=True)
+        o_columns.nueva("MOVES", _("Moves"), 100, align_center=True)
+        o_columns.nueva("SECONDS", _("Second(s)"), 80, align_center=True)
+        o_columns.nueva("HINTS", _("Hints"), 90, align_center=True)
         self.ghistorico = Grid.Grid(self, o_columns, siSelecFilas=True, siSeleccionMultiple=True)
         self.ghistorico.setMinimumWidth(self.ghistorico.anchoColumnas() + 20)
 
@@ -209,6 +209,7 @@ class WHorses(LCDialog.LCDialog):
 
         self.board = Board.Board(self, config_board)
         self.board.crea()
+        self.board.side_indicator_sc.setOpacity(0.01)
         self.board.set_dispatcher(self.player_has_moved)
 
         # Rotulo vtime
@@ -221,7 +222,7 @@ class WHorses(LCDialog.LCDialog):
             None,
             (_("Reinit"), Iconos.Reiniciar(), self.reiniciar),
             None,
-            (_("Help"), Iconos.AyudaGR(), self.ayuda),
+            (_("Help"), Iconos.AyudaGR(), self.get_help),
         )
         self.tb = QTVarios.LCTB(self, li_acciones)
 
@@ -247,7 +248,7 @@ class WHorses(LCDialog.LCDialog):
         self.timer = time.time()
         self.moves = 0
         self.hints = 0
-        self.nayuda = 0  # para que haga un rondo al elegir en la ayuda de todos los caminos uno de ellos
+        self.nayuda = 0  # para que haga un rondo al elegir en la get_help de todos los caminos uno de ellos
         self.ponSiguiente()
 
     def ponNumMoves(self):
@@ -395,7 +396,7 @@ class WHorses(LCDialog.LCDialog):
         else:
             self.ponSiguiente()
 
-    def ayuda(self):
+    def get_help(self):
         self.hints += 1
         self.board.remove_arrows()
         self.ponSiguiente()

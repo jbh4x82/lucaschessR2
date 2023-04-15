@@ -3,9 +3,9 @@ from PySide2 import QtWidgets, QtCore
 import Code
 from Code import Variations
 from Code.Base import Game
+from Code.Nags import WNags, Nags
 from Code.QT import Colocacion, Controles, Iconos, QTVarios, ShowPGN, QTUtil2, FormLayout
 from Code.Themes import WThemes, Themes
-from Code.Nags import WNags, Nags
 
 
 class Information(QtWidgets.QWidget):
@@ -21,7 +21,7 @@ class Information(QtWidgets.QWidget):
 
         configuration = Code.configuration
 
-        puntos = configuration.x_pgn_fontpoints
+        puntos = configuration.x_font_points
 
         font = Controles.TipoLetra(puntos=puntos)
         font7 = Controles.TipoLetra(puntos=8)
@@ -31,7 +31,13 @@ class Information(QtWidgets.QWidget):
         self.nags = Nags.Nags()
 
         # Opening
-        self.lb_opening = Controles.LB(self, "").ponFuente(font).align_center().set_foreground_backgound("#eeeeee", "#474d59").set_wrap()
+        self.lb_opening = (
+            Controles.LB(self, "")
+            .ponFuente(font)
+            .align_center()
+            .set_foreground_backgound("#eeeeee", "#474d59")
+            .set_wrap()
+        )
         self.lb_opening.hide()
 
         # Valoracion
@@ -45,31 +51,40 @@ class Information(QtWidgets.QWidget):
         sp.setHorizontalPolicy(QtWidgets.QSizePolicy.Expanding)
         self.lb_cpws_lost.setSizePolicy(sp)
 
-        self.lb_time = Controles.LB(self).ponFuente(font7).set_wrap().align_right().anchoFijo(42)
+        self.lb_time = Controles.LB(self).ponFuente(font7).set_wrap().align_center()
         self.lb_time.hide()
-        self.lb_time.setStyleSheet("*{ border: 1px solid lightgray; padding:1px; background: #a7f2f5}")
-        ly_pw_tm = Colocacion.H().control(self.lb_cpws_lost).espacio(-8).controld(self.lb_time)
+        self.lb_clock = Controles.LB(self).ponFuente(font7).set_wrap().align_center()
+        self.lb_clock.hide()
+        Code.configuration.set_property(self.lb_time, "time_ms")
+        Code.configuration.set_property(self.lb_clock, "clock")
+        ly_pw_tm = Colocacion.H().control(self.lb_cpws_lost).relleno(1).controld(self.lb_time).espacio(-5).controld(self.lb_clock)
         ly_rating.otro(ly_pw_tm)
 
-        li_acciones = [(_("Rating"), Iconos.Mas(), self.edit_rating), None, (_("Theme"), Iconos.MasR(), self.edit_theme)]
+        li_acciones = [
+            (_("Rating"), Iconos.Mas(), self.edit_rating),
+            None,
+            (_("Theme"), Iconos.MasR(), self.edit_theme),
+        ]
         tb = QTVarios.LCTB(self, li_acciones, icon_size=16, style=QtCore.Qt.ToolButtonTextBesideIcon)
         ly_rating.control(tb)
 
         self.lb_rating = Controles.LB(self).ponFuente(font_bold).set_wrap()
         self.lb_rating.hide()
-        self.lb_rating.setStyleSheet("*{ border: 1px solid lightgray; padding:2px; background: #f7f2f0}")
+        Code.configuration.set_property(self.lb_rating, "rating")
         self.lb_rating.mousePressEvent = self.edit_rating
         ly_rating.control(self.lb_rating)
 
         self.lb_theme = Controles.LB(self).ponFuente(font_bold).set_wrap()
         self.lb_theme.hide()
-        self.lb_theme.setStyleSheet("*{ border: 1px solid lightgray; padding:2px; background: #fdfae8}")
+        Code.configuration.set_property(self.lb_theme, "theme")
         self.lb_theme.mousePressEvent = self.edit_theme
         ly_rating.control(self.lb_theme)
         self.w_rating.setLayout(ly_rating)
 
         # Comentarios
-        self.comment = Controles.EM(self, siHTML=False).capturaCambios(self.comment_changed).ponFuente(font).anchoMinimo(200)
+        self.comment = (
+            Controles.EM(self, siHTML=False).capturaCambios(self.comment_changed).ponFuente(font).anchoMinimo(200)
+        )
         ly = Colocacion.H().control(self.comment).margen(3)
         self.gb_comments = Controles.GB(self, _("Comments"), ly).ponFuente(font_bold)
 
@@ -82,6 +97,11 @@ class Information(QtWidgets.QWidget):
         splitter.addWidget(self.variantes)
         splitter.setSizes([1, 1])
         self.sp_sizes = None
+
+        def save_sizes_splitter(xx, zz):
+            self.sp_sizes = self.splitter.sizes()
+
+        splitter.splitterMoved.connect(save_sizes_splitter)
 
         layout = Colocacion.V()
         layout.control(self.lb_opening)
@@ -112,7 +132,7 @@ class Information(QtWidgets.QWidget):
         visible = False
         if self.move:
             cpws_lost = self.move.get_points_lost()
-            if (cpws_lost is not None and cpws_lost > 0):
+            if cpws_lost is not None and cpws_lost > 0:
                 analysis_depth = self.move.analysis[0].li_rm[0].depth
                 str_cpws_lost = "%.02f %s (%s %s)" % (cpws_lost / 100.0, _("pws lost"), _("Depth"), analysis_depth)
                 # str_cpws_lost = "%.02f (^%s)" % (cpws_lost / 100.0, analysis_depth)
@@ -121,24 +141,34 @@ class Information(QtWidgets.QWidget):
         self.lb_cpws_lost.setVisible(visible)
 
     def show_time(self):
-        visible = False
+        visible_time = visible_clock = False
         if self.move:
-            time_ms = self.move.time_ms
-            if time_ms:
-                time_scs = time_ms / 1000
+
+            def txt_ms(ms):
+                time_scs = ms / 1000
                 if time_scs >= 60.0:
-                    minutes = int(time_scs//60)
-                    scs = int(time_scs - minutes*60)
-                    str_time = "%d' %d\"" % (minutes, scs)
+                    minutes = int(time_scs // 60)
+                    scs = time_scs - minutes * 60
+                    str_time = "%d' %.01f\"" % (minutes, scs)
                 elif time_scs >= 10.0:
-                    str_time = "%.01f\"" % time_scs
+                    str_time = '%.01f"' % time_scs
                 elif time_scs < 1.0:
-                    str_time = "%.03f\"" % time_scs
+                    str_time = '%.03f"' % time_scs
                 else:
-                    str_time = "%.02f\"" % time_scs
-                self.lb_time.set_text(str_time)
-                visible = True
-        self.lb_time.setVisible(visible)
+                    str_time = '%.02f"' % time_scs
+                if str_time.endswith(".0\""):
+                    str_time = str_time[:-3]+'"'
+                return " " + str_time + " "
+
+            if self.move.time_ms:
+                self.lb_time.set_text(txt_ms(self.move.time_ms))
+                visible_time = True
+            if self.move.clock_ms:
+                self.lb_clock.set_text(txt_ms(self.move.clock_ms))
+                visible_clock = True
+
+        self.lb_time.setVisible(visible_time)
+        self.lb_clock.setVisible(visible_clock)
 
     def edit_rating(self, event=None):
         if event:
@@ -203,9 +233,9 @@ class Information(QtWidgets.QWidget):
 
     def comment_changed(self):
         if self.move:
-            self.move.comment = self.comment.texto()
+            self.move.set_comment(self.comment.texto())
         else:
-            self.game.first_comment = self.comment.texto()
+            self.game.first_comment = self.comment.texto().replace("}", "]")
 
     def valoration_changed(self):
         if self.move:
@@ -246,7 +276,7 @@ class WVariations(QtWidgets.QWidget):
         self.owner = owner
         configuration = Code.configuration
         self.with_figurines = configuration.x_pgn_withfigurines
-        puntos = configuration.x_pgn_fontpoints
+        puntos = configuration.x_font_points
 
         QtWidgets.QWidget.__init__(self, self.owner)
 
@@ -292,7 +322,7 @@ class WVariations(QtWidgets.QWidget):
         for num in li_variation_move[1:]:
             if is_num_variation:
                 variation = var_move.variations.get(num)
-            else:
+            elif variation:
                 var_move = variation.move(num)
                 num_var_move = num
             is_num_variation = not is_num_variation
@@ -356,7 +386,7 @@ class WVariations(QtWidgets.QWidget):
         if resultado:
             accion, resp = resultado
             comment = resp[0].strip()
-            var_move.comment = comment
+            var_move.set_comment(comment)
             self.link_variation_pressed(self.selected_link)
 
     def set_move(self, move):
@@ -392,7 +422,10 @@ class WVariations(QtWidgets.QWidget):
             game = Game.Game(first_position=self.move.position_before)
 
         change_game = Variations.edit_variation(
-            Code.procesador, game, with_engine_active=with_engine_active, is_white_bottom=self.get_board().is_white_bottom
+            Code.procesador,
+            game,
+            with_engine_active=with_engine_active,
+            is_white_bottom=self.get_board().is_white_bottom,
         )
         if change_game:
             self.move.variations.change(number, change_game)

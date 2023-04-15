@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore
 
 from Code import Util
 from Code.Analysis import Analysis
@@ -9,10 +9,10 @@ from Code.QT import Columnas
 from Code.QT import Controles
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
-from Code.QT import LCDialog
 
 
 class WJuicio(LCDialog.LCDialog):
@@ -46,11 +46,13 @@ class WJuicio(LCDialog.LCDialog):
         self.board.set_side_bottom(position.is_white)
 
         liMas = ((_("Close"), "close", Iconos.AceptarPeque()),)
-        lyBM, tbBM = QTVarios.lyBotonesMovimiento(self, "", siLibre=False, icon_size=24, siMas=manager.continueTt, liMasAcciones=liMas)
+        lyBM, tbBM = QTVarios.lyBotonesMovimiento(
+            self, "", siLibre=False, icon_size=24, siMas=manager.continueTt, liMasAcciones=liMas
+        )
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("POSREAL", "#", 40, centered=True)
-        o_columns.nueva("JUGADAS", "%d %s" % (len(self.list_rm), _("Moves")), 120, centered=True)
+        o_columns.nueva("POSREAL", "#", 40, align_center=True)
+        o_columns.nueva("JUGADAS", "%d %s" % (len(self.list_rm), _("Moves")), 120, align_center=True)
         o_columns.nueva("PLAYER", _("Player"), 120)
 
         self.grid = Grid.Grid(self, o_columns, siSelecFilas=True)
@@ -260,30 +262,3 @@ class WJuicio(LCDialog.LCDialog):
         move = self.game.move(self.posMueve)
         pts = self.list_rm[self.grid.recno()].rm.texto()
         Analysis.AnalisisVariations(self, self.xengine, move, self.position.is_white, pts)
-
-
-class MensajeF(QtWidgets.QDialog):
-    def __init__(self, parent, mens):
-        QtWidgets.QDialog.__init__(self, parent)
-
-        self.setWindowTitle(_("Result"))
-        self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.Dialog | QtCore.Qt.WindowTitleHint)
-        self.setWindowIcon(Iconos.Fide())
-        self.setStyleSheet("QDialog, QLabel { background: #E9E9E9 }")
-
-        lbm = Controles.LB(self, "<big><b>%s</b></big>" % mens)
-        self.bt = Controles.PB(self, _("Continue"), rutina=self.accept, plano=False)
-
-        ly = Colocacion.G().control(lbm, 0, 0).controlc(self.bt, 1, 0)
-
-        ly.margen(20)
-
-        self.setLayout(ly)
-
-        w = parent.base.pgn
-        self.move(w.x() + w.width() / 2 - self.width() / 2, w.y() + w.height() / 2 - self.height() / 2)
-
-    def mostrar(self):
-        QTUtil.refresh_gui()
-        self.exec_()
-        QTUtil.refresh_gui()

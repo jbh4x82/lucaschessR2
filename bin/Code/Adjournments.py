@@ -1,5 +1,6 @@
 import Code
 from Code import Util
+from Code.Base.Constantes import GT_AGAINST_ENGINE_LEAGUE
 from Code.QT import QTUtil2
 from Code.SQL import UtilSQL
 
@@ -14,7 +15,16 @@ class Adjournments:
     def add(self, tp: int, dic: dict, label_menu: str):
         with self.open() as db:
             now = Util.today()
-            key = "%d|%d|%d|%d|%d|%d|%d|%s" % (now.year, now.month, now.day, now.hour, now.minute, now.second, tp, label_menu)
+            key = "%d|%d|%d|%d|%d|%d|%d|%s" % (
+                now.year,
+                now.month,
+                now.day,
+                now.hour,
+                now.minute,
+                now.second,
+                tp,
+                label_menu,
+            )
             db[key] = dic
 
     def get(self, key):
@@ -34,7 +44,14 @@ class Adjournments:
             li_resp = []
             for key in li:
                 year, month, day, hour, minute, second, tp, label_menu = key.split("|")
-                label = "%d-%02d-%02d %02d:%02d:%02d " % (int(year), int(month), int(day), int(hour), int(minute), int(second))
+                label = "%d-%02d-%02d %02d:%02d:%02d " % (
+                    int(year),
+                    int(month),
+                    int(day),
+                    int(hour),
+                    int(minute),
+                    int(second),
+                )
                 tp = int(tp)
                 li_resp.append((key, label + label_menu, tp))
             return li_resp
@@ -56,6 +73,18 @@ class Adjournments:
             manager.quitaCapturas()
             manager.procesador.start()
             return True
+
+    def key_match_league(self, xmatch):
+        with self.open() as db:
+            li = db.keys(True)
+            for key in li:
+                year, month, day, hour, minute, second, tp, label_menu = key.split("|")
+                if int(tp) == GT_AGAINST_ENGINE_LEAGUE:
+                    dic = db[key]
+                    saved_match = dic["match_saved"]
+                    if saved_match["XID"] == xmatch.xid:
+                        return dic
+            return None
 
     def __enter__(self):
         return self

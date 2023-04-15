@@ -1,6 +1,5 @@
 import time
 
-import Code.Nags.Nags
 from Code import Manager
 from Code import Util
 from Code.Base import Game, Move
@@ -12,16 +11,17 @@ from Code.Base.Constantes import (
     TB_CONFIG,
     TB_HELP,
     TB_NEXT,
+    TB_COMMENTS,
     TB_UTILITIES,
     GT_OPENING_LINES,
 )
 from Code.Engines import EngineResponse
-from Code.Openings import OpeningLines
+from Code.Openings import OpeningLines, ManagerOPL
 from Code.QT import Iconos
 from Code.QT import QTUtil2
 
 
-class ManagerOpeningLinesStatic(Manager.Manager):
+class ManagerOpeningLinesStatic(ManagerOPL.ManagerOpeningLines):
     def start(self, pathFichero, modo, num_linea):
         self.board.saveVisual()
 
@@ -46,18 +46,20 @@ class ManagerOpeningLinesStatic(Manager.Manager):
         self.calc_totalTiempo()
 
         self.dicFENm2 = self.training["DICFENM2"]
-        li = self.dbop.getNumLinesPV(self.li_pv)
+        self.dic_comments = self.dbop.dic_fen_comments()
+
+        li = self.dbop.get_numlines_pv(self.li_pv)
         if len(li) > 10:
-            mensLines = ",".join(["%d" % line for line in li[:10]]) + ", ..."
+            mens_lines = ",".join(["%d" % line for line in li[:10]]) + ", ..."
         else:
-            mensLines = ",".join(["%d" % line for line in li])
+            mens_lines = ",".join(["%d" % line for line in li])
         self.liMensBasic = []
         if self.modo != "sequential":
             self.liMensBasic.append("%d/%d" % (self.num_linea + 1, len(self.liGames)))
-        self.liMensBasic.append("%s: %s" % (_("Lines") if len(li) > 1 else _("Line"), mensLines))
+        self.liMensBasic.append("%s: %s" % (_("Lines") if len(li) > 1 else _("Line"), mens_lines))
 
         self.siAyuda = False
-        self.board.dbvisual_set_show_allways(False)
+        self.board.dbvisual_set_show_always(False)
 
         self.game = Game.Game()
 
@@ -66,7 +68,7 @@ class ManagerOpeningLinesStatic(Manager.Manager):
         self.is_human_side_white = self.training["COLOR"] == "WHITE"
         self.is_engine_side_white = not self.is_human_side_white
 
-        self.main_window.pon_toolbar((TB_CLOSE, TB_HELP, TB_REINIT))
+        self.tb_with_comments([TB_CLOSE, TB_HELP, TB_REINIT])
         self.main_window.activaJuego(True, False, siAyudas=False)
         self.set_dispatcher(self.player_has_moved)
         self.set_position(self.game.last_position)
@@ -92,9 +94,9 @@ class ManagerOpeningLinesStatic(Manager.Manager):
             for tr in game_info["TRIES"]:
                 self.tm += tr["TIME"]
 
-    def ayuda(self):
+    def get_help(self):
         self.siAyuda = True
-        self.board.dbvisual_set_show_allways(True)
+        self.board.dbvisual_set_show_always(True)
 
         self.muestraAyuda()
         self.muestraInformacion()
@@ -121,21 +123,6 @@ class ManagerOpeningLinesStatic(Manager.Manager):
 
         self.set_label2(mens)
 
-        if self.siAyuda:
-            dic_nags = Code.Nags.Nags.dic_nags()
-            mens3 = ""
-            fenm2 = self.game.last_position.fenm2()
-            reg = self.dbop.getfenvalue(fenm2)
-            if reg:
-                mens3 = reg.get("COMENTARIO", "")
-                ventaja = reg.get("VENTAJA", 0)
-                valoracion = reg.get("VALORACION", 0)
-                if ventaja:
-                    mens3 += "\n %s" % dic_nags[ventaja]
-                if valoracion:
-                    mens3 += "\n %s" % dic_nags[valoracion]
-            self.set_label3(mens3 if mens3 else None)
-
     def game_finished(self, is_complete):
         self.state = ST_ENDGAME
         tm = time.time() - self.ini_time
@@ -147,9 +134,21 @@ class ManagerOpeningLinesStatic(Manager.Manager):
 
         if is_complete:
             mensaje = "\n".join(li)
-            self.mensajeEnPGN(mensaje)
+            self.message_on_pgn(mensaje)
         dictry = {"DATE": Util.today(), "TIME": tm, "AYUDA": self.siAyuda, "ERRORS": self.errores}
         self.game_info["TRIES"].append(dictry)
+
+        for move in self.game.li_moves:
+            fenm2 = move.position.fenm2()
+            if fenm2 in self.dic_comments:
+                reg = self.dic_comments[fenm2]
+                if "COMENTARIO" in reg:
+                    move.set_comment(reg["COMENTARIO"])
+                if "VENTAJA" in reg:
+                    move.add_nag(reg["VENTAJA"])
+                if "VALORACION" in reg:
+                    move.add_nag(reg["VALORACION"])
+        self.pgnRefresh(self.is_human_side_white)
 
         sinError = self.errores == 0 and not self.siAyuda
         if is_complete:
@@ -161,11 +160,11 @@ class ManagerOpeningLinesStatic(Manager.Manager):
                     self.training["LIGAMES_SEQUENTIAL"] = liNuevo
                     self.main_window.pon_toolbar((TB_CLOSE, TB_NEXT))
                 else:
-                    self.main_window.pon_toolbar((TB_CLOSE, TB_REINIT, TB_CONFIG, TB_UTILITIES))
+                    self.set_toolbar((TB_CLOSE, TB_REINIT, TB_CONFIG, TB_UTILITIES))
             else:
                 self.game_info["NOERROR"] -= 1
 
-                self.main_window.pon_toolbar((TB_CLOSE, TB_REINIT, TB_CONFIG, TB_UTILITIES))
+                self.set_toolbar((TB_CLOSE, TB_REINIT, TB_CONFIG, TB_UTILITIES))
         else:
             if not sinError:
                 self.game_info["NOERROR"] -= 1
@@ -195,13 +194,16 @@ class ManagerOpeningLinesStatic(Manager.Manager):
             self.configurar(siSonidos=True)
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key == TB_NEXT:
             self.reinicio(self.dbop, self.modo, self.num_linea)
 
         elif key == TB_HELP:
-            self.ayuda()
+            self.get_help()
+
+        elif key == TB_COMMENTS:
+            self.change_comments()
 
         else:
             Manager.Manager.rutinaAccionDef(self, key)
@@ -222,6 +224,7 @@ class ManagerOpeningLinesStatic(Manager.Manager):
     def reiniciar(self):
         if len(self.game) > 0 and self.state != ST_ENDGAME:
             self.game_finished(False)
+        self.main_window.activaInformacionPGN(False)
         self.reinicio(self.dbop, self.modo, self.num_linea)
 
     def play_next_move(self):
@@ -255,14 +258,14 @@ class ManagerOpeningLinesStatic(Manager.Manager):
             self.rm_rival.to_sq = pv[2:4]
             self.rm_rival.promotion = pv[4:]
 
-            self.play_rival(self.rm_rival)
+            self.rival_has_moved(self.rm_rival)
             self.play_next_move()
 
         else:
             self.activate_side(is_white)
             self.human_is_playing = True
-            if self.siAyuda:
-                self.muestraAyuda()
+            # if self.siAyuda:
+            #     self.muestraAyuda()
 
     def player_has_moved(self, from_sq, to_sq, promotion=""):
         move = self.check_human_move(from_sq, to_sq, promotion)
@@ -280,14 +283,14 @@ class ManagerOpeningLinesStatic(Manager.Manager):
             li = self.dicFENm2.get(fenm2, set())
             if pvSel in li:
                 mens = _("You have selected a correct move, but this line uses another one.")
-                QTUtil2.mensajeTemporal(self.main_window, mens, 2, physical_pos="tb", background="#C3D6E8")
+                QTUtil2.mensajeTemporal(self.main_window, mens, 1.2, physical_pos="tb", background="#C3D6E8")
                 self.sigueHumano()
                 return False
 
             self.errores += 1
             mens = "%s: %d" % (_("Error"), self.errores)
             QTUtil2.mensajeTemporal(
-                self.main_window, mens, 1.2, physical_pos="ad", background="#FF9B00", pmImagen=Iconos.pmError()
+                self.main_window, mens, 0.8, physical_pos="ad", background="#FF9B00", pmImagen=Iconos.pmError()
             )
             self.muestraInformacion()
             self.sigueHumano()
@@ -299,17 +302,7 @@ class ManagerOpeningLinesStatic(Manager.Manager):
         self.play_next_move()
         return True
 
-    def add_move(self, move, siNuestra):
-        self.game.add_move(move)
-        self.check_boards_setposition()
-
-        self.put_arrow_sc(move.from_sq, move.to_sq)
-        self.beepExtendido(siNuestra)
-
-        self.pgnRefresh(self.game.last_position.is_white)
-        self.refresh()
-
-    def play_rival(self, engine_response):
+    def rival_has_moved(self, engine_response):
         from_sq = engine_response.from_sq
         to_sq = engine_response.to_sq
 

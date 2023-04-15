@@ -5,7 +5,6 @@ import os
 import polib
 
 import Code
-from Code.Openings import OpeningsStd
 
 
 class Translations:
@@ -15,14 +14,26 @@ class Translations:
         self.dic_openings = self.read_po_openings()
         builtins.__dict__["_X"] = self.x
         builtins.__dict__["_F"] = self.f
+        builtins.__dict__["_FO"] = self.translate_opening
         builtins.__dict__["_SP"] = self.sp
         builtins.__dict__["_"] = self.translate
         Code.lucas_chess = "%s %s" % (self.translate("Lucas Chess"), Code.VERSION)
 
+    @staticmethod
+    def sinonimos(dic):
+        def pon(key, keybase):
+            if keybase in dic:
+                dic[key] = dic[keybase]
+
+        pon("X-ray attack", "X-Ray attack")
+        pon("Attacking Defender", "Attacking defender")
+
     def read_mo(self):
         path_mo = self.get_path(self.lang)
         mofile = polib.mofile(path_mo)
-        return {entry.msgid: entry.msgstr for entry in mofile}
+        dic = {entry.msgid: entry.msgstr for entry in mofile}
+        self.sinonimos(dic)
+        return dic
 
     def read_po_openings(self):
         path_po = self.get_path_openings(self.lang)
@@ -93,4 +104,3 @@ class Translations:
 def install(lang):
     if Code.translations is None or Code.translations.lang != lang:
         Code.translations = Translations(lang)
-        OpeningsStd.ap.translate()

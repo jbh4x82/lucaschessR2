@@ -1,11 +1,13 @@
 import os
 import random
+import time
 
 import FasterCode
 
 import Code
 from Code.Base.Constantes import ADJUST_SELECTED_BY_PLAYER
 from Code.Engines import Priorities, EngineResponse, EngineRunDirect, EngineRun
+from Code.QT import QTUtil2
 from Code.SQL import UtilSQL
 
 
@@ -15,16 +17,16 @@ class ListEngineManagers:
         self.with_logs = False
 
     def append(self, engine_manager):
-        self.check()
+        self.verify()
         self.lista.append(engine_manager)
         if self.with_logs:
             engine_manager.log_open()
 
-    def check(self):
+    def verify(self):
         self.lista = [engine_manager for engine_manager in self.lista if engine_manager.activo]
 
     def close_all(self):
-        self.check()
+        self.verify()
         for engine_manager in self.lista:
             engine_manager.terminar()
         self.lista = []
@@ -33,7 +35,7 @@ class ListEngineManagers:
         return self.with_logs
 
     def active_logs(self, ok: bool):
-        self.check()
+        self.verify()
         if ok != self.with_logs:
             for engine_manager in self.lista:
                 if ok:
@@ -44,16 +46,16 @@ class ListEngineManagers:
 
 
 class EngineManager:
-    def __init__(self, procesador, confMotor, direct=False):
+    def __init__(self, procesador, conf_engine, direct=False):
         self.procesador = procesador
 
         self.engine = None
-        self.confMotor = confMotor
-        self.name = confMotor.name
-        self.key = confMotor.key
+        self.confMotor = conf_engine
+        self.name = conf_engine.name
+        self.key = conf_engine.key
         self.num_multipv = 0
-        self.mstime_engine = None
-        self.depth_engine = None
+        self.mstime_engine = conf_engine.max_time * 1000
+        self.depth_engine = conf_engine.max_depth
 
         self.function = _("Opponent").lower()  # para distinguir entre tutor y analizador
 
@@ -96,6 +98,9 @@ class EngineManager:
         else:
             self.dispatching = rutina, whoDispatch
 
+    def remove_gui_dispatch(self):
+        self.set_gui_dispatch(None)
+
     def update_multipv(self, xmultipv):
         self.confMotor.update_multipv(xmultipv)
         self.num_multipv = self.confMotor.multiPV
@@ -109,10 +114,6 @@ class EngineManager:
         self.confMotor.update_multipv(num_multipv)
         self.num_multipv = self.confMotor.multiPV
 
-    def remove_gui_dispatch(self):
-        if self.engine:
-            self.engine.gui_dispatch = None
-
     def check_engine(self):
         if self.engine is not None:
             return False
@@ -120,11 +121,11 @@ class EngineManager:
 
         exe = self.confMotor.ejecutable()
         args = self.confMotor.argumentos()
-        liUCI = self.confMotor.liUCI
+        li_uci = self.confMotor.liUCI
 
         maia_level = None
         if self.name.lower().startswith("maia") or "lc0" in self.name.lower():
-            for comando, valor in liUCI:
+            for comando, valor in li_uci:
                 if comando == "WeightsFile":
                     if valor.startswith("maia"):
                         maia_level = int(valor[5:9])
@@ -134,7 +135,7 @@ class EngineManager:
             self.engine = EngineRun.MaiaEngine(
                 self.name,
                 exe,
-                liUCI,
+                li_uci,
                 self.num_multipv,
                 priority=self.priority,
                 args=args,
@@ -143,16 +144,19 @@ class EngineManager:
             )
         elif self.direct:
             self.engine = EngineRunDirect.DirectEngine(
-                self.name, exe, liUCI, self.num_multipv, priority=self.priority, args=args, log=self.ficheroLog
+                self.name, exe, li_uci, self.num_multipv, priority=self.priority, args=args, log=self.ficheroLog
             )
         else:
             self.engine = EngineRun.RunEngine(
-                self.name, exe, liUCI, self.num_multipv, priority=self.priority, args=args, log=self.ficheroLog
+                self.name, exe, li_uci, self.num_multipv, priority=self.priority, args=args, log=self.ficheroLog
             )
 
         if self.confMotor.siDebug:
             self.engine.siDebug = True
             self.engine.nomDebug = self.confMotor.nomDebug
+
+        if self.confMotor.emulate_movetime:
+            self.engine.emulate_movetime = True
 
         if self.dispatching:
             rutina, who_dispatch = self.dispatching
@@ -179,7 +183,7 @@ class EngineManager:
         if nAjustado:
             mrm.game = game
             if nAjustado >= 1000:
-                mrm.liPersonalidades = self.procesador.configuration.liPersonalidades
+                mrm.li_personalities = self.procesador.configuration.li_personalities
                 mrm.fenBase = game.last_position.fen()
             return mrm.mejorMovAjustado(nAjustado) if nAjustado != ADJUST_SELECTED_BY_PLAYER else mrm
         else:
@@ -193,11 +197,25 @@ class EngineManager:
         if nAjustado:
             mrm.game = game
             if nAjustado >= 1000:
-                mrm.liPersonalidades = self.procesador.configuration.liPersonalidades
+                mrm.li_personalities = self.procesador.configuration.li_personalities
                 mrm.fenBase = game.last_position.fen()
             return mrm.mejorMovAjustado(nAjustado) if nAjustado != ADJUST_SELECTED_BY_PLAYER else mrm
         else:
             return mrm.mejorMov()
+
+    def play_game_maia(self, game):
+        self.check_engine()
+
+        if self.depth_engine:
+            self.engine.nodes = int(self.depth_engine**2)
+
+        mrm = self.engine.bestmove_game(game, self.mstime_engine, self.depth_engine)
+        return mrm.mejorMov()
+
+    def play_fixed_depth_time_tourney(self, game):
+        self.check_engine()
+
+        return self.engine.bestmove_game(game, self.mstime_engine, self.depth_engine)
 
     def play_time_tourney(self, game, seconds_white, seconds_black, seconds_move):
         self.check_engine()
@@ -208,7 +226,7 @@ class EngineManager:
         else:
             mseconds_white = int(seconds_white * 1000)
             mseconds_black = int(seconds_black * 1000)
-            mseconds_move = int(seconds_move * 1000)
+            mseconds_move = int(seconds_move * 1000) if seconds_move else 0
             mrm = self.engine.bestmove_time(game, mseconds_white, mseconds_black, mseconds_move)
         if self.engine and self.engine.ponder:  # test si self.engine, ya que puede haber terminado en el ponder
             self.engine.run_ponder(game, mrm)
@@ -316,6 +334,7 @@ class EngineManager:
         st_centipawns=0,
         st_depths=0,
         st_timelimit=0,
+        window=None,
     ):
         self.check_engine()
         if self.cache_analysis is not None:
@@ -324,20 +343,24 @@ class EngineManager:
             if key in self.cache_analysis:
                 return self.cache_analysis[key]
         resp = self.analizaJugadaPartidaRaw(
-            game, njg, vtime, depth, brDepth, brPuntos, stability, st_centipawns, st_depths, st_timelimit
+            game, njg, vtime, depth, brDepth, brPuntos, stability, st_centipawns, st_depths, st_timelimit, window
         )
         if self.cache_analysis is not None:
             self.cache_analysis[key] = resp
         return resp
 
     def analizaJugadaPartidaRaw(
-        self, game, njg, vtime, depth, brDepth, brPuntos, stability, st_centipawns, st_depths, st_timelimit
+        self, game, njg, mstime, depth, brDepth, brPuntos, stability, st_centipawns, st_depths, st_timelimit, window
     ):
         self.check_engine()
+        ini_time = time.time()
         if stability:
-            mrm = self.engine.analysis_stable(game, njg, vtime, depth, True, st_centipawns, st_depths, st_timelimit)
+            mrm = self.engine.analysis_stable(game, njg, mstime, depth, True, st_centipawns, st_depths, st_timelimit)
         else:
-            mrm = self.engine.bestmove_game_jg(game, njg, vtime, depth, is_savelines=True)
+            mrm = self.engine.bestmove_game_jg(game, njg, mstime, depth, is_savelines=True)
+
+        self.remove_gui_dispatch()
+        ms_used = int((time.time() - ini_time) * 1000)
 
         if njg > 9000:
             return mrm, 0
@@ -352,8 +375,22 @@ class EngineManager:
                 mrm.miraBrilliancies(brDepth, brPuntos)
             return mrm, n
 
+        rm_best = mrm.mejorMov()
         # No esta considerado, obliga a hacer el analysis de nuevo from_sq position
-        mrm_next = self.engine.bestmove_game_jg(game, njg + 1, vtime, depth, is_savelines=True)
+        if rm_best.depth and (depth > rm_best.depth or depth == 0):
+            depth = rm_best.depth
+
+        if ms_used < mstime:
+            mstime = ms_used
+
+        um = QTUtil2.unMomento(window, _("Finishing the analysis...")) if mstime > 1000 else None
+
+        self.engine.set_multipv(1)
+        mrm_next = self.engine.bestmove_game_jg(game, njg + 1, mstime, depth, is_savelines=True)
+        self.engine.set_multipv(self.engine.num_multipv)
+
+        if um:
+            um.final()
 
         if mrm_next and mrm_next.li_rm:
             rm = mrm_next.li_rm[0]
@@ -376,9 +413,6 @@ class EngineManager:
         mrm = self.engine.bestmove_fen(move.position.fen(), vtime, None)
         if mrm.li_rm:
             rm = mrm.li_rm[0]
-            # if is_white != move.position.is_white:
-            #     if rm.mate:
-            #         rm.mate += +1 if rm.mate > 0 else -1
         else:
             rm = EngineResponse.EngineResponse("", is_white)
         return rm
@@ -416,12 +450,6 @@ class EngineManager:
         self.check_engine()
         self.engine.set_option(name, value)
 
-    def miraListaPV(self, fen, siUna):  #
-        """Servicio para Opening lines-importar polyglot-generador de movimientos-emula un book polyglot"""
-        mrm = self.analiza(fen)
-        lipv = [rm.movimiento() for rm in mrm.li_rm]
-        return lipv[0] if siUna else lipv
-
     def busca_mate(self, game, mate):
         self.check_engine()
         return self.engine.busca_mate(game, mate)
@@ -446,14 +474,14 @@ class EngineManager:
 
         def play_return(mrm):
             if self.engine:
-                self.engine.gui_dispatch = None
+                self.remove_gui_dispatch()
                 if mrm is None:
                     resp = None
                 elif nAjustado:
                     mrm.ordena()
                     mrm.game = game
                     if nAjustado >= 1000:
-                        mrm.liPersonalidades = self.procesador.configuration.liPersonalidades
+                        mrm.li_personalities = self.procesador.configuration.li_personalities
                         mrm.fenBase = game.last_position.fen()
                     resp = mrm.mejorMovAjustado(nAjustado) if nAjustado != ADJUST_SELECTED_BY_PLAYER else mrm
                 else:
@@ -464,7 +492,7 @@ class EngineManager:
 
         if humanize:
             if self.mstime_engine or self.depth_engine:
-                seconds_white, seconds_black, seconds_move = 15.0*60, 15.0*60, 6
+                seconds_white, seconds_black, seconds_move = 15.0 * 60, 15.0 * 60, 6
             self.humanize(game, seconds_white, seconds_black, seconds_move)
         else:
             self.engine.not_humanize()
@@ -493,25 +521,25 @@ class EngineManager:
 
         porc = 100.0
         if last_position.num_moves < 40:
-            porc = 10.0 + last_position.num_moves*90.0/30.0
+            porc = 10.0 + last_position.num_moves * 90.0 / 30.0
 
         nmoves = min(20, len(last_position.get_exmoves()))
         if nmoves == 1:
             self.engine.not_humanize()
             return
         x = 70.0 + nmoves * 30.0 / 20.0
-        porc *= x/100.0
+        porc *= x / 100.0
 
         x = 80.0 + random.randint(1, 40)
-        porc *= x/100.0
+        porc *= x / 100.0
 
-        movetime *= porc/100.0
+        movetime *= porc / 100.0
 
         movetime = max(random.randint(1, 4), movetime)
 
         average_previous_user = game.average_mstime_user(5)
         if average_previous_user:
-            movetime = max(min(0.8*average_previous_user/1000, 60), movetime) # max 1 minute
+            movetime = max(min(0.8 * average_previous_user / 1000, 60), movetime)  # max 1 minute
 
         self.engine.set_humanize(movetime)
 

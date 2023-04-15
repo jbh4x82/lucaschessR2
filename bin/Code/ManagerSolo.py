@@ -2,7 +2,6 @@ import os
 import time
 
 import FasterCode
-
 from PySide2 import QtCore
 
 import Code
@@ -17,13 +16,12 @@ from Code.Base.Constantes import (
     TB_REINIT,
     TB_TAKEBACK,
     TB_CONFIG,
-    TB_CANCEL,
-    TB_END_GAME,
     TB_FILE,
     TB_HELP_TO_MOVE,
     TB_PGN_LABELS,
     TB_SAVE_AS,
     TB_UTILITIES,
+    TB_REPLAY,
     ADJUST_BETTER,
 )
 from Code.Openings import WindowOpenings
@@ -33,18 +31,16 @@ from Code.QT import Iconos
 from Code.QT import QTUtil
 from Code.QT import QTUtil2, SelectFiles
 from Code.QT import QTVarios
-from Code.QT import Voyager
 from Code.QT import WindowPgnTags
 from Code.Translations import TrListas
+from Code.Voyager import Voyager
 
 
 class ManagerSolo(Manager.Manager):
-    reinicio=None
+    reinicio = None
 
     def start(self, dic=None):
         self.game_type = GT_ALONE
-
-        # self.pgn.set_variations_mode(True)
 
         game_new = True
         if dic:
@@ -63,7 +59,7 @@ class ManagerSolo(Manager.Manager):
         self.reinicio = dic
 
         self.human_is_playing = True
-        self.human_side = True
+        self.is_human_side_white = True
 
         self.board.setAcceptDropPGNs(self.dropPGN)
 
@@ -102,22 +98,25 @@ class ManagerSolo(Manager.Manager):
         self.goto_end()
 
         if "SICAMBIORIVAL" in dic:
-            self.cambioRival()
+            self.change_rival()
             del dic["SICAMBIORIVAL"]  # que no lo vuelva a pedir
 
         self.valor_inicial = self.dame_valor_actual()
+        self.game.add_tag_timestart()
 
         self.play_next_move()
 
     def pon_rotulo(self):
         li = []
-        for label, label in self.game.li_tags:
-            if label.upper() == "WHITE":
-                li.append("%s: %s" % (_("White"), label))
-            elif label.upper() == "BLACK":
-                li.append("%s: %s" % (_("Black"), label))
-            elif label.upper() == "RESULT":
-                li.append("%s: %s" % (_("Result"), label))
+        for label1, label2 in self.game.li_tags:
+            if not label1 or not label2:
+                continue
+            if label1.upper() == "WHITE":
+                li.append("%s: %s" % (_("White"), label2))
+            elif label1.upper() == "BLACK":
+                li.append("%s: %s" % (_("Black"), label2))
+            elif label1.upper() == "RESULT":
+                li.append("%s: %s" % (_("Result"), label2))
         mensaje = "\n".join(li)
         self.set_label2(mensaje)
 
@@ -148,8 +147,8 @@ class ManagerSolo(Manager.Manager):
         elif key == TB_PGN_LABELS:
             self.informacion()
 
-        elif key in (TB_CANCEL, TB_END_GAME):
-            self.main_window.reject()
+        # elif key in (TB_CANCEL, TB_END_GAME):
+        #     self.main_window.reject()
 
         elif key == TB_SAVE_AS:
             self.grabarComo()
@@ -161,13 +160,21 @@ class ManagerSolo(Manager.Manager):
             Manager.Manager.rutinaAccionDef(self, key)
 
     def pon_toolbar(self):
-        li = [TB_CLOSE, TB_FILE, TB_PGN_LABELS, TB_TAKEBACK, TB_HELP_TO_MOVE, TB_REINIT, TB_CONFIG, TB_UTILITIES]
+        li = [
+            TB_CLOSE,
+            TB_FILE,
+            TB_PGN_LABELS,
+            TB_TAKEBACK,
+            TB_HELP_TO_MOVE,
+            TB_REINIT,
+            TB_REPLAY,
+            TB_CONFIG,
+            TB_UTILITIES,
+        ]
         self.set_toolbar(li)
 
     def end_game(self):
         self.board.setAcceptDropPGNs(None)
-
-        # self.main_window.deactivate_eboard(100)
 
         # Comprobamos que no haya habido cambios from_sq el ultimo grabado
         if self.is_changed() and len(self.game):
@@ -195,7 +202,7 @@ class ManagerSolo(Manager.Manager):
         self.put_view()
 
         is_white = self.game.last_position.is_white
-        self.human_side = is_white  # Compatibilidad, sino no funciona el cambio en pgn
+        self.is_human_side_white = is_white  # Compatibilidad, sino no funciona el cambio en pgn
 
         if self.auto_rotate:
             time.sleep(1)
@@ -203,7 +210,7 @@ class ManagerSolo(Manager.Manager):
                 self.board.rotaBoard()
 
         if self.game.is_finished():
-            self.muestra_resultado()
+            self.show_result()
             return
 
         self.set_side_indicator(is_white)
@@ -223,7 +230,7 @@ class ManagerSolo(Manager.Manager):
         if self.play_against_engine and not self.game.siEstaTerminada():
             self.play_against_engine = False
             self.disable_all()
-            self.juegaRival()
+            self.play_rival()
             self.play_against_engine = True  # Como juega por mi pasa por aqui, para que no se meta en un bucle infinito
 
         self.play_next_move()
@@ -239,7 +246,7 @@ class ManagerSolo(Manager.Manager):
         self.pgnRefresh(self.game.last_position.is_white)
         self.refresh()
 
-    def muestra_resultado(self):
+    def show_result(self):
         self.state = ST_ENDGAME
         self.disable_all()
 
@@ -269,6 +276,7 @@ class ManagerSolo(Manager.Manager):
         if dic is None:
             dic = self.creaDic()
         dic["WHITEBOTTOM"] = self.board.is_white_bottom
+        self.main_window.activaInformacionPGN(False)
         self.start(dic)
 
     def editEtiquetasPGN(self):
@@ -304,7 +312,6 @@ class ManagerSolo(Manager.Manager):
         dic = self.creaDic()
         dic["GAME"] = self.game.save()
         dic["LAST_FILE"] = Util.relative_path(file)
-        dic["WHITEBOTTOM"] = self.board.is_white_bottom
         if Util.save_pickle(file, dic):
             self.valor_inicial = self.dame_valor_actual()
             self.guardaDir(file)
@@ -342,6 +349,8 @@ class ManagerSolo(Manager.Manager):
                 if self.grabarFichero(resp):
                     self.ultimoFichero = resp
                     self.pon_toolbar()
+                else:
+                    resp = None
                 return resp
             break
         return None
@@ -363,7 +372,7 @@ class ManagerSolo(Manager.Manager):
         self.xfichero = None
         self.xpgn = None
         self.xjugadaInicial = None
-        self.reiniciar(dic)
+        self.start(dic)
         self.pon_toolbar()
         self.guardarHistorico(fich)
 
@@ -501,17 +510,17 @@ class ManagerSolo(Manager.Manager):
         liMasOpciones = (
             (None, _("Change the starting position"), Iconos.PGN()),
             sep,
-            ("position", _("Board editor") + " [%sS]"%ctrl, Iconos.Datos()),
+            ("position", _("Board editor") + " [%sS]" % ctrl, Iconos.Datos()),
             sep,
-            ("initial", _("Basic position") + " [%sB]"%ctrl, Iconos.Board()),
+            ("initial", _("Basic position") + " [%sB]" % ctrl, Iconos.Board()),
             sep,
             ("opening", _("Opening"), Iconos.Opening()),
             sep,
-            ("pasteposicion", _("Paste FEN position") + " [%sV]"%ctrl, Iconos.Pegar16()),
+            ("pasteposicion", _("Paste FEN position") + " [%sV]" % ctrl, Iconos.Pegar16()),
             sep,
             ("leerpgn", _("Read PGN file"), Iconos.PGN_Importar()),
             sep,
-            ("pastepgn", _("Paste PGN") + " [%sV]"%ctrl, Iconos.Pegar16()),
+            ("pastepgn", _("Paste PGN") + " [%sV]" % ctrl, Iconos.Pegar16()),
             sep,
             ("voyager", _("Voyager 2"), Iconos.Voyager()),
             (None, None, True),
@@ -522,7 +531,7 @@ class ManagerSolo(Manager.Manager):
             sep,
         )
 
-        resp = self.utilidades(liMasOpciones)
+        resp = self.utilities(liMasOpciones)
         if resp == "books":
             liMovs = self.librosConsulta(True)
             if liMovs:
@@ -592,10 +601,10 @@ class ManagerSolo(Manager.Manager):
                     self.xrival = None
                 self.play_against_engine = False
             else:
-                self.cambioRival()
+                self.change_rival()
 
         elif resp == "voyager":
-            ptxt = Voyager.voyagerPartida(self.main_window, self.game)
+            ptxt = Voyager.voyager_game(self.main_window, self.game)
             if ptxt:
                 self.xfichero = None
                 self.xpgn = None
@@ -603,7 +612,7 @@ class ManagerSolo(Manager.Manager):
                 dic = self.creaDic()
                 dic["GAME"] = ptxt
                 dic["WHITEBOTTOM"] = self.board.is_white_bottom
-                self.start(dic)
+                self.reiniciar(dic)
 
     def basic_initial_position(self):
         if len(self.game) > 0:
@@ -618,31 +627,35 @@ class ManagerSolo(Manager.Manager):
 
     def control_teclado(self, nkey, modifiers):
         if (modifiers & QtCore.Qt.ControlModifier) > 0:
-            if nkey == ord("V"):
+            if nkey == QtCore.Qt.Key_V:
                 self.paste(QTUtil.traePortapapeles())
-            elif nkey == ord("T"):
+            elif nkey == QtCore.Qt.Key_T:
                 li = [self.game.first_position.fen(), "", self.game.pgnBaseRAW()]
                 self.saveSelectedPosition("|".join(li))
-            elif nkey == ord("S"):
+            elif nkey == QtCore.Qt.Key_S:
                 self.startPosition()
-            elif nkey == ord("B"):
+            elif nkey == QtCore.Qt.Key_B:
                 is_control = (modifiers & QtCore.Qt.ControlModifier) > 0
                 if is_control:
                     self.basic_initial_position()
 
     def listHelpTeclado(self):
+        ctrl = _("CTRL") + " "
         return [
-            (_("CTRL") + " V", _("Paste position")),
-            (_("CTRL") + " T", _("Save position in 'Selected positions' file")),
-            (_("CTRL") + " S", _("Board editor")),
-            (_("CTRL") + " B", _("Basic position")),
+            (ctrl + "V", _("Paste position")),
+            (ctrl + "T", _("Save position in 'Selected positions' file")),
+            (ctrl + "S", _("Board editor")),
+            (ctrl + "B", _("Basic position")),
+            (ctrl + "1", _("Play instead of me")),
         ]
 
     def startPosition(self):
         if Code.eboard and Code.eboard.deactivate():
             self.main_window.set_title_toolbar_eboard()
 
-        position, is_white_bottom = Voyager.voyager_position(self.main_window, self.game.first_position, resp_side_bottom=True)
+        position, is_white_bottom = Voyager.voyager_position(
+            self.main_window, self.game.first_position
+        )
         if position is not None:
 
             self.board.set_side_bottom(is_white_bottom)
@@ -654,6 +667,7 @@ class ManagerSolo(Manager.Manager):
             self.xpgn = None
             self.xjugadaInicial = None
             self.opening_block = None
+            self.board.activate_side(position.is_white)
 
             self.reiniciar()
 
@@ -678,7 +692,7 @@ class ManagerSolo(Manager.Manager):
         except:
             pass
 
-    def juegaRival(self):
+    def play_rival(self):
         if not self.is_finished():
             self.thinking(True)
             rm = self.xrival.play_game(self.game, nAjustado=self.xrival.nAjustarFuerza)
@@ -686,14 +700,14 @@ class ManagerSolo(Manager.Manager):
             if rm.from_sq:
                 self.player_has_moved(rm.from_sq, rm.to_sq, rm.promotion)
 
-    def cambioRival(self):
+    def change_rival(self):
         if self.dicRival:
             dicBase = self.dicRival
         else:
             dicBase = self.configuration.read_variables("ENG_MANAGERSOLO")
 
-        dic = self.dicRival = WPlayAgainstEngine.cambioRival(
-            self.main_window, self.configuration, dicBase, siManagerSolo=True
+        dic = self.dicRival = WPlayAgainstEngine.change_rival(
+            self.main_window, self.configuration, dicBase, is_create_own_game=True
         )
 
         if dic:
@@ -710,7 +724,7 @@ class ManagerSolo(Manager.Manager):
                 r_t = None
             if r_p <= 0:
                 r_p = None
-            if r_t is None and r_p is None and not dic["SITIEMPO"]:
+            if r_t is None and r_p is None and not dic.get("SITIEMPO", False):
                 r_t = 1000
 
             nAjustarFuerza = dic["ADJUST"]
@@ -721,11 +735,11 @@ class ManagerSolo(Manager.Manager):
             self.set_label1(dic["ROTULO1"])
             self.play_against_engine = True
             self.configuration.write_variables("ENG_MANAGERSOLO", dic)
-            self.human_side = dic["ISWHITE"]
-            if self.game.last_position.is_white != self.human_side and not self.game.siEstaTerminada():
+            self.is_human_side_white = dic["ISWHITE"]
+            if self.game.last_position.is_white != self.is_human_side_white and not self.game.siEstaTerminada():
                 self.play_against_engine = False
                 self.disable_all()
-                self.juegaRival()
+                self.play_rival()
                 self.play_against_engine = True
 
     def takeback(self):

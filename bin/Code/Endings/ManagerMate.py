@@ -41,7 +41,11 @@ class BlockMate:
         self.seconds = 0
 
     def save(self):
-        return {"errors": self.errors, "seconds": self.seconds, "li_positions": [position.save() for position in self.li_positions]}
+        return {
+            "errors": self.errors,
+            "seconds": self.seconds,
+            "li_positions": [position.save() for position in self.li_positions],
+        }
 
     def restore(self, dic):
         self.errors = dic["errors"]
@@ -182,11 +186,14 @@ class ControlMate:
         if self.mate == 1:
             parte_sadier = total_positions * 75 // 100
             li_pos = get_positions_fns(
-                Code.path_resource("Trainings", "Checkmates in GM games", "Mate in 1.fns"), total_positions - parte_sadier
+                Code.path_resource("Trainings", "Checkmates in GM games", "Mate in 1.fns"),
+                total_positions - parte_sadier,
             )
             li_pos.extend(
                 get_positions_fns(
-                    Code.path_resource("Trainings", "Checkmates by Eduardo Sadier", "Mate in one (derived from mate in two).fns"),
+                    Code.path_resource(
+                        "Trainings", "Checkmates by Eduardo Sadier", "Mate in one (derived from mate in two).fns"
+                    ),
                     parte_sadier,
                 )
             )
@@ -194,11 +201,16 @@ class ControlMate:
         elif self.mate == 2:
             parte_sadier = total_positions * 75 // 100
             li_pos = get_positions_fns(
-                Code.path_resource("Trainings", "Checkmates in GM games", "Mate in 2.fns"), total_positions - parte_sadier
+                Code.path_resource("Trainings", "Checkmates in GM games", "Mate in 2.fns"),
+                total_positions - parte_sadier,
             )
             li_pos.extend(
                 get_positions_fns(
-                    Code.path_resource("Trainings", "Checkmates by Eduardo Sadier", "%d positions of mate in two.fns" % Code.mate_en_dos),
+                    Code.path_resource(
+                        "Trainings",
+                        "Checkmates by Eduardo Sadier",
+                        "%d positions of mate in two.fns" % Code.mate_en_dos,
+                    ),
                     parte_sadier,
                 )
             )
@@ -308,7 +320,7 @@ class ControlMate:
         for num_level, level in enumerate(self.li_levels, 1):
             s = level.seconds()
             if s > 0:
-                txt = "%5d %s" % (s, _("Seconds"))
+                txt = "%5d %s" % (s, _("Second(s)"))
                 if level.is_done():
                     txt += " - %s" % _("Done")
                 else:
@@ -324,6 +336,7 @@ class ControlMate:
 
 
 class ManagerMate(Manager.Manager):
+    lbNivel = None
     def start(self, mate):
 
         self.mate = mate
@@ -343,7 +356,7 @@ class ManagerMate(Manager.Manager):
         self.main_window.set_label1("<center><h1>%s</h1></center>" % _X(_("Mate in %1"), str(mate)))
         self.board.exePulsadoNum = None
 
-        self.lbNivel = self.main_window.base.lb_player_white.set_foreground_backgound("black", "#EDEFF1")
+        self.lbNivel = self.main_window.base.lb_player_white.set_foreground_backgound(Code.dic_colors["MANAGERMATE_FOREGROUND"], Code.dic_colors["MANAGERMATE_BACKGROUND"])
 
         self.finJuego()
 
@@ -401,7 +414,7 @@ class ManagerMate(Manager.Manager):
         self.ponRotuloBloque(False)
         self.main_window.base.pgn.show()
 
-        self.main_window.pon_toolbar((TB_QUIT, TB_LEVEL, TB_CONFIG))
+        self.set_toolbar((TB_QUIT, TB_LEVEL, TB_CONFIG))
         self.disable_all()
         self.state = ST_ENDGAME
         self.refresh()
@@ -424,7 +437,9 @@ class ManagerMate(Manager.Manager):
         menu.opcion("reset", _("Recreate all levels and start over"), Iconos.Refresh())
         resp = menu.lanza()
         if resp == "reset":
-            if QTUtil2.pregunta(self.main_window, "%s\n%s" % (_("Recreate all levels and start over"), _("Are you sure?"))):
+            if QTUtil2.pregunta(
+                self.main_window, "%s\n%s" % (_("Recreate all levels and start over"), _("Are you sure?"))
+            ):
                 Util.remove_file(self.control_mate.file_path)
                 self.start(self.mate)
 
@@ -459,12 +474,17 @@ class ManagerMate(Manager.Manager):
         if position_mate is None:
             # Hemos terminado el bloque
             siRecord, vtime = self.control_mate.work_end(self.errores)
-            txt = "<center><h3> %s : %d</h3><h3>%s : %d </h3></center>" % (_("Errors"), self.errores, _("Second(s)"), vtime)
+            txt = "<center><h3> %s : %d</h3><h3>%s : %d </h3></center>" % (
+                _("Errors"),
+                self.errores,
+                _("Second(s)"),
+                vtime,
+            )
 
             if siRecord:
                 txt += "<h3>%s</h3>" % _("Congratulations you have achieved a new record in this block.")
 
-            self.mensajeEnPGN(txt)
+            self.message_on_pgn(txt)
             self.finJuego()
 
         else:
@@ -497,11 +517,13 @@ class ManagerMate(Manager.Manager):
     def iniciaPosicion(self, position_mate):
         cp = Position.Position()
         cp.read_fen(position_mate.fen)
-        self.set_position(cp)
         self.activate_side(cp.is_white)
-        self.human_side = cp.is_white
+        self.is_human_side_white = cp.is_white
         self.board.remove_arrows()
         self.board.set_side_bottom(cp.is_white)
+        self.board.set_position(cp)
+        self.board.activate_side(cp.is_white)
+
         self.game = Game.Game(cp)
         li = [TB_CLOSE]
         if self.mate > 1:
@@ -531,13 +553,13 @@ class ManagerMate(Manager.Manager):
         self.siguienteMate()
 
     def player_has_moved(self, from_sq, to_sq, promotion=""):
-        self.human_is_playing = True  # necesario para el check
+        self.human_is_playing = True  # necesario
         move = self.check_human_move(from_sq, to_sq, promotion)
         if not move:
             return False
 
         self.game.add_move(move)
-        self.game.check()
+        self.game.verify()
         if self.siAyuda:
             self.board.remove_arrows()
         self.move_the_pieces(move.liMovs, False)
@@ -566,7 +588,7 @@ class ManagerMate(Manager.Manager):
         if self.is_finished():
             self.repiteMate(True, True)
             return
-        self.activate_side(self.human_side)  # Caso en que hay promotion, sino no se activa la dama
+        self.activate_side(self.is_human_side_white)  # Caso en que hay promotion, sino no se activa la dama
 
     def analize_position(self, row, key):
         # Doble click lanza el bloque
@@ -575,8 +597,7 @@ class ManagerMate(Manager.Manager):
             return
         self.jugar(row)
 
-
     def jugadaActual(self):
         """Necesario para que funcionen los atajos de ratón"""
         num_moves = len(self.game)
-        return num_moves, num_moves-1, num_moves // 2, self.game.last_position.is_white
+        return num_moves, num_moves - 1, num_moves // 2, self.game.last_position.is_white

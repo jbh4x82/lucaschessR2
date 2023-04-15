@@ -19,23 +19,25 @@ class WPolyglot(WKibCommon.WKibCommon):
 
         o_columns = Columnas.ListaColumnas()
         delegado = Delegados.EtiquetaPOS(True, siLineas=False) if self.with_figurines else None
-        o_columns.nueva("MOVE", _("Move"), 80, centered=True, edicion=delegado)
-        o_columns.nueva("PORC", "%", 60, centered=True)
-        o_columns.nueva("WEIGHT", _("Weight"), 80, siDerecha=True)
+        o_columns.nueva("MOVE", _("Move"), 80, align_center=True, edicion=delegado)
+        o_columns.nueva("PORC", "%", 60, align_center=True)
+        o_columns.nueva("WEIGHT", _("Weight"), 80, align_right=True)
         self.grid = Grid.Grid(self, o_columns, dicVideo=self.dicVideo, siSelecFilas=True)
+        f = Controles.TipoLetra(puntos=self.cpu.configuration.x_pgn_fontpoints)
+        self.grid.ponFuente(f)
 
         li_acciones = (
             (_("Quit"), Iconos.Kibitzer_Close(), self.terminar),
             (_("Continue"), Iconos.Kibitzer_Play(), self.play),
             (_("Pause"), Iconos.Kibitzer_Pause(), self.pause),
-            (_("Takeback"), Iconos.pmKibitzer_Back(), self.takeback),
+            (_("Takeback"), Iconos.Kibitzer_Back(), self.takeback),
             (_("Manual position"), Iconos.Kibitzer_Voyager(), self.set_position),
             (_("Show/hide board"), Iconos.Kibitzer_Board(), self.config_board),
             ("%s: %s" % (_("Enable"), _("window on top")), Iconos.Kibitzer_Up(), self.windowTop),
             ("%s: %s" % (_("Disable"), _("window on top")), Iconos.Kibitzer_Down(), self.windowBottom),
         )
         self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
-        self.tb.setAccionVisible(self.play, False)
+        self.tb.set_action_visible(self.play, False)
 
         ly1 = Colocacion.H().control(self.board).control(self.grid)
         layout = Colocacion.V().control(self.tb).espacio(-8).otro(ly1).margen(3)
@@ -105,4 +107,3 @@ class WPolyglot(WKibCommon.WKibCommon):
             self.grid.gotop()
             self.grid.refresh()
             self.ponFlecha(0)
-

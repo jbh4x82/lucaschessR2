@@ -4,17 +4,10 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 import Code.Nags.Nags
 from Code.Base import Game, Move
-from Code.Base.Constantes import (
-    GOOD_MOVE,
-    VERY_GOOD_MOVE,
-    NO_RATING,
-    MISTAKE,
-    BLUNDER,
-    SPECULATIVE_MOVE,
-    INACCURACY,
-)
+from Code.Base.Constantes import GOOD_MOVE, VERY_GOOD_MOVE, NO_RATING, MISTAKE, BLUNDER, INTERESTING_MOVE, INACCURACY
+from Code.Nags.Nags import NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6, dic_symbol_nags
+
 from Code.Board import Board
-from Code.Board import WindowColors
 from Code.QT import Colocacion
 from Code.QT import Controles
 from Code.QT import Iconos
@@ -23,7 +16,7 @@ from Code.QT import QTVarios
 
 V_SIN, V_IGUAL, V_BLANCAS, V_NEGRAS, V_BLANCAS_MAS, V_NEGRAS_MAS, V_BLANCAS_MAS_MAS, V_NEGRAS_MAS_MAS = (
     0,
-    11,
+    10,
     14,
     15,
     16,
@@ -70,24 +63,22 @@ class BoardLines(QtWidgets.QWidget):
         self.board.set_dispatcher(self.player_has_moved)
         self.board.dispatchSize(self.ajustaAncho)
         self.board.dbvisual_set_file(self.dbop.nom_fichero)
-        self.board.dbvisual_set_show_allways(True)
-        self.board.dbvisual_set_save_allways(True)
+        self.board.dbvisual_set_show_always(True)
+        self.board.dbvisual_set_save_always(True)
 
         self.board.set_side_bottom(self.dbop.getconfig("WHITEBOTTOM", True))
 
         self.dbop.setdbVisual_Board(self.board)  # To close
 
-        self.intervalo = configuration.x_interval_replay
-
         tipo_letra = Controles.TipoLetra(puntos=configuration.x_pgn_fontpoints)
 
         lybt, bt = QTVarios.lyBotonesMovimiento(self, "", siTiempo=True, siLibre=False, icon_size=24)
 
-        self.lbPGN = LBKey(self, " ").set_wrap()  # Por alguna razón es necesario ese espacio en blanco, para aperturas sin movs iniciales
+        self.lbPGN = LBKey(
+            self, " "
+        ).set_wrap()  # Por alguna razón es necesario ese espacio en blanco, para aperturas sin movs iniciales
         self.lbPGN.setAlignment(QtCore.Qt.AlignTop)
-        self.lbPGN.setStyleSheet(
-            "QLabel{ border-style: groove; border-width: 1px; border-color: LightSlateGray; padding-right: 18px;}"
-        )
+        self.configuration.set_property(self.lbPGN, "pgn")
         self.lbPGN.ponFuente(tipo_letra)
         self.lbPGN.setOpenExternalLinks(False)
 
@@ -105,32 +96,32 @@ class BoardLines(QtWidgets.QWidget):
         # w_pgn = QtWidgets.QWidget()
         # w_pgn.setLayout(ly)
         scroll.setWidget(self.lbPGN)
-        scroll.setMaximumHeight(configuration.x_pgn_fontpoints*6)
+        scroll.setMaximumHeight(configuration.x_pgn_fontpoints * 6)
 
         self.with_figurines = configuration.x_pgn_withfigurines
 
         dic_nags = Code.Nags.Nags.dic_nags()
-        self.dicValoracion = collections.OrderedDict()
-        self.dicValoracion[GOOD_MOVE] = (dic_nags[1], WindowColors.nag2ico(1, 16))
-        self.dicValoracion[MISTAKE] = (dic_nags[2], WindowColors.nag2ico(2, 16))
-        self.dicValoracion[VERY_GOOD_MOVE] = (dic_nags[3], WindowColors.nag2ico(3, 16))
-        self.dicValoracion[BLUNDER] = (dic_nags[4], WindowColors.nag2ico(4, 16))
-        self.dicValoracion[SPECULATIVE_MOVE] = (dic_nags[5], WindowColors.nag2ico(5, 16))
-        self.dicValoracion[INACCURACY] = (dic_nags[6], WindowColors.nag2ico(6, 16))
-        self.dicValoracion[NO_RATING] = (_("No rating"), QtGui.QIcon())
+        dicValoracion = collections.OrderedDict()
+        dicValoracion[GOOD_MOVE] = (dic_nags[NAG_1].text, dic_symbol_nags(NAG_1))
+        dicValoracion[MISTAKE] = (dic_nags[NAG_2].text, dic_symbol_nags(NAG_2))
+        dicValoracion[VERY_GOOD_MOVE] = (dic_nags[NAG_3].text, dic_symbol_nags(NAG_3))
+        dicValoracion[BLUNDER] = (dic_nags[NAG_4].text, dic_symbol_nags(NAG_4))
+        dicValoracion[INTERESTING_MOVE] = (dic_nags[NAG_5].text, dic_symbol_nags(NAG_5))
+        dicValoracion[INACCURACY] = (dic_nags[NAG_6].text, dic_symbol_nags(NAG_6))
+        dicValoracion[NO_RATING] = (_("No rating"), "")
 
         self.dicVentaja = collections.OrderedDict()
         self.dicVentaja[V_SIN] = (_("Undefined"), QtGui.QIcon())
-        self.dicVentaja[V_IGUAL] = (dic_nags[11], Iconos.V_Blancas_Igual_Negras())
-        self.dicVentaja[V_BLANCAS] = (dic_nags[14], Iconos.V_Blancas())
-        self.dicVentaja[V_BLANCAS_MAS] = (dic_nags[16], Iconos.V_Blancas_Mas())
-        self.dicVentaja[V_BLANCAS_MAS_MAS] = (dic_nags[18], Iconos.V_Blancas_Mas_Mas())
-        self.dicVentaja[V_NEGRAS] = (dic_nags[15], Iconos.V_Negras())
-        self.dicVentaja[V_NEGRAS_MAS] = (dic_nags[17], Iconos.V_Negras_Mas())
-        self.dicVentaja[V_NEGRAS_MAS_MAS] = (dic_nags[19], Iconos.V_Negras_Mas_Mas())
+        self.dicVentaja[V_IGUAL] = (dic_nags[10].text, Iconos.V_Blancas_Igual_Negras())
+        self.dicVentaja[V_BLANCAS] = (dic_nags[14].text, Iconos.V_Blancas())
+        self.dicVentaja[V_BLANCAS_MAS] = (dic_nags[16].text, Iconos.V_Blancas_Mas())
+        self.dicVentaja[V_BLANCAS_MAS_MAS] = (dic_nags[18].text, Iconos.V_Blancas_Mas_Mas())
+        self.dicVentaja[V_NEGRAS] = (dic_nags[15].text, Iconos.V_Negras())
+        self.dicVentaja[V_NEGRAS_MAS] = (dic_nags[17].text, Iconos.V_Negras_Mas())
+        self.dicVentaja[V_NEGRAS_MAS_MAS] = (dic_nags[19].text, Iconos.V_Negras_Mas_Mas())
 
         # Valoracion
-        li_options = [(tit[0], k, tit[1]) for k, tit in self.dicValoracion.items()]
+        li_options = [(tit[1] + " " + tit[0], k) for k, tit in dicValoracion.items()]
         self.cbValoracion = Controles.CB(self, li_options, 0).capture_changes(self.cambiadoValoracion)
         self.cbValoracion.ponFuente(tipo_letra)
 
@@ -183,6 +174,8 @@ class BoardLines(QtWidgets.QWidget):
             dic[key] = valor
             self.dbop.setfenvalue(self.fenm2, dic)
 
+            self.panelOpening.refresh_glines()
+
     def cambiadoValoracion(self):
         self.setvalue("VALORACION", self.cbValoracion.valor())
 
@@ -221,8 +214,8 @@ class BoardLines(QtWidgets.QWidget):
             self.panelOpening.player_has_moved(game)
 
     def resetValues(self):
-        self.cbValoracion.ponValor(NO_RATING)
-        self.cbVentaja.ponValor(V_SIN)
+        self.cbValoracion.set_value(NO_RATING)
+        self.cbVentaja.set_value(V_SIN)
         self.emComentario.set_text("")
 
     def colocatePartida(self, pos):
@@ -247,9 +240,9 @@ class BoardLines(QtWidgets.QWidget):
 
         numJugada = 1
         pgn = ""
-        style_number = "color:teal; font-weight: bold;"
-        style_moves = "color:black;"
-        style_select = "color:navy;font-weight: bold;"
+        style_number = "color:%s; font-weight: bold;" % Code.dic_colors["PGN_NUMBER"]
+        style_select = "color:%s;font-weight: bold;" % Code.dic_colors["PGN_SELECT"]
+        style_moves = "color:%s;" % Code.dic_colors["PGN_MOVES"]
         salta = 0
         for n, move in enumerate(p.li_moves):
             if n % 2 == salta:
@@ -283,8 +276,8 @@ class BoardLines(QtWidgets.QWidget):
         valoracion = dic.get("VALORACION", NO_RATING)
         ventaja = dic.get("VENTAJA", V_SIN)
         comment = dic.get("COMENTARIO", "")
-        self.cbValoracion.ponValor(valoracion)
-        self.cbVentaja.ponValor(ventaja)
+        self.cbValoracion.set_value(valoracion)
+        self.cbVentaja.set_value(ventaja)
         self.emComentario.set_text(comment)
 
         self.board.set_position(position)
@@ -334,9 +327,10 @@ class BoardLines(QtWidgets.QWidget):
 
     def toolbar_rightmouse(self):
         QTVarios.change_interval(self, self.configuration)
-        self.intervalo = self.configuration.x_interval_replay
 
     def lanzaReloj(self):
         if self.siReloj:
             self.MoverAdelante()
-            QtCore.QTimer.singleShot(self.intervalo, self.lanzaReloj)
+            if self.configuration.x_beep_replay:
+                Code.runSound.playBeep()
+            QtCore.QTimer.singleShot(self.configuration.x_interval_replay, self.lanzaReloj)

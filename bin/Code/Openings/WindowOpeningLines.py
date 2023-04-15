@@ -27,12 +27,14 @@ class WOpeningLines(LCDialog.LCDialog):
         self.resultado = None
         self.listaOpenings = OpeningLines.ListaOpenings(self.configuration)
 
-        LCDialog.LCDialog.__init__(self, procesador.main_window, self.getTitulo(), Iconos.OpeningLines(), "openingLines")
+        LCDialog.LCDialog.__init__(
+            self, procesador.main_window, self.getTitulo(), Iconos.OpeningLines(), "openingLines"
+        )
 
         o_columns = Columnas.ListaColumnas()
         o_columns.nueva("TITLE", _("Name"), 240)
         o_columns.nueva("BASEPV", _("First moves"), 280)
-        o_columns.nueva("NUMLINES", _("Lines"), 80, centered=True)
+        o_columns.nueva("NUMLINES", _("Lines"), 80, align_center=True)
         o_columns.nueva("FILE", _("File"), 200)
         self.glista = Grid.Grid(self, o_columns, siSelecFilas=True, siSeleccionMultiple=True)
 
@@ -74,24 +76,23 @@ class WOpeningLines(LCDialog.LCDialog):
         )
         self.tbtrain = tbtrain = Controles.TBrutina(self, li_acciones, with_text=False)
 
-        lbtrain = Controles.LB(self, _("Trainings")).align_center().set_background("lightgray")
+        lbtrain = Controles.LB(self, _("Trainings")).align_center()
+        lbtrain.setStyleSheet("*{border: 1px solid #bababa;}")
         lytrain = Colocacion.V().control(lbtrain).control(tbtrain).margen(0)
         self.wtrain = QtWidgets.QWidget()
         self.wtrain.setLayout(lytrain)
 
         lytb = Colocacion.H().control(tb).control(self.wtrain).margen(0)
         wtb = QtWidgets.QWidget()
-        wtb.setFixedHeight(62)
+        wtb.setFixedHeight(66)
         wtb.setLayout(lytb)
-
-        # Colocamos
 
         ly = Colocacion.V().control(wtb).control(self.glista).margen(4)
 
         self.setLayout(ly)
 
         self.register_grid(self.glista)
-        self.restore_video(anchoDefecto=self.glista.anchoColumnas() + 20)
+        self.restore_video(anchoDefecto=self.glista.anchoColumnas() + 20, altoDefecto=640)
 
         self.wtrain.setVisible(False)
         self.glista.gotop()
@@ -158,7 +159,9 @@ class WOpeningLines(LCDialog.LCDialog):
                         li_gen.append(FormLayout.separador)
                         li_gen.append((None, error))
 
-                    resultado = FormLayout.fedit(li_gen, title=nof, parent=self, icon=Iconos.OpeningLines(), anchoMinimo=460)
+                    resultado = FormLayout.fedit(
+                        li_gen, title=nof, parent=self, icon=Iconos.OpeningLines(), anchoMinimo=460
+                    )
                     if resultado:
                         accion, liResp = resultado
                         name = liResp[0].strip()
@@ -221,7 +224,7 @@ class WOpeningLines(LCDialog.LCDialog):
         if w.exec_():
             ap = w.resultado()
             pv = ap.a1h8 if ap else ""
-            name = ap.name if ap else ""
+            name = ap.tr_name if ap else ""
         else:
             return
 
@@ -245,7 +248,9 @@ class WOpeningLines(LCDialog.LCDialog):
     def get_nombre(self, name):
         li_gen = [(None, None)]
         li_gen.append((_("Opening studio name") + ":", name))
-        resultado = FormLayout.fedit(li_gen, title=_("Opening studio name"), parent=self, icon=Iconos.OpeningLines(), anchoMinimo=460)
+        resultado = FormLayout.fedit(
+            li_gen, title=_("Opening studio name"), parent=self, icon=Iconos.OpeningLines(), anchoMinimo=460
+        )
         if resultado:
             accion, liResp = resultado
             name = liResp[0].strip()
@@ -312,10 +317,10 @@ class WOpeningLines(LCDialog.LCDialog):
 
         if ok_ssp or ok_eng:
             self.wtrain.setVisible(True)
-            self.tbtrain.setAccionVisible(self.tr_sequential, ok_ssp)
-            self.tbtrain.setAccionVisible(self.tr_static, ok_ssp)
-            self.tbtrain.setAccionVisible(self.tr_positions, ok_ssp)
-            self.tbtrain.setAccionVisible(self.tr_engines, ok_eng)
+            self.tbtrain.set_action_visible(self.tr_sequential, ok_ssp)
+            self.tbtrain.set_action_visible(self.tr_static, ok_ssp)
+            self.tbtrain.set_action_visible(self.tr_positions, ok_ssp)
+            self.tbtrain.set_action_visible(self.tr_engines, ok_eng)
         else:
             self.wtrain.setVisible(False)
 
@@ -354,9 +359,9 @@ class WStaticTraining(LCDialog.LCDialog):
         # Lista
         ancho = 42
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("FILA", "", 36, centered=True)
+        o_columns.nueva("FILA", "", 36, align_center=True)
         for x in range(self.elems_fila):
-            o_columns.nueva("COL%d" % x, "%d" % (x + 1,), ancho, centered=True, edicion=Delegados.PmIconosWeather())
+            o_columns.nueva("COL%d" % x, "%d" % (x + 1,), ancho, align_center=True, edicion=Delegados.PmIconosWeather())
 
         self.grid = Grid.Grid(self, o_columns, altoFila=ancho, background="white")
         self.grid.setAlternatingRowColors(False)
@@ -401,7 +406,7 @@ class WStaticTraining(LCDialog.LCDialog):
             self.accept()
 
 
-def selectLine(procesador, dbop):
+def select_static_line(procesador, dbop):
     w = WStaticTraining(procesador, dbop)
     w.exec_()
     return w.seleccionado
@@ -410,3 +415,31 @@ def selectLine(procesador, dbop):
 def openingLines(procesador):
     w = WOpeningLines(procesador)
     return w.resultado if w.exec_() else None
+
+
+def select_line(owner):
+    path = Code.configuration.folder_base_openings
+    is_openings = False
+    entry: os.DirEntry
+    menu = QTVarios.LCMenuRondo(owner)
+    for entry in os.scandir(path):
+        if entry.is_dir():
+            path_ini = os.path.join(entry.path, "openinglines.pk")
+            lista = Util.restore_pickle(path_ini, [])
+            if lista:
+                is_openings = True
+                submenu = menu.submenu(entry.name, Iconos.FolderAnil())
+                for dic in lista:
+                    dic["folder"] = entry.name
+                    submenu.opcion(dic, dic["title"])
+
+    path_ini = os.path.join(path, "openinglines.pk")
+    lista = Util.restore_pickle(path_ini, [])
+    if lista:
+        is_openings = True
+        for dic in lista:
+            menu.opcion(dic, dic["title"])
+    if is_openings:
+        return menu.lanza()
+
+    return None

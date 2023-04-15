@@ -104,7 +104,7 @@ class WDBAnalisis:
             menu.opcion("an_hide", _("Hide analysis"), Iconos.Ocultar())
             menu.separador()
 
-        menu1 = menu.submenu(_("Remove"), Iconos.Delete())
+        menu1 = menu.submenu(_("Delete analysis of"), Iconos.Delete())
         for n, mrm in enumerate(li_analisis):
             menu1.opcion("an_rem_%d" % n, mrm.rotulo, Iconos.PuntoRojo())
             menu1.separador()
@@ -125,7 +125,7 @@ class WDBAnalisis:
         elif resp.startswith("an_rem_"):
             li_analisis = self.db_analysis().lista(pv)[0]
             num = int(resp[7:])
-            if QTUtil2.pregunta(self.wowner, _X(_("Delete %1?"), li_analisis[num].rotulo)):
+            if QTUtil2.pregunta(self.wowner, _X(_("Delete analysis of %1?"), li_analisis[num].rotulo)):
                 self.db_analysis().quita(pv, num)
             return
 
@@ -136,13 +136,16 @@ class WDBAnalisis:
 
         me = QTUtil2.analizando(self.wowner)
 
-        conf_motor = Code.configuration.buscaRival(alm.engine)
-        conf_motor.update_multipv(alm.multiPV)
-        xmotor = Code.procesador.creaManagerMotor(conf_motor, alm.vtime, alm.depth, siMultiPV=True)
+        if alm.engine == "default":
+            xengine = Code.procesador.analyzer_clone(alm.vtime, alm.depth, alm.multiPV)
+        else:
+            conf_motor = Code.configuration.buscaRival(alm.engine)
+            conf_motor.update_multipv(alm.multiPV)
+            xengine = Code.procesador.creaManagerMotor(conf_motor, alm.vtime, alm.depth, siMultiPV=True)
 
         game = Game.Game()
         game.read_pv(pv)
-        mrm, pos = xmotor.analizaJugadaPartida(game, 9999, alm.vtime, alm.depth)
+        mrm, pos = xengine.analizaJugadaPartida(game, 9999, alm.vtime, alm.depth, window=self.wowner)
 
         rotulo = mrm.name
         if alm.vtime:
@@ -153,7 +156,7 @@ class WDBAnalisis:
 
         mrm.rotulo = rotulo
 
-        xmotor.terminar()
+        xengine.terminar()
 
         me.final()
 

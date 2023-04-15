@@ -1,6 +1,7 @@
 import collections
 import copy
 import os
+import time
 import webbrowser
 from io import BytesIO
 
@@ -9,8 +10,9 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import Qt
 
 import Code
-import Code.Board.WindowColors as WindowColores
-from Code import Util
+import Code.Board.WBoardColors as WBoardColors
+from Code import Util, XRun
+from Code.Base import Game
 from Code.Base.Constantes import (
     WHITE,
     BLACK,
@@ -64,14 +66,14 @@ class Board(QtWidgets.QGraphicsView):
 
         self.variation_history = None
 
-        self.siMenuVisual = siMenuVisual
+        self.siMenuVisual = siMenuVisual and siDirector
         self.siDirector = siDirector and siMenuVisual
         self.siDirectorIcon = self.siDirector and self.configuration.x_director_icon
         self.dirvisual = None
         self.guion = None
         self.lastFenM2 = ""
         self.dbVisual = TabVisual.DBManagerVisual(
-            self.configuration.ficheroRecursos, show_allways=self.configuration.x_director_icon == False
+            self.configuration.ficheroRecursos, show_always=self.configuration.x_director_icon is False
         )
 
         self.current_graphlive = None
@@ -105,13 +107,16 @@ class Board(QtWidgets.QGraphicsView):
 
         self.hard_focus = True  # Controla que cada vez que se indique una posición active el foco al board
 
+        self.allow_eboard = True
+
+        self.minimum_size = 2
+
     def disable_hard_focus(self):
         self.hard_focus = False
 
-    def init_kb_buffer(self, alsoCad=True):
+    def init_kb_buffer(self):
         self.kb_buffer = []
-        if alsoCad:
-            self.cad_buffer = ""
+        self.cad_buffer = ""
 
     def exec_kb_buffer(self, key, flags):
         if key == Qt.Key_Escape:
@@ -132,16 +137,24 @@ class Board(QtWidgets.QGraphicsView):
                 return
 
         is_alt = (flags & QtCore.Qt.AltModifier) > 0
+        is_shift = (flags & QtCore.Qt.ShiftModifier) > 0
         is_ctrl = (flags & QtCore.Qt.ControlModifier) > 0
 
         okseguir = False
 
         if is_alt or is_ctrl:
 
-            # CTRL-C : copy fen al clipboard
-            if is_ctrl and key == Qt.Key_C:
-                QTUtil.ponPortapapeles(self.last_position.fen())
-                QTUtil2.message_bold(self, _("FEN is in clipboard"))
+            # CTRL-C/ : copy fen al clipboard
+            if key == Qt.Key_C:
+                if (self.configuration.x_copy_ctrl and is_ctrl) or (not self.configuration.x_copy_ctrl and is_alt):
+                    if is_shift:
+                        if hasattr(self.main_window, "manager") and hasattr(
+                                self.main_window.manager, "save_pgn_clipboard"
+                        ):
+                            self.main_window.manager.save_pgn_clipboard()
+                    else:
+                        QTUtil.ponPortapapeles(self.last_position.fen())
+                        QTUtil2.message_bold(self, _("FEN is in clipboard"))
 
             # ALT-B : Menu visual
             elif is_alt and key == Qt.Key_B:
@@ -174,21 +187,25 @@ class Board(QtWidgets.QGraphicsView):
                     self.configuration.graba()
 
             # ALT-K
-            elif key == Qt.Key_K:
+            elif is_alt and key == Qt.Key_K:
                 self.showKeys()
 
             # ALT-L
-            elif key == Qt.Key_L:
+            elif is_alt and key == Qt.Key_L:
                 webbrowser.open("https://lichess.org/analysis/standard/" + self.last_position.fen())
 
             # ALT-T
-            elif key == Qt.Key_T:
+            elif is_alt and key == Qt.Key_T:
                 webbrowser.open("https://old.chesstempo.com/gamedb/fen/" + self.last_position.fen())
 
+            # ALT-X
+            elif is_alt and key == Qt.Key_X:
+                self.play_current_position()
+
             elif (
-                hasattr(self.main_window, "manager")
-                and self.main_window.manager
-                and key in (Qt.Key_P, Qt.Key_N, Qt.Key_C)
+                    hasattr(self.main_window, "manager")
+                    and self.main_window.manager
+                    and key in (Qt.Key_P, Qt.Key_N, Qt.Key_C)
             ):
                 # P -> show information
                 if key == Qt.Key_P and hasattr(self.main_window.manager, "pgnInformacion"):
@@ -235,10 +252,10 @@ class Board(QtWidgets.QGraphicsView):
                             elif san[0].upper() in self.dic_tr_keymoves:
                                 san = self.dic_tr_keymoves[san[0].upper()] + san[1:]
                         if (
-                            busca.endswith(san.lower())
-                            or busca.endswith(san.lower().replace("=", ""))
-                            or (san == "O-O-O" and busca.endswith("o3"))
-                            or (san == "O-O" and busca.endswith("o2"))
+                                busca.endswith(san.lower())
+                                or busca.endswith(san.lower().replace("=", ""))
+                                or (san == "O-O-O" and busca.endswith("o3"))
+                                or (san == "O-O" and busca.endswith("o2"))
                         ):
                             if exmove_ok:
                                 if len(san) > len(exmove_ok.san()):
@@ -275,6 +292,17 @@ class Board(QtWidgets.QGraphicsView):
             return
 
         event.ignore()
+
+        if k in (QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace) and len(self.dicMovibles) > 0:
+            if self.dirvisual:
+                self.dirvisual.keyPressEvent(event)
+            else:
+                if k == QtCore.Qt.Key_Backspace:
+                    self.borraUltimoMovible()
+                elif k == QtCore.Qt.Key_Delete:
+                    self.borraMovibles()
+            return
+
         self.exec_kb_buffer(k, m)
 
     def activaMenuVisual(self, siActivar):
@@ -314,7 +342,7 @@ class Board(QtWidgets.QGraphicsView):
         if self.blindfold:
             self.piezas = Piezas.Blindfold(nom_pieces_ori, self.blindfold)
         else:
-            self.piezas = Code.todasPiezas.selecciona(nom_pieces_ori)
+            self.piezas = Code.all_pieces.selecciona(nom_pieces_ori)
         self.anchoPieza = self.config_board.anchoPieza()
         self.margenPieza = 2
 
@@ -464,7 +492,7 @@ class Board(QtWidgets.QGraphicsView):
                 cajon = BoardTypes.Caja()
                 cajon.colorRelleno = self.colorExterior
         self.ancho = ancho = cajon.physical_pos.alto = cajon.physical_pos.ancho = (
-            self.width_square * 8 + self.margenCentro * 2 + self.tamFrontera * 2
+                self.width_square * 8 + self.margenCentro * 2 + self.tamFrontera * 2
         )
         cajon.physical_pos.orden = 1
         cajon.tipo = QtCore.Qt.NoPen
@@ -481,7 +509,7 @@ class Board(QtWidgets.QGraphicsView):
         else:
             baseCasillas = BoardTypes.Caja()
             baseCasillas.colorRelleno = self.colorFondo
-        baseCasillas.physical_pos.x = baseCasillas.physical_pos.y = self.margenCentro + self.tamFrontera/2
+        baseCasillas.physical_pos.x = baseCasillas.physical_pos.y = self.margenCentro + self.tamFrontera / 2
         baseCasillas.physical_pos.alto = baseCasillas.physical_pos.ancho = self.width_square * 8
         baseCasillas.physical_pos.orden = 2
         baseCasillas.tipo = 0
@@ -497,7 +525,7 @@ class Board(QtWidgets.QGraphicsView):
         base_casillas_f.grosor = self.tamFrontera
         base_casillas_f.physical_pos.x = base_casillas_f.physical_pos.y = self.margenCentro
         base_casillas_f.physical_pos.alto = base_casillas_f.physical_pos.ancho = (
-            self.width_square * 8 + self.tamFrontera
+                self.width_square * 8 + self.tamFrontera
         )
         base_casillas_f.physical_pos.orden = 3
         base_casillas_f.colorRelleno = -1
@@ -561,7 +589,7 @@ class Board(QtWidgets.QGraphicsView):
             pFrontera = base_casillas_f.physical_pos
             gapCasilla = (self.width_square - anchoTexto) / 2
             sep = (
-                self.margenCentro * self.config_board.sepLetras() * 38 / 50000
+                    self.margenCentro * self.config_board.sepLetras() * 38 / 50000
             )  # ancho = 38 -> sep = 5 -> sepLetras = 100
 
             def norm(x):
@@ -682,7 +710,7 @@ class Board(QtWidgets.QGraphicsView):
                 script.sur = indicador.physical_pos.y
                 script.norte = gap / 2
                 self.scriptSC_menu = BoardElements.PixmapSC(
-                    self.escena, script, pixmap=Iconos.pmLampara(), rutina=self.lanzaGuion
+                    self.escena, script, pixmap=Iconos.pmLampara(), rutina=self.lanzaGuionAuto
                 )
                 self.scriptSC_menu.hide()
                 self.scriptSC_menu.setOpacity(0.70)
@@ -706,52 +734,67 @@ class Board(QtWidgets.QGraphicsView):
         event.ignore()
 
     def showKeys(self):
-        liKeys = [
-            (_("ALT") + " B", _("Board menu")),
+        def alt(key):
+            return _("ALT") + " %s" % key
+
+        def ctrl(key):
+            return _("CTRL") + " %s" % key
+
+        def ctrl_alt(key):
+            return "%s %s %s" % (_("CTRL"), _("ALT"), key)
+
+        li_keys = [
+            (alt("B"), _("Board menu")),
             (None, None),
-            (_("ALT") + " F", _("Flip the board")),
+            (alt("F"), _("Flip the board")),
             (None, None),
-            (_("CTRL") + " C", _("Copy FEN to clipboard")),
+            (ctrl("C") if Code.configuration.x_copy_ctrl else alt("C"), _("Copy FEN to clipboard")),
             (None, None),
-            (_("ALT") + " I", _("Copy board as image to clipboard")),
-            (_("CTRL") + " I", _("Copy board as image to clipboard") + " (%s)" % _("without border")),
-            (
-                _("CTRL") + "+" + _("ALT") + " I",
-                _("Copy board as image to clipboard") + " (%s)" % _("without coordinates"),
-            ),
-            (_("ALT") + " J", _("Copy board as image to a file")),
-            (_("CTRL") + " J", _("Copy board as image to a file") + " (%s)" % _("without border")),
-            (
-                _("CTRL") + "+" + _("ALT") + " J",
-                _("Copy board as image to a file") + " (%s)" % _("without coordinates"),
-            ),
+            (alt("I"), _("Copy board as image to clipboard")),
+            (ctrl("I"), _("Copy board as image to clipboard") + " (%s)" % _("without border")),
+            (ctrl_alt("I"), _("Copy board as image to clipboard") + " (%s)" % _("without coordinates")),
+            (alt("J"), _("Copy board as image to a file")),
+            (ctrl("J"), _("Copy board as image to a file") + " (%s)" % _("without border")),
+            (ctrl_alt("J"), _("Copy board as image to a file") + " (%s)" % _("without coordinates")),
         ]
         if self.pieces_are_active:
-            liKeys.append((None, None))
-            liKeys.append(("a1 ... h8", _("To indicate origin and destination of a move")))
+            li_keys.append((None, None))
+            li_keys.append(("a1 ... h8", _("To indicate origin and destination of a move")))
 
         if hasattr(self.main_window, "manager") and self.main_window.manager:
             if hasattr(self.main_window.manager, "gridRightMouse"):
-                liKeys.append((None, None))
-                liKeys.append((_("ALT") + "-P", _("Show/Hide PGN information")))
-            liKeys.append((None, None))
-            liKeys.append((_("ALT") + "-N", _("Activate/Deactivate non distract mode")))
+                li_keys.append((None, None))
+                li_keys.append((alt("P"), _("Show/Hide PGN information")))
+            li_keys.append((None, None))
+            li_keys.append((alt("N"), _("Activate/Deactivate non distract mode")))
 
             if hasattr(self.main_window.manager, "listHelpTeclado"):
-                liKeys.append((None, None))
-                liKeys.extend(self.main_window.manager.listHelpTeclado())
+                li_keys.append((None, None))
+                li_keys.extend(self.main_window.manager.listHelpTeclado())
 
-        liKeys.append((None, None))
-        liKeys.append((_("ALT") + " L", _("Open position in LiChess")))
-        liKeys.append((None, None))
-        liKeys.append(("F11", _("Full screen On/Off")))
-        liKeys.append(("F12", _("Minimize to the tray icon")))
+        li_keys.append((None, None))
+        li_keys.append((alt("L"), _("Open position in LiChess")))
+        li_keys.append((alt("T"), _("Open position in ChessTempo")))
+        li_keys.append((alt("X"), _("Play current position")))
+        li_keys.append((None, None))
+        li_keys.append(("F11", _("Full screen On/Off")))
+        li_keys.append(("F12", _("Minimize to the tray icon")))
+
+        if hasattr(self.main_window, "manager") and hasattr(self.main_window.manager, "save_pgn_clipboard"):
+            li_keys.insert(
+                5,
+                (
+                    "%s %s C"
+                    % (_("CTRL") if Code.configuration.x_copy_ctrl else _("ALT"), _("SHIFT || From keyboard")),
+                    _("Copy PGN to clipboard"),
+                ),
+            )
 
         rondo = QTVarios.rondoPuntos()
         menu = QTVarios.LCMenu(self)
         menu.opcion(None, _("Active keys"), Iconos.Rename())
         menu.separador()
-        for key, mess in liKeys:
+        for key, mess in li_keys:
             if key is None:
                 menu.separador()
             else:
@@ -772,7 +815,7 @@ class Board(QtWidgets.QGraphicsView):
             menu.opcion("size", _("Change board size"), Iconos.ResizeBoard())
             menu.separador()
 
-        menu.opcion("def_todo", _("Default"), Iconos.Defecto())
+        menu.opcion("def_todo", _("By default"), Iconos.Defecto())
 
         menu.separador()
         if self.siDirector:
@@ -795,7 +838,7 @@ class Board(QtWidgets.QGraphicsView):
             menucol.separador()
             liTemas = Util.restore_pickle(Code.configuration.ficheroTemas)
             if liTemas:
-                WindowColores.ponMenuTemas(menucol, liTemas, "tt_")
+                WBoardColors.ponMenuTemas(menucol, liTemas, "tt_")
                 menucol.separador()
             for entry in Util.listdir(Code.path_resource("Themes")):
                 fich = entry.name
@@ -806,7 +849,7 @@ class Board(QtWidgets.QGraphicsView):
             resp = menucol.lanza()
             if resp:
                 if resp == "edit":
-                    w = WindowColores.WColores(self)
+                    w = WBoardColors.WBoardColors(self)
                     w.exec_()
                 else:
                     self.ponColores(liTemas, resp)
@@ -817,7 +860,7 @@ class Board(QtWidgets.QGraphicsView):
             for x in Util.listdir(Code.path_resource("Pieces")):
                 try:
                     if x.is_dir():
-                        ico = Code.todasPiezas.icono("K", x.name)
+                        ico = Code.all_pieces.icono("K", x.name)
                         li.append((x.name, ico))
                 except:
                     pass
@@ -859,7 +902,6 @@ class Board(QtWidgets.QGraphicsView):
                 self.dirvisual = None
                 return False
             else:
-
                 self.dirvisual = WindowDirector.Director(self)
             return True
         else:
@@ -870,6 +912,12 @@ class Board(QtWidgets.QGraphicsView):
             self.guion.cierraPizarra()
             self.guion.cerrado = True
             self.guion = None
+
+    def lanzaGuionAuto(self):
+        if self.guion is not None:
+            self.guion.restoreBoard(siBorraMoviblesAhora=True)
+        else:
+            self.lanzaGuion()
 
     def lanzaGuion(self):
         if self.guion is not None:
@@ -905,7 +953,7 @@ class Board(QtWidgets.QGraphicsView):
 
         if self.config_board.is_base:
             nom_pieces_ori = self.config_board.nomPiezas()
-            Code.todasPiezas.save_all_png(nom_pieces_ori, 30)
+            Code.all_pieces.save_all_png(nom_pieces_ori, 30)
             Delegados.generaPM(self.piezas)
             self.main_window.pgnRefresh()
             if hasattr(self.main_window.manager, "put_view"):
@@ -917,7 +965,7 @@ class Board(QtWidgets.QGraphicsView):
 
         else:
             fich = Code.path_resource("Themes/%s" % resp[3:])
-            tema = WindowColores.eligeTema(self, fich)
+            tema = WBoardColors.eligeTema(self, fich)
 
         if tema:
             self.config_board.leeTema(tema["o_tema"])
@@ -1084,10 +1132,10 @@ class Board(QtWidgets.QGraphicsView):
                     if n != last:
                         bd = item.bloqueDatos
                         if (
-                            hasattr(bd_last, "tpid")
-                            and hasattr(bd, "tpid")
-                            and bd_last.tpid == bd.tpid
-                            and bd_last.a1h8 in (bd.a1h8, bd.a1h8[2:] + bd.a1h8[:2])
+                                hasattr(bd_last, "tpid")
+                                and hasattr(bd, "tpid")
+                                and bd_last.tpid == bd.tpid
+                                and bd_last.a1h8 in (bd.a1h8, bd.a1h8[2:] + bd.a1h8[:2])
                         ):
                             st.add(self.current_graphlive)
                             st.add(item)
@@ -1148,23 +1196,33 @@ class Board(QtWidgets.QGraphicsView):
         return a1h8
 
     def mousePressEvent(self, event):
-        if self.dirvisual and self.dirvisual.mousePressEvent(event):
+        if self.dirvisual:
+            self.dirvisual.mousePressEvent(event)
             return
+
         a1h8 = self.event2a1h8(event)
 
-        siRight = event.button() == QtCore.Qt.RightButton
-        if siRight and a1h8:
-            return self.mousePressGraphLive(event, a1h8)
+        si_right = event.button() == QtCore.Qt.RightButton
+        if si_right:
+            if a1h8:
+                return self.mousePressGraphLive(event, a1h8)
+            else:
+                self.lanzaMenuVisual()
+                return
+
+        si_izq = event.button() == QtCore.Qt.LeftButton
+        if si_izq and a1h8 is not None:
+            self.borraMovibles()
 
         self.blindfoldPosicion(False, None, None)
         if a1h8 is None:
             if self.atajosRaton:
-                self.atajosRaton(None)
+                self.atajosRaton(self.last_position, None)
             QtWidgets.QGraphicsView.mousePressEvent(self, event)
             return
 
         if self.atajosRaton:
-            self.atajosRaton(a1h8)
+            self.atajosRaton(self.last_position, a1h8)
             # Atajos raton lanza show_candidates si hace falta
 
         elif hasattr(self.main_window, "manager"):
@@ -1177,10 +1235,9 @@ class Board(QtWidgets.QGraphicsView):
 
     def checkLEDS(self):
         if not hasattr(self, "dicXML"):
-
             def lee(fich):
                 with open(
-                    Code.path_resource("IntFiles/Svg", "%s.svg" % fich), "rt", encoding="utf-8", errors="ignore"
+                        Code.path_resource("IntFiles/Svg", "%s.svg" % fich), "rt", encoding="utf-8", errors="ignore"
                 ) as f:
                     resp = f.read()
                 return resp
@@ -1258,7 +1315,7 @@ class Board(QtWidgets.QGraphicsView):
                 if ap > 500:
                     ap = 64
                 ap += 2 * (+1 if salto else -1)
-                if ap >= 10:
+                if ap >= self.minimum_size:
                     self.config_board.anchoPieza(ap)
                     self.config_board.guardaEnDisco()
                     self.cambiadoAncho()
@@ -1278,11 +1335,11 @@ class Board(QtWidgets.QGraphicsView):
     def dbvisual_set_file(self, file):
         self.dbVisual.set_file(file)
 
-    def dbvisual_set_show_allways(self, ok):
-        self.dbVisual.show_allways(ok)
+    def dbvisual_set_show_always(self, ok):
+        self.dbVisual.show_always(ok)
 
-    def dbvisual_set_save_allways(self, ok):
-        self.dbVisual.save_allways(ok)
+    def dbvisual_set_save_always(self, ok):
+        self.dbVisual.save_always(ok)
 
     def dbvisual_close(self):
         self.dbVisual.close()
@@ -1305,7 +1362,7 @@ class Board(QtWidgets.QGraphicsView):
         alm.guion = self.guion
         alm.lastFenM2 = self.lastFenM2
         alm.nomdbVisual = self.dbVisual.file
-        alm.dbVisual_show_allways = self.dbVisual.show_allways()
+        alm.dbVisual_show_always = self.dbVisual.show_always()
 
     def restoreVisual(self):
         alm = self.almSaveVisual
@@ -1316,25 +1373,33 @@ class Board(QtWidgets.QGraphicsView):
         self.guion = alm.guion
         self.lastFenM2 = alm.lastFenM2
         self.dbVisual.set_file(alm.nomdbVisual)
-        self.dbVisual.show_allways(alm.dbVisual_show_allways)
+        self.dbVisual.show_always(alm.dbVisual_show_always)
 
     def set_last_position(self, position):
         self.init_kb_buffer()
         self.close_visual_script()
         self.last_position = position
-        if Code.eboard:
+        if Code.eboard and Code.eboard.driver and self.allow_eboard:
             Code.eboard.set_position(position)
-        if self.siDirectorIcon or self.dbVisual.show_allways():
+        if self.siDirectorIcon or self.dbVisual.show_always():
             fenm2 = position.fenm2()
             if self.lastFenM2 != fenm2:
                 self.lastFenM2 = fenm2
                 if self.dbvisual_contains(fenm2):
                     if self.siDirectorIcon:
                         self.scriptSC_menu.show()
-                    if self.dbVisual.show_allways():
+                    if self.dbVisual.show_always():
                         self.lanzaGuion()
                 elif self.siDirectorIcon:
                     self.scriptSC_menu.hide()
+
+    def eboard_arrow(self, a1, h8, prom):
+        if Code.eboard and Code.eboard.driver and self.allow_eboard:
+            position = self.last_position.copia()
+            position.mover(a1, h8, prom)
+            Code.eboard.set_position(position)
+            time.sleep(2.0)
+            Code.eboard.set_position(self.last_position)
 
     def set_raw_last_position(self, position):
         if position != self.last_position:
@@ -1343,7 +1408,7 @@ class Board(QtWidgets.QGraphicsView):
     def set_position(self, position, siBorraMoviblesAhora=True, variation_history=None):
         if self.dirvisual:
             self.dirvisual.cambiadaPosicionAntes()
-        elif self.dbVisual.save_allways():
+        elif self.dbVisual.save_always():
             self.dbVisual.saveMoviblesBoard(self)
 
         if self.si_borraMovibles and siBorraMoviblesAhora:
@@ -1352,6 +1417,8 @@ class Board(QtWidgets.QGraphicsView):
         self.set_base_position(position, variation_history=variation_history)
 
         if self.dirvisual:
+            if self.guion:
+                self.guion.cierraPizarra()
             self.dirvisual.cambiadaPosicionDespues()
 
         if variation_history:
@@ -1790,8 +1857,8 @@ class Board(QtWidgets.QGraphicsView):
         bf = copy.deepcopy(self.config_board.fTransicion())
         bf.a1h8 = desdeA1h8 + hastaA1h8
         bf.opacity = max(factor, 0.20)
-        bf.ancho = max(bf.ancho * 2 * (factor**2.2), bf.ancho / 3)
-        bf.altocabeza = max(bf.altocabeza * (factor**2.2), bf.altocabeza / 3)
+        bf.ancho = max(bf.ancho * 2 * (factor ** 2.2), bf.ancho / 3)
+        bf.altocabeza = max(bf.altocabeza * (factor ** 2.2), bf.altocabeza / 3)
         bf.vuelo = bf.altocabeza / 3
         bf.grosor = 1
         bf.redondeos = True
@@ -1803,11 +1870,7 @@ class Board(QtWidgets.QGraphicsView):
         arrow.show()
 
     def ponFlechasTmp(self, lista, ms=None):
-        if self.flechaSC:
-            self.flechaSC.hide()
-        for from_sq, to_sq, siMain in lista:
-            self.creaFlechaTmp(from_sq, to_sq, siMain)
-        QTUtil.refresh_gui()
+        self.ponFlechas(lista)
 
         def quitaFlechasTmp():
             self.remove_arrows()
@@ -1817,6 +1880,13 @@ class Board(QtWidgets.QGraphicsView):
         if ms is None:
             ms = 2000 if len(lista) > 1 else 1400
         QtCore.QTimer.singleShot(ms, quitaFlechasTmp)
+
+    def ponFlechas(self, lista):
+        if self.flechaSC:
+            self.flechaSC.hide()
+        for from_sq, to_sq, siMain in lista:
+            self.creaFlechaTmp(from_sq, to_sq, siMain)
+        QTUtil.refresh_gui()
 
     def creaFlechaMov(self, desdeA1h8, hastaA1h8, modo):
         bf = BoardTypes.Flecha()
@@ -1901,7 +1971,7 @@ class Board(QtWidgets.QGraphicsView):
             bf.opacity = float(resto) / 100.0
             bf.width_square = self.width_square
 
-        elif modo.startswith("tb"): #takeback eboard
+        elif modo.startswith("tb"):  # takeback eboard
             bf = self.config_board.fTransicion().copia()
             bf.opacity = 0.5
             bf.width_square = self.width_square
@@ -1946,7 +2016,7 @@ class Board(QtWidgets.QGraphicsView):
 
         self.escena.update()
 
-    def showCoordenadas(self, ok):
+    def show_coordinates(self, ok):
         for coord in self.liCoordenadasHorizontales:
             coord.setVisible(ok)
         for coord in self.liCoordenadasVerticales:
@@ -1975,7 +2045,7 @@ class Board(QtWidgets.QGraphicsView):
 
     def pulsadoNum(self, siIzq, siActivar, number):
         if (
-            not siIzq
+                not siIzq
         ):  # si es derecho lo dejamos para el menu visual, y el izquierdo solo muestra capturas, si se quieren ver movimientos, que active show candidates
             return
         if self.exePulsadoNum:
@@ -1983,7 +2053,7 @@ class Board(QtWidgets.QGraphicsView):
 
     def pulsadaLetra(self, siIzq, siActivar, letra):
         if (
-            not siIzq
+                not siIzq
         ):  # si es derecho lo dejamos para el menu visual, y el izquierdo solo muestra capturas, si se quieren ver movimientos, que active show candidates
             return
         if self.exePulsadaLetra:
@@ -2290,9 +2360,9 @@ class Board(QtWidgets.QGraphicsView):
 
     def allow_takeback(self):
         return (
-            hasattr(self.main_window, "manager")
-            and hasattr(self.main_window.manager, "run_action")
-            and hasattr(self.main_window.manager, "takeback")
+                hasattr(self.main_window, "manager")
+                and hasattr(self.main_window.manager, "run_action")
+                and hasattr(self.main_window.manager, "takeback")
         )
 
     def set_tmp_position(self, position):
@@ -2318,6 +2388,8 @@ class Board(QtWidgets.QGraphicsView):
         QtCore.QCoreApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
 
     def try_eboard_takeback(self, side):
+        if not self.allow_eboard:
+            return 1
         if self.allow_takeback():
             game = self.main_window.manager.game
 
@@ -2334,20 +2406,13 @@ class Board(QtWidgets.QGraphicsView):
 
             if allow_human_takeback:
                 Code.eboard.allowHumanTB = False
-                self.exec_kb_buffer(Qt.Key_Backspace, 0)
+                if self.main_window.manager.in_end_of_line():
+                    self.exec_kb_buffer(Qt.Key_Backspace, 0)
+                else:
+                    self.main_window.teclaPulsada("T", QtCore.Qt.Key.Key_Left)
+                    # self.exec_kb_buffer(Qt.Key_Left, 0)
                 return 1
 
-            # if len(game) > 0:
-            #     m_1 = game.move(-1)
-            #     if two_moves:
-            #         self.set_tmp_position(m_1.position_before)
-            #     m_2 = game.move(-2) if two_moves else None
-            #     if self.flechaSC:
-            #         self.flechaSC.hide()
-            #     self.creaFlechaMov(m_1.to_sq, m_1.from_sq, "tb")
-            #     if two_moves:
-            #         self.creaFlechaMov(m_2.to_sq, m_2.from_sq, "tb")
-            
             if two_moves:
                 m_1 = game.move(-1)
                 self.set_tmp_position(m_1.position_before)
@@ -2360,7 +2425,7 @@ class Board(QtWidgets.QGraphicsView):
         return 0
 
     def dispatch_eboard(self, quien, a1h8):
-        if self.mensajero and self.pieces_are_active:
+        if self.mensajero and self.pieces_are_active and self.allow_eboard:
 
             if quien == "whiteMove":
                 Code.eboard.allowHumanTB = False
@@ -2380,6 +2445,9 @@ class Board(QtWidgets.QGraphicsView):
             elif quien == "blackTakeBack":
                 return self.try_eboard_takeback(BLACK)
 
+            elif quien == "stableBoard":
+                return 1
+
             else:
                 return 1
 
@@ -2388,6 +2456,22 @@ class Board(QtWidgets.QGraphicsView):
             return 0
 
         return 1
+
+    def disable_eboard_here(self):
+        self.allow_eboard = False
+
+    def enable_eboard_here(self):
+        self.allow_eboard = True
+        if Code.eboard and Code.eboard.driver:
+            Code.eboard.set_position(self.last_position)
+
+    def play_current_position(self):
+        gm = Game.Game(first_position=self.last_position)
+        dic = {"GAME": gm.save(), "ISWHITE": gm.last_position.is_white}
+        fich = Util.relative_path(self.configuration.ficheroTemporal("pkd"))
+        Util.save_pickle(fich, dic)
+
+        XRun.run_lucas("-play", fich)
 
 
 class WTamBoard(QtWidgets.QDialog):
@@ -2416,12 +2500,12 @@ class WTamBoard(QtWidgets.QDialog):
             (_("Very small"), 16),
             (_("Custom size"), 0),
             (_("Initial size"), -1),
-            (_("Default"), -2),
+            (_("By default"), -2),
         ]
 
         self.cb = Controles.CB(self, liTams, self.anchoParaCB(ap)).capture_changes(self.cambiadoTamCB)
 
-        minimo = 10
+        minimo = self.board.minimum_size
         maximo = board.calculaAnchoMXpieza() + 30
 
         self.sb = Controles.SB(self, ap, minimo, maximo).capture_changes(self.cambiadoTamSB)
@@ -2479,17 +2563,17 @@ class WTamBoard(QtWidgets.QDialog):
         elif tam == -1:
             tpz = self.antes
             ct.anchoPieza(tpz)
-            self.cb.ponValor(self.anchoParaCB(tpz))
+            self.cb.set_value(self.anchoParaCB(tpz))
             self.cambiaAncho()
         elif tam == -2:
-            self.cb.ponValor(self.anchoParaCB(ct.ponDefAnchoPieza()))
+            self.cb.set_value(self.anchoParaCB(ct.ponDefAnchoPieza()))
             self.cambiaAncho()
         else:
             ct.anchoPieza(tam)
             self.cambiaAncho()
 
-        self.sb.ponValor(self.board.anchoPieza)
-        self.sl.ponValor(self.board.anchoPieza)
+        self.sb.set_value(self.board.anchoPieza)
+        self.sl.set_value(self.board.anchoPieza)
         self.siOcupado = False
         self.dispatch()
 
@@ -2499,9 +2583,9 @@ class WTamBoard(QtWidgets.QDialog):
         self.siOcupado = True
         tam = self.sb.valor()
         self.config_board.anchoPieza(tam)
-        self.cb.ponValor(self.anchoParaCB(tam))
+        self.cb.set_value(self.anchoParaCB(tam))
         self.cambiaAncho()
-        self.sl.ponValor(tam)
+        self.sl.set_value(tam)
         self.siOcupado = False
         self.dispatch()
 
@@ -2511,8 +2595,8 @@ class WTamBoard(QtWidgets.QDialog):
         self.siOcupado = True
         tam = self.sl.valor()
         self.config_board.anchoPieza(tam)
-        self.cb.ponValor(self.anchoParaCB(tam))
-        self.sb.ponValor(tam)
+        self.cb.set_value(self.anchoParaCB(tam))
+        self.sb.set_value(tam)
         self.cambiaAncho()
         self.siOcupado = False
         self.dispatch()
@@ -2602,7 +2686,7 @@ class BoardEstatico(Board):
         maximo = self.margenCentro + (self.width_square * 8)
         if not ((minimo < x < maximo) and (minimo < y < maximo)):
             if self.atajosRaton:
-                self.atajosRaton(None)
+                self.atajosRaton(self.last_position, None)
             Board.mousePressEvent(self, event)
             return
         xc = 1 + int(float(x - self.margenCentro) / self.width_square)
@@ -2623,7 +2707,7 @@ class BoardEstatico(Board):
 
 class BoardEstaticoMensaje(BoardEstatico):
     def __init__(self, parent, config_board, color_mens, size_factor=None):
-        self.color_mens = "#574b3c" if color_mens is None else color_mens
+        self.color_mens = Code.dic_colors["BOARD_STATIC"] if color_mens is None else color_mens
         self.size_factor = 1.0 if size_factor is None else size_factor
         BoardEstatico.__init__(self, parent, config_board)
 

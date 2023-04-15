@@ -36,7 +36,12 @@ class WTV_Marker(QtWidgets.QDialog):
             if name:
                 regMarker.name = name
 
-        li_acciones = [(_("Save"), Iconos.Aceptar(), self.grabar), None, (_("Cancel"), Iconos.Cancelar(), self.reject), None]
+        li_acciones = [
+            (_("Save"), Iconos.Aceptar(), self.grabar),
+            None,
+            (_("Cancel"), Iconos.Cancelar(), self.reject),
+            None,
+        ]
         tb = QTVarios.LCTB(self, li_acciones)
 
         # Board
@@ -140,7 +145,7 @@ class WTV_Markers(LCDialog.LCDialog):
 
         # Lista
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUMBER", _("N."), 60, centered=True)
+        o_columns.nueva("NUMBER", _("N."), 60, align_center=True)
         o_columns.nueva("NOMBRE", _("Name"), 256)
 
         self.grid = Grid.Grid(self, o_columns, xid="M", siSelecFilas=True)
@@ -249,7 +254,7 @@ class WTV_Markers(LCDialog.LCDialog):
         w = WTV_Marker(self, None, xml=contenido, name=name)
         if w.exec_():
             regMarker = w.regMarker
-            regMarker.id = Util.str_id()
+            regMarker.id = Util.huella()
             regMarker.ordenVista = (self.liPMarkers[-1].ordenVista + 1) if self.liPMarkers else 1
             self.dbMarkers[regMarker.id] = regMarker.save_dic()
             self.liPMarkers.append(regMarker)
@@ -298,7 +303,7 @@ class WTV_Markers(LCDialog.LCDialog):
                 n += 1
                 name = "%s-%d" % (regMarker.name, n)
             regMarker.name = name
-            regMarker.id = Util.str_id()
+            regMarker.id = Util.huella()
             regMarker.ordenVista = self.liPMarkers[-1].ordenVista + 1
             self.dbMarkers[regMarker.id] = regMarker
             self.liPMarkers.append(regMarker)

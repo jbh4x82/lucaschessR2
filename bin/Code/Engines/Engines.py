@@ -5,6 +5,7 @@ import os.path
 import Code
 from Code import Util
 from Code.Engines import EngineRunDirect
+from Code.Base.Constantes import ENG_EXTERNAL, ENG_INTERNAL
 
 
 class Engine:
@@ -19,22 +20,27 @@ class Engine:
         self.maxMultiPV = 0
         self.siDebug = False
         self.nomDebug = None
-        self.is_external = False
         self.parent_external = None
         self.url = url
         self.path_exe = Util.relative_path(path_exe) if path_exe else ""
-        self._nombre = None
+        self._name = None
         self.elo = 0
         self.id_info = ""
         self.max_depth = 0
-        self.max_time = 0
+        self.max_time = 0  # Seconds
         self.id_name = key
         self.id_author = autor
         self.book = None
+        self.emulate_movetime = False
+
+        self.menu = key
+        self.type = ENG_INTERNAL
+        # self.fixed_depth = None
 
         self.__li_uci_options = None
 
     def save(self):
+
         return Util.save_obj_pickle(self)
 
     def restore(self, txt):
@@ -43,13 +49,25 @@ class Engine:
             conf_parent = Code.configuration.dic_engines.get(self.parent_external)
             if conf_parent:
                 self.path_exe = conf_parent.path_exe
-        self.read_uci_options()
+        try:
+            self.read_uci_options()
+            return True
+        except:
+            return False
 
     def exists(self):
         return os.path.isfile(self.path_exe)
 
     def set_extern(self):
-        self.is_external = True
+        self.type = ENG_EXTERNAL
+
+    @property
+    def is_external(self):
+        return self.type == ENG_EXTERNAL
+
+    @is_external.setter
+    def is_external(self, value):
+        self.type = ENG_EXTERNAL if value else ENG_INTERNAL
 
     def nombre_ext(self):
         name = self.name
@@ -69,20 +87,33 @@ class Engine:
         self.siDebug = True
         self.nomDebug = self.key + "-" + txt
 
-    def ordenUCI(self, comando, valor):
-        if valor in ("true", "false"):
-            valor = valor == "true"
-        for pos, (xcomando, xvalor) in enumerate(self.liUCI):
-            if xcomando == comando:
-                self.liUCI[pos] = (comando, valor)
-                return
-        self.liUCI.append((comando, valor))
+    def reset_uci_options(self):
+        li_uci_options = self.li_uci_options()
+        for op in li_uci_options:
+            op.valor = op.default
+        self.liUCI = []
 
-        if self.__li_uci_options:
-            for op in self.__li_uci_options:
-                if op.name == comando:
-                    op.valor = valor
+    def ordenUCI(self, name, valor):
+        li_uci_options = self.li_uci_options()
+        is_changed = False
+        for op in li_uci_options:
+            if op.name == name:
+                if op.tipo == "check":
+                    if valor in ("true", "false"):
+                        valor = valor == "true"
+                op.valor = valor
+                if op.default != valor:
+                    is_changed = True
                     break
+        for pos, (xcomando, xvalor) in enumerate(self.liUCI):
+            if xcomando == name:
+                if is_changed:
+                    self.liUCI[pos] = (name, valor)
+                else:
+                    del self.liUCI[pos]
+                return
+        if is_changed:
+            self.liUCI.append((name, valor))
 
     def set_multipv(self, num, maximo):
         self.multiPV = num
@@ -106,20 +137,23 @@ class Engine:
                 self.multiPV = self.maxMultiPV
 
     def can_be_tutor(self):
-        return self.maxMultiPV >= 4 and "maia" not in self.key
+        return self.maxMultiPV >= 4 and not self.is_maia()
+
+    def is_maia(self):
+        return "maia" in self.key
 
     def remove_log(self, fich):
         Util.remove_file(os.path.join(os.path.dirname(self.path_exe), fich))
 
     @property
     def name(self):
-        if self._nombre:
-            return self._nombre
+        if self._name:
+            return self._name
         return Util.primera_mayuscula(self.key) + " " + self.version
 
     @name.setter
     def name(self, value):
-        self._nombre = value
+        self._name = value
 
     def clona(self):
         return copy.deepcopy(self)
@@ -128,7 +162,8 @@ class Engine:
         return self.path_exe
 
     def read_uci_options(self):
-        path_uci_options = os.path.join(os.path.dirname(self.path_exe), "uci_options.txt")
+        name = Util.valid_filename("%s.uci_options" % self.key)
+        path_uci_options = os.path.join(os.path.dirname(self.path_exe), name)
         if os.path.isfile(path_uci_options):
             with open(path_uci_options, "rt", encoding="utf-8", errors="ignore") as f:
                 lines = f.read().split("\n")
@@ -138,11 +173,14 @@ class Engine:
             if engine.uci_ok:
                 lines = engine.uci_lines
                 engine.close()
-                with open(path_uci_options, "wt", encoding="utf-8", errors="ignore") as q:
-                    for line in lines:
-                        line = line.strip()
-                        if line:
-                            q.write(line + "\n")
+                try:
+                    with open(path_uci_options, "wt", encoding="utf-8", errors="ignore") as q:
+                        for line in lines:
+                            line = line.strip()
+                            if line:
+                                q.write(line + "\n")
+                except:
+                    pass
 
             else:
                 lines = []
@@ -193,8 +231,11 @@ class Engine:
                 return int(op.valor)
         return self.multiPV
 
-    def list_uci_added(self):
+    def list_uci_changed(self):
         return self.liUCI
+
+    def xhash(self):
+        return hash(self.name + self.key)
 
 
 class OpcionUCI:
@@ -253,7 +294,7 @@ class OpcionUCI:
         return resp
 
     def lee_spin(self, li):
-        if len(li) == 8:
+        if len(li) >= 8:
             for x in [2, 4, 6]:
                 n = li[x + 1]
                 nm = n[1:] if n.startswith("-") else n
@@ -377,9 +418,8 @@ def read_engine_uci(exe, args=None):
             elif linea.startswith("id author"):
                 id_author = linea[10:]
         me = Engine(id_name, id_author, id_name, "", path_exe)
-        me._nombre = id_name
+        me._name = id_name
     else:
         me = None
     engine.close()
     return me
-

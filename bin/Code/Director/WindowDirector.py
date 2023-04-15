@@ -2,9 +2,18 @@ import os
 
 from PySide2 import QtWidgets, QtCore, QtGui
 
+import Code
 from Code import Util
-from Code.Translations import TrListas
-from Code.Director import TabVisual, WindowTab, WindowTabVFlechas, WindowTabVMarcos, WindowTabVMarkers, WindowTabVSVGs, WindowTabVCircles
+from Code.Board import BoardTypes
+from Code.Director import (
+    TabVisual,
+    WindowTab,
+    WindowTabVFlechas,
+    WindowTabVMarcos,
+    WindowTabVMarkers,
+    WindowTabVSVGs,
+    WindowTabVCircles,
+)
 from Code.QT import Colocacion
 from Code.QT import Columnas
 from Code.QT import Controles
@@ -12,11 +21,11 @@ from Code.QT import Delegados
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2, SelectFiles
 from Code.QT import QTVarios
-from Code.Board import BoardTypes
-from Code.QT import LCDialog
+from Code.Translations import TrListas
 
 
 class WPanelDirector(LCDialog.LCDialog):
@@ -48,37 +57,42 @@ class WPanelDirector(LCDialog.LCDialog):
             (_("Save"), Iconos.Grabar(), self.grabar),
             (_("New"), Iconos.Nuevo(), self.gnuevo),
             (_("Insert"), Iconos.Insertar(), self.ginsertar),
-            (_("Remove"), Iconos.Borrar(), self.gborrar),
+            (_("Remove"), Iconos.Remove1(), self.gborrar, _("Remove") + " - %s" % _("Backspace key")),
+            (_("Remove all"), Iconos.Borrar(), self.borraTodos, _("Remove all") + " - %s" % _("Delete key")),
             None,
             (_("Up"), Iconos.Arriba(), self.garriba),
             (_("Down"), Iconos.Abajo(), self.gabajo),
             None,
             (_("Mark"), Iconos.Marcar(), self.gmarcar),
             None,
-            (_("File"), Iconos.Recuperar(), self.gfile),
+            # (_("Restore from"), Iconos.Recuperar(), self.gfile), #pendiente de que le sea de utilidad a alguien
+            # None,
+            (_("Config"), Iconos.Configurar(), self.gconfig),
             None,
         ]
-        self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
-        self.tb.setAccionVisible(self.grabar, False)
+        self.tb = Controles.TBrutina(self, li_acciones, icon_size=24)
+        self.tb.set_action_visible(self.grabar, False)
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUMBER", _("N."), 20, centered=True)
-        o_columns.nueva("MARCADO", "", 20, centered=True, siChecked=True)
-        o_columns.nueva("TYPE", _("Type"), 50, centered=True)
-        o_columns.nueva("NOMBRE", _("Name"), 100, centered=True, edicion=Delegados.LineaTextoUTF8())
-        o_columns.nueva("INFO", _("Information"), 100, centered=True)
-        self.g_guion = Grid.Grid(self, o_columns, siCabeceraMovible=False, siEditable=True, siSeleccionMultiple=True)
+        o_columns.nueva("NUMBER", _("N."), 20, align_center=True)
+        o_columns.nueva("MARCADO", "", 20, align_center=True, siChecked=True)
+        o_columns.nueva("TYPE", _("Type"), 50, align_center=True)
+        o_columns.nueva("NOMBRE", _("Name"), 100, align_center=True, edicion=Delegados.LineaTextoUTF8())
+        o_columns.nueva("INFO", _("Information"), 100, align_center=True)
+        self.g_guion = Grid.Grid(self, o_columns, siCabeceraMovible=False, is_editable=True, siSeleccionMultiple=True)
 
         self.register_grid(self.g_guion)
 
-        self.chbSaveWhenFinished = Controles.CHB(self, _("Save when finished"), self.dbConfig.get("SAVEWHENFINISHED", False))
+        self.chbSaveWhenFinished = Controles.CHB(
+            self, _("Save when finished"), self.dbConfig.get("SAVEWHENFINISHED", False)
+        )
 
         # Visuales
         self.selectBanda = WindowTab.SelectBanda(self)
 
-        lyG = Colocacion.V().control(self.g_guion).control(self.chbSaveWhenFinished)
-        lySG = Colocacion.H().control(self.selectBanda).otro(lyG)
-        layout = Colocacion.V().control(self.tb).otro(lySG).margen(3)
+        ly_g = Colocacion.V().control(self.g_guion).control(self.chbSaveWhenFinished)
+        ly_sg = Colocacion.H().control(self.selectBanda).otro(ly_g)
+        layout = Colocacion.V().control(self.tb).otro(ly_sg).margen(3)
 
         self.setLayout(layout)
 
@@ -128,7 +142,10 @@ class WPanelDirector(LCDialog.LCDialog):
             if is_ctrl:
                 self.selectBanda.seleccionar(None)
             else:
-                self.addText()
+                if self.guion.pizarra:
+                    self.guion.cierraPizarra()
+                else:
+                    self.addText()
         elif number == 0 and is_ctrl:  # Ctrl+F1
             self.borraUltimo()
         elif number == 1 and is_ctrl:  # Ctrl+F2
@@ -142,21 +159,21 @@ class WPanelDirector(LCDialog.LCDialog):
             self.board.dbVisual_save(self.fenm2, li)
 
         self.must_save = False
-        self.tb.setAccionVisible(self.grabar, False)
-        self.tb.setAccionVisible(self.cancelar, False)
-        self.tb.setAccionVisible(self.terminar, True)
+        self.tb.set_action_visible(self.grabar, False)
+        self.tb.set_action_visible(self.cancelar, False)
+        self.tb.set_action_visible(self.terminar, True)
 
     def ponSiGrabar(self):
         if not self.must_save:
-            self.tb.setAccionVisible(self.grabar, True)
-            self.tb.setAccionVisible(self.cancelar, True)
-            self.tb.setAccionVisible(self.terminar, False)
+            self.tb.set_action_visible(self.grabar, True)
+            self.tb.set_action_visible(self.cancelar, True)
+            self.tb.set_action_visible(self.terminar, False)
             self.must_save = True
 
     def ponNoGrabar(self):
-        self.tb.setAccionVisible(self.grabar, False)
-        self.tb.setAccionVisible(self.cancelar, False)
-        self.tb.setAccionVisible(self.terminar, True)
+        self.tb.set_action_visible(self.grabar, False)
+        self.tb.set_action_visible(self.cancelar, False)
+        self.tb.set_action_visible(self.terminar, True)
         self.must_save = False
 
     def recuperar(self):
@@ -261,7 +278,10 @@ class WPanelDirector(LCDialog.LCDialog):
 
         tarea.marcado(True)
         tarea.registro((tp, xid, a1h8))
-        row = self.guion.nuevaTarea(tarea, row)
+        if self.guion is None:
+            row = 0
+        else:
+            row = self.guion.nuevaTarea(tarea, row)
 
         return tarea, row
 
@@ -295,7 +315,7 @@ class WPanelDirector(LCDialog.LCDialog):
     def borrarPizarraActiva(self):
         for n in range(len(self.guion)):
             tarea = self.guion.tarea(n)
-            if tarea.tp() == TabVisual.TP_TEXTO:
+            if tarea and tarea.tp() == TabVisual.TP_TEXTO:
                 if tarea.marcado():
                     self.borrar_lista([n])
 
@@ -341,53 +361,78 @@ class WPanelDirector(LCDialog.LCDialog):
         else:
             return None, None
 
-    def datosSVG(self, tarea):
-        col, fil, ancho, alto = tarea.get_datos()
-        li_gen = [(None, None)]
+    # def datosSVG(self, tarea):
+    #     col, fil, ancho, alto = tarea.get_datos()
+    #     li_gen = [(None, None)]
+    #
+    #     def xconfig(label, value):
+    #         config = FormLayout.Editbox(label, 80, tipo=float, decimales=3)
+    #         li_gen.append((config, value))
+    #
+    #     xconfig(_("Column"), col + 1)
+    #     xconfig(_("Row"), fil + 1)
+    #     xconfig(_("Width"), ancho)
+    #     xconfig(_("Height"), alto)
+    #
+    #     resultado = FormLayout.fedit(li_gen, title=tarea.txt_tipo(), parent=self)
+    #     if resultado:
+    #         col, fil, ancho, alto = resultado[1]
+    #         tarea.set_datos(col - 1, fil - 1, ancho, alto)
+    #         self.ponSiGrabar()
+    #         return True
+    #     else:
+    #         return False
 
-        def xconfig(label, value):
-            config = FormLayout.Editbox(label, 80, tipo=float, decimales=3)
-            li_gen.append((config, value))
+    # Pendiente de que le sea de utilidad para alguien
+    # def gfile(self):
+    #     self.test_siGrabar()
+    #     path = self.configuration.ficheroFEN
+    #     fich = SelectFiles.leeCreaFichero(self, path, "dbl")
+    #     if fich:
+    #         self.configuration.ficheroFEN = Util.relative_path(fich)
+    #         self.configuration.graba()
+    #
+    #         self.board.dbvisual_close()
+    #
+    #         self.guion.cierraPizarra()
+    #         self.recuperar()
+    #
+    def gconfig(self):
+        menu = QTVarios.LCMenu(self)
+        menu.opcion("remall", _("Reset everything to factory defaults"), Iconos.Delete())
+        menu.separador()
+        menu.opcion("remfen", _("Remove all graphics associated with positions"), Iconos.Borrar())
+        resp = menu.lanza()
+        if resp == "remall":
+            if QTUtil2.pregunta(self, _("Are you sure you want to reset graphics in Director to factory defaults?")):
+                # self.cierraRecursos()
+                fich_recursos = Code.configuration.ficheroRecursos
+                fmt_recursos = fich_recursos.replace(".dbl", "%d.dbl")
+                pos = 0
+                while Util.exist_file(fmt_recursos % pos):
+                    pos += 1
+                Util.file_copy(Code.configuration.ficheroRecursos, fmt_recursos % pos)
+                self.close()
+                self.board.dbVisual.reset()
+                self.board.lanzaDirector()
 
-        xconfig(_("Column"), col)
-        xconfig(_("Row"), fil)
-        xconfig(_("Width"), ancho)
-        xconfig(_("Height"), alto)
+        if resp == "remfen":
+            if QTUtil2.pregunta(self, _("Are you sure you want to remove all graphics associated with positions?")):
+                self.borraTodos()
+                self.cierraRecursos()
+                self.close()
+                self.board.dbVisual.remove_fens()
+                self.board.lanzaDirector()
 
-        resultado = FormLayout.fedit(li_gen, title=tarea.txt_tipo(), parent=self)
-        if resultado:
-            col, fil, ancho, alto = resultado[1]
-            tarea.set_datos(col, fil, ancho, alto)
-            self.ponSiGrabar()
-            return True
-        else:
-            return False
-
-    def gfile(self):
-        self.test_siGrabar()
-        path = self.configuration.ficheroFEN
-        fich = SelectFiles.leeCreaFichero(self, path, "dbl")
-        if fich:
-            self.configuration.ficheroFEN = Util.relative_path(fich)
-            self.configuration.graba()
-
-            self.board.dbvisual_close()
-
-            self.guion.cierraPizarra()
-            self.recuperar()
-
-    def gmas(self, siInsertar):
+    def gmas(self, insert):
         ta = TabVisual.GT_Action(None)
         liActions = [(_F(txt), Iconos.PuntoRojo(), "GTA_%s" % action) for action, txt in ta.dicTxt.items()]
 
-        liMore = [
-            (_("Text"), Iconos.Texto(), TabVisual.TP_TEXTO),
-            (_("Actions"), Iconos.Run(), liActions),
-        ]
+        liMore = [(_("Text"), Iconos.Texto(), TabVisual.TP_TEXTO), (_("Actions"), Iconos.Run(), liActions)]
         resp = self.selectBanda.menuParaExterior(liMore)
         if resp:
             xid = resp
-            row = self.g_guion.recno() if siInsertar else -1
+            row = self.g_guion.recno() if insert else -1
             if xid == TabVisual.TP_TEXTO:
                 tarea = TabVisual.GT_Texto(self.guion)
                 row = self.guion.nuevaTarea(tarea, row)
@@ -398,11 +443,11 @@ class WPanelDirector(LCDialog.LCDialog):
             else:
                 li = xid.split("_")
                 tp = li[1]
-                xid = int(li[2])
+                xid = li[2]
                 from_sq, to_sq = self.desdeHasta(_("Director"), self.ultDesde, self.ultHasta)
                 if from_sq:
                     self.creaTarea(tp, xid, from_sq + to_sq, row)
-            if siInsertar:
+            if insert:
                 self.g_guion.goto(row, 0)
             else:
                 self.g_guion.gobottom()
@@ -442,7 +487,7 @@ class WPanelDirector(LCDialog.LCDialog):
                     self.board.borraMovible(sc)
                 else:
                     tarea = self.guion.tarea(row)
-                    if tarea.tp() == TabVisual.TP_TEXTO:
+                    if tarea and tarea.tp() == TabVisual.TP_TEXTO:
                         self.guion.cierraPizarra()
                 self.guion.borra(row)
             if row >= len(self.guion):
@@ -479,8 +524,9 @@ class WPanelDirector(LCDialog.LCDialog):
             sc = self.guion.itemTarea(row)
             if sc:
                 if tarea.tp() == TabVisual.TP_SVG:
-                    if self.datosSVG(tarea):
-                        self.board.refresh()
+                    return
+                    # if self.datosSVG(tarea):
+                    #     self.board.refresh()
 
                 else:
                     a1h8 = tarea.a1h8()
@@ -542,9 +588,10 @@ class WPanelDirector(LCDialog.LCDialog):
         return sc
 
     def ponMarcado(self, row, siMarcado):
-        self.guion.cambiaMarcaTarea(row, siMarcado)
-        itemSC = self.guion.itemTarea(row)
-        self.ponMarcadoItem(row, self.board, itemSC, siMarcado)
+        if row < len(self.guion.liGTareas):
+            self.guion.cambiaMarcaTarea(row, siMarcado)
+            itemSC = self.guion.itemTarea(row)
+            self.ponMarcadoItem(row, self.board, itemSC, siMarcado)
         self.refresh_guion()
 
     def ponMarcadoItem(self, row, board, itemSC, siMarcado):
@@ -846,7 +893,16 @@ class WPanelDirector(LCDialog.LCDialog):
                 "vuelo",
                 "descuelgue",
             ),
-            TabVisual.TP_MARCO: ("name", "color", "colorinterior", "colorinterior2", "grosor", "redEsquina", "tipo", "opacity"),
+            TabVisual.TP_MARCO: (
+                "name",
+                "color",
+                "colorinterior",
+                "colorinterior2",
+                "grosor",
+                "redEsquina",
+                "tipo",
+                "opacity",
+            ),
             TabVisual.TP_CIRCLE: ("name", "color", "colorinterior", "colorinterior2", "grosor", "tipo", "opacity"),
             TabVisual.TP_SVG: ("name", "opacity"),
             TabVisual.TP_MARKER: ("name", "opacity"),
@@ -913,14 +969,14 @@ class WPanelDirector(LCDialog.LCDialog):
             sc = self.datos_new[0].itemSC()
             sc.mouseMoveExt(event)
 
-    def boardRelease(self, a1, siRight, is_shift, is_alt):
+    def boardRelease(self, a1, siRight, is_shift, is_alt, is_ctrl):
         if self.origin_new:
             tarea, row = self.datos_new
             sc = tarea.itemSC()
             sc.mouseReleaseExt()
             self.g_guion.goto(row, 0)
             if siRight:
-                if a1 == self.origin_new:
+                if a1 == self.origin_new and not is_ctrl:
                     if is_shift:
                         pos = 8
                     elif is_alt:
@@ -935,11 +991,11 @@ class WPanelDirector(LCDialog.LCDialog):
                     nid = int(nid)
                     self.datos_new = self.creaTarea(tp, nid, a1 + a1, -1)
                     self.tp_new = tp
-                li = self.guion.borraRepeticionUltima()
-                if li:
-                    self.borrar_lista(li)
-                    self.origin_new = None
-                    return
+                # li = self.guion.borraRepeticionUltima()
+                # if li:
+                #     self.borrar_lista(li)
+                #     self.origin_new = None
+                #     return
 
             else:
                 if a1 is None or (a1 == self.origin_new and self.tp_new == TabVisual.TP_FLECHA):
@@ -975,6 +1031,7 @@ class Director:
         self.w.show()
 
     def cambiadaPosicionAntes(self):
+        self.guion.cierraPizarra()
         self.w.test_siGrabar()
 
     def cambiadaPosicionDespues(self):
@@ -1000,18 +1057,33 @@ class Director:
         #     self.board.disable_all()
 
     def keyPressEvent(self, event):
+        m = int(event.modifiers())
+        is_ctrl = (m & QtCore.Qt.ControlModifier) > 0
         k = event.key()
+        if k == QtCore.Qt.Key_Backspace:
+            self.w.borraUltimo()
+            return True
+        if k == QtCore.Qt.Key_Delete:
+            self.w.borraTodos()
+            return True
         if QtCore.Qt.Key_F1 <= k <= QtCore.Qt.Key_F10:
             f = k - QtCore.Qt.Key_F1
-            m = int(event.modifiers())
-            is_ctrl = (m & QtCore.Qt.ControlModifier) > 0
             self.w.funcion(f, is_ctrl)
             return True
         else:
             return False
 
     def mousePressEvent(self, event):
-        siRight = event.button() == QtCore.Qt.RightButton
+        is_right = event.button() == QtCore.Qt.RightButton
+        is_left = event.button() == QtCore.Qt.LeftButton
+
+        if is_left:
+            if self.board.event2a1h8(event) is None:
+                return False
+            if self.director:
+                QtWidgets.QGraphicsView.mousePressEvent(self.board, event)
+
+
         p = event.pos()
         a1h8 = self.punto2a1h8(p)
         m = int(event.modifiers())
@@ -1021,7 +1093,7 @@ class Director:
 
         li_tareas = self.guion.tareasPosicion(p)
 
-        if siRight and is_shift and is_alt:
+        if is_right and is_shift and is_alt:
             pz_borrar = self.board.dameNomPiezaEn(a1h8)
             menu = Controles.Menu(self.board)
             dicPieces = TrListas.dicNomPiezas()
@@ -1060,7 +1132,7 @@ class Director:
         if self.director:
             return self.mousePressEvent_Drop(event)
 
-        self.w.boardPress(event, a1h8, siRight, is_shift, is_alt, is_ctrl)
+        self.w.boardPress(event, a1h8, is_right, is_shift, is_alt, is_ctrl)
 
         return True
 
@@ -1141,7 +1213,8 @@ class Director:
             m = int(event.modifiers())
             is_shift = (m & QtCore.Qt.ShiftModifier) > 0
             is_alt = (m & QtCore.Qt.AltModifier) > 0
-            self.w.boardRelease(a1h8, siRight, is_shift, is_alt)
+            is_ctrl = (m & QtCore.Qt.ControlModifier) > 0
+            self.w.boardRelease(a1h8, siRight, is_shift, is_alt, is_ctrl)
         return True
 
     def terminar(self):

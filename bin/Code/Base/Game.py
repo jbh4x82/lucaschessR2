@@ -20,6 +20,7 @@ from Code.Base.Constantes import (
     TERMINATION_RESIGN,
     TERMINATION_UNKNOWN,
     TERMINATION_WIN_ON_TIME,
+    TERMINATION_ENGINE_MALFUNCTION,
     STANDARD_TAGS,
     NONE,
     ALL,
@@ -38,13 +39,8 @@ from Code.Base.Constantes import (
     BEEP_WIN_OPPONENT_TIME,
     BEEP_WIN_PLAYER,
     BEEP_WIN_PLAYER_TIME,
-    NAG_1,
-    NAG_2,
-    NAG_3,
-    NAG_4,
-    NAG_5,
-    NAG_6,
 )
+from Code.Nags.Nags import NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6
 from Code.Openings import OpeningsStd, Opening
 
 
@@ -115,7 +111,7 @@ class Game:
         if self.get_tag("Result"):
             self.set_tag("Result", RESULT_UNKNOWN)
 
-    def tag_timestart(self):
+    def add_tag_timestart(self):
         t = Util.today()
         self.set_tag("TimeStart", str(t)[:19].replace("-", "."))
 
@@ -273,13 +269,49 @@ class Game:
     def pgn_tags(self):
         return "\n".join(['[%s "%s"]' % (k, v) for k, v in self.li_tags])
 
-    def titulo(self, *litags):
+    def titulo(self, *litags, sep=" ∣ "):
         li = []
         for key in litags:
             tag = self.get_tag(key)
-            if tag:
+            tagi = tag.replace("?", "").replace(".", "")
+            if tagi:
                 li.append(tag)
-        return " | ".join(li)
+        return sep.join(li)
+
+    def window_title(self):
+        white = ""
+        black = ""
+        event = ""
+        site = ""
+        date = ""
+        result = ""
+        for key, valor in self.li_tags:
+            if key.upper() == "WHITE":
+                white = valor
+            elif key.upper() == "BLACK":
+                black = valor
+            elif key.upper() == "EVENT":
+                event = valor
+            elif key.upper() == "SITE":
+                site = valor
+            elif key.upper() == "DATE":
+                date = valor.replace("?", "").replace(" ", "").strip(".")
+            elif key.upper() == "RESULT":
+                if valor in ("1-0", "0-1", "1/2-1/2"):
+                    result = valor
+        li = []
+        if event:
+            li.append(event)
+        if site:
+            li.append(site)
+        if date:
+            li.append(date)
+        if result:
+            li.append(result)
+        titulo = "%s-%s" % (white, black)
+        if li:
+            titulo += " (%s)" % (" - ".join(li),)
+        return titulo
 
     def primeraJugada(self):
         return self.first_position.num_moves
@@ -290,7 +322,7 @@ class Game:
         except:
             return self.li_moves[-1] if len(self) > 0 else None
 
-    def check(self):
+    def verify(self):
         if self.pending_opening:
             self.assign_opening()
         if len(self.li_moves) == 0:
@@ -315,7 +347,7 @@ class Game:
 
     def add_move(self, move):
         self.li_moves.append(move)
-        self.check()
+        self.verify()
 
     def siFenInicial(self):
         return self.first_position.fen() == FEN_INITIAL
@@ -359,16 +391,19 @@ class Game:
     def read_pv(self, pvBloque):
         return self.leerLIPV(pvBloque.split(" "))
 
+    def read_xpv(self, xpv):
+        return self.read_pv(FasterCode.xpv_pv(xpv))
+
     def leerLIPV(self, lipv):
         position = self.last_position
         pv = []
         for mov in lipv:
             if (
-                len(mov) >= 4
-                and mov[0] in "abcdefgh"
-                and mov[1] in "12345678"
-                and mov[2] in "abcdefgh"
-                and mov[3] in "12345678"
+                    len(mov) >= 4
+                    and mov[0] in "abcdefgh"
+                    and mov[1] in "12345678"
+                    and mov[2] in "abcdefgh"
+                    and mov[3] in "12345678"
             ):
                 pv.append(mov)
             else:
@@ -492,7 +527,7 @@ class Game:
         if numJugada is None:
             numJugada = self.primeraJugada()
         if self.starts_with_black:
-            resp += "%d... " % numJugada
+            resp += "%d..." % numJugada
             numJugada += 1
             salta = 1
         else:
@@ -584,9 +619,9 @@ class Game:
             if with_variations != NONE and move.variations:
                 is_w = move.is_white()
                 if (
-                    (with_variations == ALL)
-                    or (is_w and with_variations == ONLY_WHITE)
-                    or (not is_w and with_variations == ONLY_BLACK)
+                        (with_variations == ALL)
+                        or (is_w and with_variations == ONLY_WHITE)
+                        or (not is_w and with_variations == ONLY_BLACK)
                 ):
                     for variation in move.variations.li_variations:
                         li_pvc.extend(variation.all_pv(pv_previo.strip(), with_variations))
@@ -600,9 +635,9 @@ class Game:
             if with_variations != NONE and move.variations:
                 is_w = move.is_white()
                 if (
-                    (with_variations == ALL)
-                    or (is_w and with_variations == ONLY_WHITE)
-                    or (not is_w and with_variations == ONLY_BLACK)
+                        (with_variations == ALL)
+                        or (is_w and with_variations == ONLY_WHITE)
+                        or (not is_w and with_variations == ONLY_BLACK)
                 ):
                     for variation in move.variations.li_variations:
                         dicv = variation.all_comments(with_variations)
@@ -649,6 +684,12 @@ class Game:
             if len(p) != len(self):
                 p.set_unknown()
         return p
+
+    def copy_until_move(self, seek_move):
+        for pos, move in enumerate(self.li_moves):
+            if seek_move == move:
+                return self.copia(pos - 1)
+        return self.copia(-1)
 
     def copiaDesde(self, desdeJugada):
         if desdeJugada == 0:
@@ -721,11 +762,11 @@ class Game:
                 move.calc_elo()
                 elo_factor = move.factor_elo()
                 # if move.bad_move:
-                #     elo_factor = Code.configuration.eval_bad_factor
+                #     elo_factor = Code.configuration.eval_mistake_factor
                 # elif move.verybad_move:
-                #     elo_factor = Code.configuration.eval_very_bad_factor
+                #     elo_factor = Code.configuration.eval_blunder_factor
                 # elif move.questionable_move:
-                #     elo_factor = Code.configuration.eval_questionable_factor
+                #     elo_factor = Code.configuration.eval_inaccuracy_factor
                 nummoves[std] += 1
                 sumelos[std] += move.elo * elo_factor
                 factormoves[std] += elo_factor
@@ -843,19 +884,19 @@ class Game:
         beep = None
         player_lost = False
         if (self.result == RESULT_WIN_WHITE and player_side == WHITE) or (
-            self.result == RESULT_WIN_BLACK and player_side == BLACK
+                self.result == RESULT_WIN_BLACK and player_side == BLACK
         ):
             if nom_other:
                 mensaje = _X(_("Congratulations you have won against %1."), nom_other)
             else:
-                mensaje = _("Congratulations you have won")
+                mensaje = _("Congratulations you have won.")
             if self.termination == TERMINATION_WIN_ON_TIME:
                 beep = BEEP_WIN_PLAYER_TIME
             else:
                 beep = BEEP_WIN_PLAYER
 
         elif (self.result == RESULT_WIN_WHITE and player_side == BLACK) or (
-            self.result == RESULT_WIN_BLACK and player_side == WHITE
+                self.result == RESULT_WIN_BLACK and player_side == WHITE
         ):
             player_lost = True
             if nom_other:
@@ -902,6 +943,7 @@ class Game:
             TERMINATION_ADJUDICATION: _("Adjudication"),
             TERMINATION_WIN_ON_TIME: _("Won on time"),
             TERMINATION_UNKNOWN: _("Unknown"),
+            TERMINATION_ENGINE_MALFUNCTION: _("Engine malfunction"),
         }.get(self.termination, "")
 
     def shrink(self, until_move: int):
@@ -1001,7 +1043,7 @@ def pgn_game(pgn):
             pos = kv.find(" ")
             if pos > 0:
                 lb = kv[:pos]
-                vl = kv[pos + 1 :].strip()
+                vl = kv[pos + 1:].strip()
                 lbup = lb.upper()
                 if lbup == "FEN":
                     FasterCode.set_fen(vl)
@@ -1043,7 +1085,7 @@ def pgn_game(pgn):
                 if jg_activa:
                     if jg_activa.comment:
                         jg_activa.comment += "\n"
-                    jg_activa.comment += comment
+                    jg_activa.comment += comment.replace("}", "]")
                 else:
                     game.set_first_comment(comment)
 
@@ -1069,7 +1111,7 @@ def pgn_game(pgn):
     if si_fen:
         game.pending_opening = False
     if jg_activa:
-        game.check()
+        game.verify()
     return True, game
 
 

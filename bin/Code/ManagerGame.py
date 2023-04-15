@@ -1,4 +1,5 @@
 import FasterCode
+from PySide2 import QtCore
 
 from Code import Manager
 from Code.Base import Game, Position
@@ -11,10 +12,11 @@ from Code.Base.Constantes import (
     TB_TAKEBACK,
     TB_CONFIG,
     TB_CANCEL,
-    TB_END_GAME,
+    # TB_END_GAME,
     TB_NEXT,
     TB_PGN_LABELS,
     TB_PREVIOUS,
+    TB_REPLAY,
     TB_SAVE,
     TB_UTILITIES,
     ADJUST_BETTER,
@@ -25,9 +27,9 @@ from Code.QT import Iconos
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
 from Code.QT import QTVarios
-from Code.QT import Voyager
 from Code.QT import WindowPgnTags
 from Code.Translations import TrListas
+from Code.Voyager import Voyager
 
 
 class ManagerGame(Manager.Manager):
@@ -44,7 +46,7 @@ class ManagerGame(Manager.Manager):
         self.auto_rotate = False
 
         self.human_is_playing = True
-        self.human_side = True
+        self.is_human_side_white = True
 
         self.state = ST_PLAYING
 
@@ -77,11 +79,11 @@ class ManagerGame(Manager.Manager):
         return False
 
     def put_toolbar(self):
-        li = [TB_CLOSE, TB_PGN_LABELS, TB_TAKEBACK, TB_REINIT, TB_CONFIG, TB_UTILITIES]
+        li = [TB_CLOSE, TB_PGN_LABELS, TB_TAKEBACK, TB_REINIT, TB_REPLAY, TB_CONFIG, TB_UTILITIES]
         if self.changed and self.save_routine:
             pos = li.index(TB_PGN_LABELS)
             li.insert(pos, TB_SAVE)
-        if_previous, if_next = False, False
+        # if_previous, if_next = False, False
         if self.with_previous_next:
             pos = li.index(TB_PGN_LABELS)
             li.insert(pos, TB_NEXT)
@@ -114,7 +116,7 @@ class ManagerGame(Manager.Manager):
         p = Game.Game()
         p.restore(self.reinicio)
         p.recno = getattr(self.game, "recno", None)
-
+        self.main_window.activaInformacionPGN(False)
         self.start(p, self.is_complete, self.only_consult, self.with_previous_next, self.save_routine)
 
     def run_action(self, key):
@@ -142,13 +144,14 @@ class ManagerGame(Manager.Manager):
         elif key == TB_PGN_LABELS:
             self.informacion()
 
-        elif key in (TB_CANCEL, TB_END_GAME, TB_CLOSE):
+        elif key in (TB_CANCEL, TB_CLOSE):
             self.end_game()
 
         elif key in (TB_PREVIOUS, TB_NEXT):
             if self.ask_for_save_game():
                 self.with_previous_next("save", self.game)
             game1 = self.with_previous_next("previous" if key == TB_PREVIOUS else "next", self.game)
+            self.main_window.setWindowTitle(game1.window_title())
             self.start(game1, self.is_complete, self.only_consult, self.with_previous_next, self.save_routine)
 
         else:
@@ -180,10 +183,10 @@ class ManagerGame(Manager.Manager):
         self.put_view()
 
         is_white = self.game.last_position.is_white
-        self.human_side = is_white  # Compatibilidad, sino no funciona el cambio en pgn
+        self.is_human_side_white = is_white  # Compatibilidad, sino no funciona el cambio en pgn
 
         if self.game.is_finished():
-            self.muestra_resultado()
+            self.show_result()
             return
 
         self.set_side_indicator(is_white)
@@ -192,7 +195,7 @@ class ManagerGame(Manager.Manager):
         self.human_is_playing = True
         self.activate_side(is_white)
 
-    def muestra_resultado(self):
+    def show_result(self):
         self.state = ST_ENDGAME
         self.disable_all()
 
@@ -289,9 +292,7 @@ class ManagerGame(Manager.Manager):
 
     def utilities_gs(self):
         sep = (None, None, None)
-        li_mas_opciones = [
-            (None, _("Change the starting position"), Iconos.PGN()),
-        ]
+        li_mas_opciones = [(None, _("Change the starting position"), Iconos.PGN())]
         if not self.is_complete:
             li_mas_opciones.extend(
                 [
@@ -303,17 +304,19 @@ class ManagerGame(Manager.Manager):
                 ]
             )
 
-        li_mas_opciones.extend( [
-            sep,
-            ("leerpgn", _("Read PGN file"), Iconos.PGN_Importar()),
-            sep,
-            ("pastepgn", _("Paste PGN"), Iconos.Pegar16()),
-            sep,
-        ] )
+        li_mas_opciones.extend(
+            [
+                sep,
+                ("leerpgn", _("Read PGN file"), Iconos.PGN_Importar()),
+                sep,
+                ("pastepgn", _("Paste PGN"), Iconos.Pegar16()),
+                sep,
+            ]
+        )
 
         li_mas_opciones.extend([(None, None, True), sep, ("books", _("Consult a book"), Iconos.Libros())])
 
-        resp = self.utilidades(li_mas_opciones)
+        resp = self.utilities(li_mas_opciones)
 
         if resp == "books":
             liMovs = self.librosConsulta(True)
@@ -324,7 +327,7 @@ class ManagerGame(Manager.Manager):
 
         elif resp == "position":
             ini_position = self.game.first_position
-            new_position, is_white_bottom = Voyager.voyager_position(self.main_window, ini_position, resp_side_bottom=True)
+            new_position, is_white_bottom = Voyager.voyager_position(self.main_window, ini_position)
             if new_position and new_position != ini_position:
                 self.game.set_position(new_position)
                 self.start(self.game, self.is_complete, self.only_consult, self.with_previous_next, self.save_routine)
@@ -358,8 +361,13 @@ class ManagerGame(Manager.Manager):
             self.paste_pgn()
 
         elif resp == "voyager":
-            game = Voyager.voyagerPartida(self.main_window, self.game)
+            game = Voyager.voyager_game(self.main_window, self.game)
             self.replace_game(game)
+
+        else:
+            if self.is_changed():
+                self.changed = True
+                self.put_toolbar()
 
     def replace_game(self, game):
         if not game:
@@ -375,7 +383,7 @@ class ManagerGame(Manager.Manager):
         self.put_toolbar()
 
     def control_teclado(self, nkey, modifiers):
-        if nkey == ord("V"):  # V
+        if nkey == QtCore.Qt.Key_V:  # V
             self.paste_pgn()
 
     def paste_pgn(self):
@@ -389,7 +397,7 @@ class ManagerGame(Manager.Manager):
                 return
             self.replace_game(game)
 
-    def juegaRival(self):
+    def play_rival(self):
         if not self.is_finished():
             self.thinking(True)
             rm = self.xrival.play_game(self.game, nAjustado=self.xrival.nAjustarFuerza)
@@ -397,14 +405,14 @@ class ManagerGame(Manager.Manager):
             if rm.from_sq:
                 self.player_has_moved(rm.from_sq, rm.to_sq, rm.promotion)
 
-    def cambioRival(self):
+    def change_rival(self):
         if self.dicRival:
             dicBase = self.dicRival
         else:
             dicBase = self.configuration.read_variables("ENG_MANAGERSOLO")
 
-        dic = self.dicRival = WPlayAgainstEngine.cambioRival(
-            self.main_window, self.configuration, dicBase, siManagerSolo=True
+        dic = self.dicRival = WPlayAgainstEngine.change_rival(
+            self.main_window, self.configuration, dicBase, is_create_own_game=True
         )
 
         if dic:
@@ -419,7 +427,7 @@ class ManagerGame(Manager.Manager):
                 r_t = None
             if r_p <= 0:
                 r_p = None
-            if r_t is None and r_p is None and not dic["SITIEMPO"]:
+            if r_t is None and r_p is None and not dic.get("SITIEMPO", False):
                 r_t = 1000
 
             nAjustarFuerza = dic["ADJUST"]
@@ -430,25 +438,6 @@ class ManagerGame(Manager.Manager):
             self.set_label1(dic["ROTULO1"])
             self.play_against_engine = True
             self.configuration.write_variables("ENG_MANAGERSOLO", dic)
-
-    def window_title(self):
-        white = ""
-        black = ""
-        event = ""
-        date = ""
-        result = ""
-        for key, valor in self.game.li_tags:
-            if key.upper() == "WHITE":
-                white = valor
-            elif key.upper() == "BLACK":
-                black = valor
-            elif key.upper() == "EVENT":
-                event = valor
-            elif key.upper() == "DATE":
-                date = valor
-            elif key.upper() == "RESULT":
-                result = valor
-        return "%s-%s (%s, %s,%s)" % (white, black, event, date, result)
 
     def takeback(self):
         if len(self.game):

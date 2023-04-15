@@ -114,7 +114,22 @@ class ManagerMotorAlbum:
 
 
 class Cromo:
-    def __init__(self, key, name, nivel, bien, aleatorio, captura, esquivo, similar, dif_puntos, aterrizaje, mate, engine, opening):
+    def __init__(
+        self,
+        key,
+        name,
+        nivel,
+        bien,
+        aleatorio,
+        captura,
+        esquivo,
+        similar,
+        dif_puntos,
+        aterrizaje,
+        mate,
+        engine,
+        opening,
+    ):
         self.key = key
         self.name = name
         self.nivel = nivel
@@ -153,7 +168,6 @@ class Album:
     def __init__(self, clavedb, alias):
         self.claveDB = clavedb
         self.alias = alias
-        self.name = _F(alias)
         self.liCromos = []
         self.hecho = False
         self.ficheroDB = Code.configuration.ficheroAlbumes
@@ -163,6 +177,13 @@ class Album:
 
     def __len__(self):
         return len(self.liCromos)
+
+    @property
+    def name(self):
+        for cromo in self.liCromos:
+            if cromo.key == self.alias:
+                return cromo.name
+        return _F(self.alias)
 
     def get_cromo(self, pos):
         return self.liCromos[pos]
@@ -203,7 +224,7 @@ class Album:
         self.put_db(self.claveDB, None)
 
 
-class Albumes:
+class Albums:
     def __init__(self, pre_clave):
         self.ficheroDB = Code.configuration.ficheroAlbumes
         self.preClave = pre_clave
@@ -290,15 +311,9 @@ class Albumes:
         return dic
 
 
-class AlbumesAnimales(Albumes):
+class AlbumAnimales(Albums):
     def __init__(self):
-        Albumes.__init__(self, "animales")
-
-        # dic = { "animales_Ant":True, "animales_Bee":True, "animales_Turtle":True, "animales_Chicken":True,
-        # "animales_Eagle":True, "animales_Panda":True,
-        # "animales_Hippo":True, "animales_Rabbit":True, "animales_Giraffe":True, "animales_Shark":True,
-        # "animales_Wolf":True }
-        # self.putDB( ALBUMSHECHOS, dic )
+        Albums.__init__(self, "animales")
 
     def configura(self):
         dic = collections.OrderedDict()
@@ -425,9 +440,9 @@ class AlbumesAnimales(Albumes):
         return li
 
 
-class AlbumesVehicles(Albumes):
+class AlbumVehicles(Albums):
     def __init__(self):
-        Albumes.__init__(self, "vehicles")
+        Albums.__init__(self, "vehicles")
 
         # dic = { "animales_Ant":True, "animales_Bee":True, "animales_Turtle":True, "animales_Chicken":True,
         # "animales_Eagle":True, "animales_Panda":True,

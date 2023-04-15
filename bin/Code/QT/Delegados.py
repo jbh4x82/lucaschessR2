@@ -2,17 +2,18 @@
 Rutinas basicas para la edicion en las listas de registros.
 """
 
-import os
-
-from PySide2 import QtCore, QtGui, QtWidgets, QtSvg
+from PySide2 import QtCore, QtGui, QtWidgets
 
 import Code
-from Code.QT import Iconos
+from Code.Nags.Nags import dic_symbol_nags
 
+from Code.QT import Iconos
 
 dicPM = {}
 dicPZ = {}
-dicNG = {}
+
+
+# dicNG = {}
 
 
 def generaPM(piezas):
@@ -33,13 +34,13 @@ def generaPM(piezas):
     for k in "KQRNBkqrnb":
         dicPZ[k] = piezas.render(k)
 
-    nags_folder = Code.path_resource("IntFiles", "NAGs")
-    for f in os.listdir(nags_folder):
-        if f.endswith(".svg") and f.startswith("$") and len(f) > 5:
-            nag = f[1:-4]
-            if nag.isdigit():
-                fsvg = nags_folder + "/" + f
-                dicNG[nag] = QtSvg.QSvgRenderer(fsvg)
+    # nags_folder = Code.path_resource("IntFiles", "NAGs")
+    # for f in os.listdir(nags_folder):
+    #     if f.endswith(".svg") and f.startswith("$") and len(f) > 5:
+    #         nag = f[1:-4]
+    #         if nag.isdigit():
+    #             fsvg = nags_folder + "/" + f
+    #             dicNG[nag] = QtSvg.QSvgRenderer(fsvg)
 
 
 class ComboBox(QtWidgets.QItemDelegate):
@@ -151,11 +152,18 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
                     if x in st:
                         continue
                     st.add(x)
-                    if x in dicNG:
-                        li.append(dicNG[x])
+                    if x.isdigit():
+                        x = int(x)
+                        symbol = dic_symbol_nags(x)
+                        if symbol:
+                            li.append(symbol)
                 li_nags = li
         else:
             pgn, color, txt_analysis, indicadorInicial, li_nags = data, None, None, None, None
+
+        is_color_origen = color
+        if not color:
+            color = index.model().fore_color_name()
 
         ini_pz = None
         fin_pz = None
@@ -174,6 +182,11 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
                 pgn = pgn[:-2]
                 salto_fin_pz = -6
 
+        if li_nags:
+            if post_pz is None:
+                post_pz = ""
+            post_pz += " " + " ".join(li_nags)
+
         rect = option.rect
         w_total = rect.width()
         h_total = rect.height()
@@ -181,7 +194,8 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
         y_total = rect.y()
 
         if option.state & QtWidgets.QStyle.State_Selected:
-            painter.fillRect(rect, QtGui.QColor(Code.configuration.pgn_selbackground()))  # sino no se ve en CDE-Motif-Windows
+            painter.fillRect(rect, Code.dic_qcolors["PGN_SELBACKGROUND"])
+            color = Code.dic_colors["PGN_SELFOREGROUND"]
         elif self.si_fondo:
             fondo = index.model().getFondo(index)
             if fondo:
@@ -196,7 +210,10 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
         document_pgn = QtGui.QTextDocument()
         document_pgn.setDefaultFont(option.font)
         if color:
-            pgn = '<font color="%s"><b>%s</b></font>' % (color, pgn)
+            if is_color_origen:
+                pgn = '<font color="%s"><b>%s</b></font>' % (color, pgn)
+            else:
+                pgn = '<font color="%s">%s</font>' % (color, pgn)
         document_pgn.setHtml(pgn)
         w_pgn = document_pgn.idealWidth()
         h_pgn = document_pgn.size().height()
@@ -208,23 +225,23 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
             ancho += wpz
         if fin_pz:
             ancho += wpz + salto_fin_pz
-        if li_nags:
-            ancho += wpz * len(li_nags)
+        # if li_nags:
+        #     ancho += wpz * len(li_nags)
 
-        x = x_total + (w_total - ancho) / 2
-        if self.si_alineacion:
-            alineacion = index.model().getAlineacion(index)
-            if alineacion == "i":
-                x = x_total + 3
-            elif alineacion == "d":
-                x = x_total + (w_total - ancho - 3)
+        # x = x_total + (w_total - ancho) / 2
+        # if self.si_alineacion:
+        #     alineacion = index.model().getAlineacion(index)
+        #     if alineacion == "i":
+        #         x = x_total + 3
+        #     elif alineacion == "d":
+        #         x = x_total + (w_total - ancho - 3)
 
         x = x_total + 20
         y = y_total + (h_total - h_pgn * 0.9) / 2
 
         if ini_pz:
             painter.save()
-            painter.translate(x, y+1)
+            painter.translate(x, y + 1)
             pm = dicPZ[ini_pz]
             pmRect = QtCore.QRectF(0, 0, hx, hx)
             pm.render(painter, pmRect)
@@ -239,7 +256,7 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
 
         if fin_pz:
             painter.save()
-            painter.translate(x - 0.3 * wpz, y+1)
+            painter.translate(x - 0.3 * wpz, y + 1)
             pm = dicPZ[fin_pz]
             pmRect = QtCore.QRectF(0, 0, hx, hx)
             pm.render(painter, pmRect)
@@ -250,24 +267,16 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
             document_pgn = QtGui.QTextDocument()
             document_pgn.setDefaultFont(option.font)
             if color:
-                pgn = '<font color="%s"><b>%s</b></font>' % (color, post_pz)
-            document_pgn.setHtml(pgn)
+                post_pz = '<font color="%s"><b>%s</b></font>' % (color, post_pz)
+            else:
+                post_pz = "<b>%s</b>" % post_pz
+            document_pgn.setHtml(post_pz)
             w_pgn = document_pgn.idealWidth()
             painter.save()
             painter.translate(x, y)
             document_pgn.drawContents(painter)
             painter.restore()
             x += w_pgn
-
-        if li_nags:
-            for rndr in li_nags:
-                painter.save()
-                painter.translate(x - 0.2 * wpz, y-1)
-                df = hx*0.2
-                pmRect = QtCore.QRectF(df, df, hx-df, hx-df)
-                rndr.render(painter, pmRect)
-                painter.restore()
-                x += wpz*0.8
 
         if txt_analysis:
             document_analysis = QtGui.QTextDocument()
@@ -277,7 +286,7 @@ class EtiquetaPGN(QtWidgets.QStyledItemDelegate):
             document_analysis.setHtml(txt_analysis)
             w_analysis = document_analysis.idealWidth()
             painter.save()
-            painter.translate(x_total + (w_total - w_analysis) , y)
+            painter.translate(x_total + (w_total - w_analysis), y)
             document_analysis.drawContents(painter)
             painter.restore()
 
@@ -309,6 +318,9 @@ class PmIconosBMT(QtWidgets.QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         pos = str(index.model().data(index, QtCore.Qt.DisplayRole))
+        if "." in pos:
+            pos = pos[: pos.index(".")]
+
         if not (pos in self.dicIconos):
             return
         painter.save()
@@ -318,7 +330,7 @@ class PmIconosBMT(QtWidgets.QStyledItemDelegate):
 
 
 class PmIconosColor(QtWidgets.QStyledItemDelegate):
-    """ Usado en TurnOnLigths"""
+    """Usado en TurnOnLigths"""
 
     def __init__(self, parent=None):
         QtWidgets.QStyledItemDelegate.__init__(self, parent)
@@ -405,7 +417,7 @@ class MultiEditor(QtWidgets.QItemDelegate):
 
     def setEditorData(self, editor, index):
         value = index.model().data(index, QtCore.Qt.DisplayRole)
-        self.win_me.me_ponValor(editor, value)
+        self.win_me.me_set_value(editor, value)
 
     def setModelData(self, editor, model, index):
         value = self.win_me.me_leeValor(editor)
@@ -429,7 +441,7 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         data = index.model().data(index, QtCore.Qt.DisplayRole)
-        pgn, is_white, color, txt_analysis, indicadorInicial, li_nags, agrisar, siLine = data
+        pgn, is_white, color, txt_analysis, indicador_inicial, li_nags, agrisar, si_line = data
         if li_nags:
             li = []
             st = set()
@@ -438,9 +450,15 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
                 if x in st:
                     continue
                 st.add(x)
-                if x in dicNG:
-                    li.append(dicNG[x])
+                if x.isdigit():
+                    symbol = dic_symbol_nags(int(x))
+                    if symbol:
+                        li.append(symbol)
             li_nags = li
+
+        is_color_origen = color
+        if not color:
+            color = index.model().fore_color_name()
 
         ini_pz = None
         fin_pz = None
@@ -459,31 +477,40 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
                 pgn = pgn[:-2]
                 salto_fin_pz = -6
 
+        if li_nags:
+            if post_pz is None:
+                post_pz = ""
+            post_pz += " " + " ".join(li_nags)
+
         rect = option.rect
         width = rect.width()
         height = rect.height()
         x0 = rect.x()
         y0 = rect.y()
         if option.state & QtWidgets.QStyle.State_Selected:
-            painter.fillRect(rect, QtGui.QColor(Code.configuration.pgn_selbackground()))  # sino no se ve en CDE-Motif-Windows
+            painter.fillRect(rect, Code.dic_qcolors["PGN_SELBACKGROUND"])
+            color = Code.dic_colors["PGN_SELFOREGROUND"]
         elif self.siFondo:
             fondo = index.model().getFondo(index)
             if fondo:
                 painter.fillRect(rect, fondo)
 
         if agrisar:
-            painter.setOpacity(0.18)
+            painter.setOpacity(0.24)
 
-        if indicadorInicial:
+        if indicador_inicial:
             painter.save()
             painter.translate(x0, y0)
-            painter.drawPixmap(0, 0, dicPM[indicadorInicial])
+            painter.drawPixmap(0, 0, dicPM[indicador_inicial])
             painter.restore()
 
         documentPGN = QtGui.QTextDocument()
         documentPGN.setDefaultFont(option.font)
         if color:
-            pgn = '<font color="%s"><b>%s</b></font>' % (color, pgn)
+            if is_color_origen:
+                pgn = '<font color="%s"><b>%s</b></font>' % (color, pgn)
+            else:
+                pgn = '<font color="%s">%s</font>' % (color, pgn)
         documentPGN.setHtml(pgn)
         wPGN = documentPGN.idealWidth()
         hPGN = documentPGN.size().height()
@@ -495,8 +522,8 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
             ancho += wpz
         if fin_pz:
             ancho += wpz
-        if li_nags:
-            ancho += wpz * len(li_nags)
+        # if li_nags:
+        #     ancho += wpz * len(li_nags)
 
         x = x0 + (width - ancho) / 2
         if self.siAlineacion:
@@ -510,7 +537,7 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
 
         if ini_pz:
             painter.save()
-            painter.translate(x, y+1)
+            painter.translate(x, y + 1)
             pm = dicPZ[ini_pz]
             pmRect = QtCore.QRectF(0, 0, hx, hx)
             pm.render(painter, pmRect)
@@ -525,7 +552,7 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
 
         if fin_pz:
             painter.save()
-            painter.translate(x - 0.3 * wpz, y+1)
+            painter.translate(x - 0.3 * wpz, y + 1)
             pm = dicPZ[fin_pz]
             pmRect = QtCore.QRectF(0, 0, hx, hx)
             pm.render(painter, pmRect)
@@ -537,6 +564,8 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
             document_pgn.setDefaultFont(option.font)
             if color:
                 post_pz = '<font color="%s"><b>%s</b></font>' % (color, post_pz)
+            else:
+                post_pz = "<b>%s</b>" % post_pz
             document_pgn.setHtml(post_pz)
             w_pgn = document_pgn.idealWidth()
             painter.save()
@@ -545,14 +574,14 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
             painter.restore()
             x += w_pgn
 
-        if li_nags:
-            for rndr in li_nags:
-                painter.save()
-                painter.translate(x - 0.2 * wpz, y)
-                pmRect = QtCore.QRectF(0, 0, hx, hx)
-                rndr.render(painter, pmRect)
-                painter.restore()
-                x += wpz
+        # if li_nags:
+        #     for rndr in li_nags:
+        #         painter.save()
+        #         painter.translate(x - 0.2 * wpz, y)
+        #         pmRect = QtCore.QRectF(0, 0, hx, hx)
+        #         rndr.render(painter, pmRect)
+        #         painter.restore()
+        #         x += wpz
 
         if txt_analysis:
             txt_analysis = txt_analysis.replace("(", "").replace(")", "")
@@ -563,7 +592,7 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
             document_analysis.setHtml(txt_analysis)
             w_analysis = document_analysis.idealWidth()
             painter.save()
-            painter.translate(x0 + (width - w_analysis) , y)
+            painter.translate(x0 + (width - w_analysis), y)
             document_analysis.drawContents(painter)
             painter.restore()
 
@@ -577,7 +606,7 @@ class EtiquetaPOS(QtWidgets.QStyledItemDelegate):
                 painter.setPen(pen)
                 painter.drawLine(x0, y0 + height - 1, x0 + width, y0 + height - 1)
 
-            if siLine:
+            if si_line:
                 pen = QtGui.QPen()
                 pen.setWidth(1)
                 painter.setPen(pen)

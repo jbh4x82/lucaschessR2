@@ -321,7 +321,9 @@ class TurnOnLightsOneLine(TurnOnLights):
         self.name = "oneline"
         title = _("In one line")
         folder = None
-        self.fns = Util.relative_path(Code.path_resource("Trainings", "Tactics by UNED chess school", "Interception-blocade.fns"))
+        self.fns = Util.relative_path(
+            Code.path_resource("Trainings", "Tactics by UNED chess school", "Interception-blocade.fns")
+        )
         self.calculation_mode = True
         self.auto_day = False
         self.last_date = self.hoy()
@@ -355,7 +357,11 @@ class TurnOnLightsOneLine(TurnOnLights):
             for level in self.levels:
                 level.update()
 
-            self.fns = tolr.fns
+            self.fns = (
+                tolr.fns
+                if Util.exist_file(tolr.fns)
+                else Code.path_resource("Trainings", "Tactics by UNED chess school", "Discovered attack.fns")
+            )
             self.work_level = tolr.work_level
             self.num_pos = tolr.num_pos
             self.go_fast = tolr.go_fast

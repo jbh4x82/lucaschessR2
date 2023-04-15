@@ -1,9 +1,8 @@
-import struct
+import time
 
 import psutil
 from PySide2 import QtCore, QtGui, QtWidgets
 
-import Code
 from Code.Base import Game
 from Code.Engines import EngineRun
 from Code.Kibitzers import WindowKibitzers
@@ -62,18 +61,20 @@ class WKibLinea(QtWidgets.QDialog):
     padding: 2px 4px;
 }"""
         )
+        f = Controles.TipoLetra(puntos=self.cpu.configuration.x_pgn_fontpoints)
+        self.setFont(f)
 
         li_acciones = (
             (_("Quit"), Iconos.Kibitzer_Close(), self.terminar),
             (_("Continue"), Iconos.Kibitzer_Play(), self.play),
             (_("Pause"), Iconos.Kibitzer_Pause(), self.pause),
-            (_("Analyze only color"), Iconos.Kibitzer_Side(), self.color),
+            (_("Analyze color"), Iconos.Kibitzer_Side(), self.color),
             (_("Change window position"), Iconos.ResizeBoard(), self.mover),
             (_("Options"), Iconos.Opciones(), self.changeOptions),
         )
         self.tb = Controles.TBrutina(self, li_acciones, with_text=False, icon_size=24)
         self.tb.setFixedSize(180, 32)
-        self.tb.setPosVisible(1, False)
+        self.tb.set_pos_visible(1, False)
         self.em = EDP(self)
         self.em.ponTipoLetra(peso=75, puntos=10)
         self.em.setReadOnly(True)
@@ -82,7 +83,7 @@ class WKibLinea(QtWidgets.QDialog):
 
         self.setLayout(layout)
 
-        self.lanzaMotor()
+        self.launch_engine()
 
         self.siPlay = True
         self.is_white = True
@@ -92,13 +93,16 @@ class WKibLinea(QtWidgets.QDialog):
 
         self.restore_video(dicVideo)
 
-        self.engine = self.lanzaMotor()
+        self.engine = self.launch_engine()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.compruebaInput)
         self.timer.start(200)
         self.depth = 0
         self.veces = 0
+
+        self.time_init = time.time()
+        self.stopped = False
 
     def compruebaInput(self):
         if not self.engine:
@@ -109,6 +113,12 @@ class WKibLinea(QtWidgets.QDialog):
             if self.valid_to_play():
                 mrm = self.engine.ac_estado()
                 rm = mrm.rmBest()
+                if self.kibitzer.max_time and (time.time() - self.time_init) > self.kibitzer.max_time:
+                    if not self.stopped:
+                        self.engine.ac_final(0)
+                        self.stopped = True
+                    else:
+                        self.depth = 999
                 if rm and rm.depth > self.depth:
                     self.depth = rm.depth
                     game = Game.Game(first_position=self.game.last_position)
@@ -128,11 +138,12 @@ class WKibLinea(QtWidgets.QDialog):
         if w.exec_():
             xprioridad = w.result_xprioridad
             if xprioridad is not None:
-                pid = self.engine.pid()
-                if Code.is_windows:
-                    hp, ht, pid, dt = struct.unpack("PPII", pid.asstring(16))
+                pid = self.engine.process.pid
                 p = psutil.Process(pid)
                 p.nice(xprioridad)
+            self.cpu.kibitzer.prioridad = xprioridad
+            self.cpu.kibitzer.pointofview = w.result_xpointofview
+            self.cpu.kibitzer.max_time = w.result_max_time
             if w.result_opciones:
                 for opcion, valor in w.result_opciones:
                     if valor is None:
@@ -152,8 +163,8 @@ class WKibLinea(QtWidgets.QDialog):
             flags &= ~QtCore.Qt.WindowStaysOnTopHint
         flags |= QtCore.Qt.WindowCloseButtonHint
         self.setWindowFlags(flags)
-        self.tb.setAccionVisible(self.windowTop, not self.siTop)
-        self.tb.setAccionVisible(self.windowBottom, self.siTop)
+        self.tb.set_action_visible(self.windowTop, not self.siTop)
+        self.tb.set_action_visible(self.windowBottom, self.siTop)
         self.show()
 
     def windowTop(self):
@@ -170,27 +181,29 @@ class WKibLinea(QtWidgets.QDialog):
 
     def pause(self):
         self.siPlay = False
-        self.tb.setPosVisible(1, True)
-        self.tb.setPosVisible(2, False)
+        self.tb.set_pos_visible(1, True)
+        self.tb.set_pos_visible(2, False)
         self.stop()
 
     def play(self):
         self.siPlay = True
-        self.tb.setPosVisible(1, False)
-        self.tb.setPosVisible(2, True)
+        self.tb.set_pos_visible(1, False)
+        self.tb.set_pos_visible(2, True)
         self.reset()
 
     def stop(self):
         self.siPlay = False
         self.engine.ac_final(0)
 
-    def lanzaMotor(self):
+    def launch_engine(self):
         self.nom_engine = self.kibitzer.name
         exe = self.kibitzer.path_exe
         args = self.kibitzer.args
         li_uci = self.kibitzer.liUCI
         self.numMultiPV = 0
-        return EngineRun.RunEngine(self.nom_engine, exe, li_uci, self.numMultiPV, priority=self.cpu.prioridad, args=args)
+        return EngineRun.RunEngine(
+            self.nom_engine, exe, li_uci, self.numMultiPV, priority=self.cpu.prioridad, args=args
+        )
 
     def closeEvent(self, event):
         self.finalizar()
@@ -283,6 +296,10 @@ class WKibLinea(QtWidgets.QDialog):
 
         if self.valid_to_play():
             self.engine.ac_inicio(game)
+
+            # Para kibitzer con tiempo fijo
+            self.time_init = time.time()
+            self.stopped = False
         else:
             self.em.setText("")
 

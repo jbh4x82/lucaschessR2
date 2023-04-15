@@ -2,14 +2,14 @@ import Code
 import Code.Base.Game  # To prevent recursivity in Variations -> import direct
 from Code import Util
 from Code.Base import Position
-from Code.Base.Constantes import NAG_4, NAG_6, NAG_2, html_nag_txt
+from Code.Nags.Nags import NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6, html_nag_txt
 from Code.Engines import EngineResponse
 from Code.Themes.Lichess import cook
 from Code.Translations import TrListas
 
 
 def crea_dic_html():
-    base = '<span style="font-family:Chess Alpha 2"><big>%s</big></span>'
+    base = '<span style="font-family:Chess Alpha 2;"><big>%s</big></span>'
     return {x: base % x for x in "pnbrqkPNBRQK"}
 
 
@@ -33,6 +33,7 @@ class Move:
 
         self.li_nags = []
         self.time_ms = 0
+        self.clock_ms = 0
 
         self.is_book = False
 
@@ -44,9 +45,17 @@ class Move:
     def set_time_ms(self, ms):
         self.time_ms = ms
 
+    def set_clock_ms(self, ms):
+        self.clock_ms = ms if ms > 0 else 0
+
     def only_has_move(self) -> bool:
         return not (
-            self.variations or self.comment or len(self.li_nags) > 0 or self.analysis or len(self.li_themes) > 0
+            self.variations
+            or self.comment
+            or len(self.li_nags) > 0
+            or self.analysis
+            or len(self.li_themes) > 0
+            or self.time_ms
         )
 
     @property
@@ -93,7 +102,6 @@ class Move:
     @property
     def pgnBase(self):
         pgnBase = self.position_before.pgn(self.from_sq, self.to_sq, self.promotion)
-        assert pgnBase is not None
         return pgnBase
 
     def add_nag(self, nag):
@@ -112,16 +120,24 @@ class Move:
         self.li_nags = []
 
     def del_variations(self):
-        self.variations.zap()
+        self.variations.clear()
 
     def del_comment(self):
         self.comment = ""
 
+    def set_comment(self, comment):
+        self.comment = comment.replace("}", "]").replace("{", "]")
+
     def add_comment(self, comment):
-        self.comment = comment
+        if self.comment:
+            self.comment += "\n"
+        self.comment += comment.replace("}", "]").replace("{", "]")
 
     def del_analysis(self):
         self.analysis = None
+
+    def del_themes(self):
+        self.li_themes = []
 
     def is_white(self):
         return self.position_before.is_white
@@ -167,7 +183,7 @@ class Move:
 
     def etiquetaSP(self):
         p = self.position_before
-        return "%d.%s %s" % (p.num_moves, "" if p.is_white else "...", self.pgn_translated())
+        return "%d.%s%s" % (p.num_moves, "" if p.is_white else "...", self.pgn_translated())
 
     def numMove(self):
         return self.position_before.num_moves
@@ -201,11 +217,18 @@ class Move:
         return li
 
     def pgnEN(self):
-        return self.pgnBase + self.resto()
+        resto = self.resto()
+        if resto:
+            if not (resto[0] in "?!"):
+                resto = " " + resto
+            return self.pgnBase + resto
+        else:
+            return self.pgnBase
 
     def resto(self, with_variations=True):
         resp = ""
         if self.li_nags:
+            self.li_nags.sort()
             resp += " ".join([html_nag_txt(nag) for nag in self.li_nags])
 
         comment = self.comment
@@ -216,10 +239,26 @@ class Move:
             for txt in comment.strip().split("\n"):
                 if txt:
                     resp += "{%s}" % txt.strip()
+        if self.time_ms:
+            s = self.time_ms / 1000
+            if int(s * 100) > 0:
+                h = int(s // 3600)
+                s -= h * 3600
+                m = int(s // 60)
+                s -= m * 60
+                resp += "{[%%emt %02d:%02d:%02.2f]}" % (h, m, s)
+        if self.clock_ms:
+            s = self.clock_ms / 1000
+            if int(s * 100) > 0:
+                h = int(s // 3600)
+                s -= h * 3600
+                m = int(s // 60)
+                s -= m * 60
+                resp += "{[%%clk %02d:%02d:%02.2f]}" % (h, m, s)
         if with_variations and len(self.variations):
             resp += " " + self.variations.get_pgn()
 
-        return (" %s" % resp.strip()) if resp else ""
+        return resp.strip()
 
     def analisis2variantes(self, almVariations, delete_previous):
         if not self.analysis:
@@ -227,6 +266,12 @@ class Move:
         mrm, pos = self.analysis
         if len(mrm.li_rm) == 0:
             return
+
+        # if pos >= 0:
+        #     m = EngineResponse.MultiEngineResponse(None, True)
+        #     m.restore(mrm.save())
+        #     del mrm.li_rm[pos]
+        #     mrm = m
 
         self.variations.analisis2variantes(mrm, almVariations, delete_previous)
 
@@ -240,8 +285,9 @@ class Move:
             mrm, pos = self.analysis
             rm_j = mrm.li_rm[0]
             rm_c = mrm.li_rm[pos]
-            self.elo, self.questionable_move, self.bad_move, self.verybad_move = \
-                Code.analysis_eval.elo_bad_vbad(rm_j, rm_c)
+            self.elo, self.questionable_move, self.bad_move, self.verybad_move = Code.analysis_eval.elo_bad_vbad(
+                rm_j, rm_c
+            )
 
         else:
             self.elo = 0
@@ -253,11 +299,11 @@ class Move:
         elo_factor = 1
         if self.analysis:
             if self.bad_move:
-                elo_factor = Code.configuration.eval_bad_factor
+                elo_factor = Code.configuration.x_eval_elo_mistake_factor
             elif self.verybad_move:
-                elo_factor = Code.configuration.eval_very_bad_factor
+                elo_factor = Code.configuration.x_eval_elo_blunder_factor
             elif self.questionable_move:
-                elo_factor = Code.configuration.eval_questionable_factor
+                elo_factor = Code.configuration.x_eval_elo_inaccuracy_factor
         return elo_factor
 
     def distancia(self):
@@ -271,6 +317,8 @@ class Move:
             dic["comment"] = self.comment
         if self.time_ms:
             dic["time_ms"] = self.time_ms
+        if self.time_ms:
+            dic["clock_ms"] = self.clock_ms
         if self.li_nags:
             dic["li_nags"] = self.li_nags
         if self.li_themes:
@@ -299,6 +347,8 @@ class Move:
             self.comment = dic["comment"]
         if "time_ms" in dic:
             self.time_ms = dic["time_ms"]
+        if "clock_ms" in dic:
+            self.time_ms = dic["clock_ms"]
         if "li_nags" in dic:
             self.li_nags = dic["li_nags"]
         if "li_themes" in dic:
@@ -313,6 +363,8 @@ class Move:
 
     def clone(self, other_game):
         m = Move(other_game)
+        m.position_before = self.position_before.copia()
+        m.position = self.position.copia()
         m.restore(self.save())
         return m
 
@@ -322,14 +374,14 @@ class Move:
     def test_a1h8(self, a1h8):
         if a1h8 == self.movimiento():
             return True, False
-        for variation in self.variations.li_variations:
-            if variation.move(0) == a1h8:
-                return False, True
         if self.position.is_mate():
             position = self.position_before.copia()
             position.moverPV(a1h8)
             if position.is_mate():
                 return True, False
+        for variation in self.variations.li_variations:
+            if variation.move(0).movimiento() == a1h8:
+                return False, True
         return False, False
 
     def assign_themes_lichess(self):
@@ -342,11 +394,43 @@ class Move:
                     if len(li_pv) < 3:
                         return
                     pv = " ".join(li_pv[1:])
-                    li_themes = cook.get_tags(self.position.fen(), pv, rm.puntos)
-                    if li_themes:
-                        for theme in li_themes:
-                            self.add_theme(theme)
+                    try:
+                        li_themes = cook.get_tags(self.position.fen(), pv, rm.puntos)
+                        if li_themes:
+                            for theme in li_themes:
+                                self.add_theme(theme)
+                    except:
+                        pass
                     return
+
+    def list_all_moves(self):
+        # Analysis including variations
+        pos_current_move = 0
+        for pos_move, move in enumerate(self.game.li_moves):
+            if move == self:
+                pos_current_move = pos_move
+                break
+        li = [(self, self.game, pos_current_move)]
+        for game in self.variations.list_games():
+            for move in game.li_moves:
+                li.extend(move.list_all_moves())
+        return li
+
+    def refresh_nags(self):
+        if not self.analysis:
+            return
+
+        mrm, pos = self.analysis
+        for nag in (NAG_1, NAG_2, NAG_3, NAG_4, NAG_5, NAG_6):
+            if nag in self.li_nags:
+                self.li_nags.remove(nag)
+        rm = mrm.li_rm[pos]
+        nag, color = mrm.set_nag_color(rm)
+        if nag:
+            self.add_nag(nag)
+        for game in self.variations.list_games():
+            for move in game.li_moves:
+                move.refresh_nags()
 
 
 def get_game_move(game, position_before, from_sq, to_sq, promotion):
@@ -367,9 +451,9 @@ class Variations:
 
     def add_pgn_variation(self, pgn):
         pgn_var = '[FEN "%s"]\n%s' % (self.move_base.position_before.fen(), pgn)
-        ok, p_var = Code.Base.Game.pgn_game(pgn_var)
+        ok, game = Code.Base.Game.pgn_game(pgn_var)
         if ok:
-            self.li_variations.append(p_var)
+            self.li_variations.append(game)
 
     def save(self):
         li = [variation.save() for variation in self.li_variations]
@@ -378,9 +462,9 @@ class Variations:
     def restore(self, li):
         self.li_variations = []
         for sv in li:
-            v = Code.Base.Game.Game()
-            v.restore(sv)
-            self.li_variations.append(v)
+            game = Code.Base.Game.Game()
+            game.restore(sv)
+            self.li_variations.append(game)
 
     def __len__(self):
         return len(self.li_variations)
@@ -435,26 +519,21 @@ class Variations:
             eti_t = ""
 
         tmp_game = Code.Base.Game.Game()
-        if almVariations.best_variation:
-            pv_base = self.move_base
-            for rm in mrm.li_rm:
-                if rm.movimiento() != pv_base:
-                    self.analisis2variantesUno(
-                        tmp_game, rm, eti_t, almVariations.one_move_variation, almVariations.si_pdt
-                    )
-                    break
-        else:
-            for rm in mrm.li_rm:
-                self.analisis2variantesUno(tmp_game, rm, eti_t, almVariations.one_move_variation, almVariations.si_pdt)
+        # pv_base = self.move_base.movimiento()
+        for rm in mrm.li_rm:
+            self.analisis2variantesUno(tmp_game, rm, eti_t, almVariations.one_move_variation, almVariations.si_pdt)
+            if almVariations.best_variation:
+                break
 
     def analisis2variantesUno(self, tmp_game, rm, eti_t, si_un_move, si_pdt):
         tmp_game.set_position(self.move_base.position_before)
         tmp_game.read_pv(rm.pv)
         move = tmp_game.move(0)
-        puntuacion = rm.abrTextoPDT() if si_pdt else rm.abrTexto()
-        move.comment = "%s%s" % (puntuacion, eti_t)
-        gm = tmp_game.copia(0 if si_un_move else None)
-        self.li_variations.append(gm)
+        if move:
+            puntuacion = rm.abrTextoPDT() if si_pdt else rm.abrTexto()
+            move.set_comment("%s%s" % (puntuacion, eti_t))
+            gm = tmp_game.copia(0 if si_un_move else None)
+            self.li_variations.append(gm)
 
     def add_variation(self, game):
         pv_add = game.pv()
@@ -472,6 +551,3 @@ class Variations:
             self.li_variations.append(gm)
         else:
             self.li_variations[pos_add] = gm
-
-    def zap(self):
-        self.li_variations = []

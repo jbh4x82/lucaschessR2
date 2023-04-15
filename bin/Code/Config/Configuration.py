@@ -2,21 +2,20 @@ import operator
 import os.path
 import pickle
 
+import OSEngines  # in OS folder
 from PySide2 import QtWidgets
 from PySide2.QtCore import Qt
 
 import Code
-from Code.Board import ConfBoards
-from Code.Translations import Translate, TrListas
 from Code import Util
+from Code.Analysis import AnalysisEval
+from Code.Base.Constantes import MENU_PLAY_BOTH, POS_TUTOR_HORIZONTAL, INACCURACY, ENG_FIXED
+from Code.Board import ConfBoards
+from Code.Engines import Priorities
+from Code.QT import IconosBase
 from Code.QT import QTUtil
 from Code.SQL import UtilSQL
-from Code.Engines import Priorities
-from Code.Analysis import AnalysisEval
-from Code.Base.Constantes import MENU_PLAY_BOTH, POS_TUTOR_HORIZONTAL, INACCURACY
-
-import OSEngines  # in OS folder
-
+from Code.Translations import Translate, TrListas
 
 LCFILEFOLDER: str = os.path.realpath("../lc.folder")
 LCBASEFOLDER: str = os.path.realpath("../UserData")
@@ -113,13 +112,12 @@ class Configuration:
 
         self.version = ""
 
-        self.x_id = Util.new_id()
+        self.x_id = Util.huella()
         self.x_player = ""
         self.x_save_folder = ""
         self.x_save_pgn_folder = ""
         self.x_save_lcsb = ""
         self.x_translator = ""
-        self.x_style = "WindowsVista" if Code.is_windows else "Fusion"
 
         self.x_enable_highdpiscaling = False
 
@@ -152,12 +150,7 @@ class Configuration:
         self.x_director_icon = False
         self.x_direct_graphics = False
 
-        self.colores_nags_defecto()
-
         self.x_sizefont_infolabels = 11
-
-        self.x_pgn_selbackground = None
-        self.x_pgn_headerbackground = None
 
         self.x_pgn_width = 348
         self.x_pgn_fontpoints = 10
@@ -168,7 +161,10 @@ class Configuration:
 
         self.x_autopromotion_q = False
 
+        self.x_copy_ctrl = True  # False = Alt C
+
         self.x_font_family = ""
+        self.x_font_points = 10
 
         self.x_menu_points = 11
         self.x_menu_bold = False
@@ -197,52 +193,43 @@ class Configuration:
         self.x_analyzer_depth = 0
         self.x_analyzer_priority = Priorities.priorities.low
 
-        # self.x_eval_lines = [(100.0, 0.9), (300, 2.0), (800, 3.0), (3500, 4.0)]
-        # self.x_eval_blunder = 1.5
-        # self.x_eval_error = 0.7
-        # self.x_eval_inaccuracy = 0.3
-        # self.x_eval_very_good_depth = 7
-        # self.x_eval_good_depth = 4
-        # self.x_eval_max_mate = 15
-        # self.x_eval_max_elo = 3300.0
-        # self.x_eval_min_elo = 800.0
-        # self.x_eval_very_bad_factor = 12
-        # self.x_eval_bad_factor = 4
-        # self.x_eval_questionable_factor = 2
+        self.x_maia_nodes_exponential = False
 
-        self.eval_lines = [(100.0, 0.9), (300, 2.0), (800, 3.0), (3500, 4.0)]
-        self.eval_blunder = 1.75
-        self.eval_error = 0.75
-        self.eval_inaccuracy = 0.33
-        self.eval_very_good_depth = 7
-        self.eval_good_depth = 4
-        self.eval_max_mate = 15
-        self.eval_max_elo = 3300.0
-        self.eval_min_elo = 200.0
-        self.eval_very_bad_factor = 12
-        self.eval_bad_factor = 6
-        self.eval_questionable_factor = 2
+        self.x_eval_limit_score = 2000  # Score in cps means 100% Win
+        self.x_eval_curve_degree = 50  # Degree of curve cps and probability of win
 
-        # self.eval_lines = [(150.0, 0.91), (390, 2.07), (530, 3.07), (775, 3.8), (900, 4.5)]
-        # self.eval_blunder = 1.84
-        # self.eval_error = 0.76
-        # self.eval_inaccuracy = 0.33
-        # self.eval_very_good_depth = 7
-        # self.eval_good_depth = 4
-        # self.eval_max_mate = 10
-        # self.eval_max_elo = 3300.0
-        # self.eval_min_elo = 0.0
-        # self.eval_very_bad_factor = 2.25
-        # self.eval_bad_factor = 2
-        # self.eval_questionable_factor = 1.1
+        self.x_eval_difmate_inaccuracy = 3  # Dif mate considered an inaccuracy
+        self.x_eval_difmate_mistake = 12  # Dif mate considered a mistake
+        self.x_eval_difmate_blunder = 20  # Dif mate considered a blunder
+
+        self.x_eval_mate_human = 15  # Max mate to consider
+
+        self.x_eval_blunder = 15.5  #
+        self.x_eval_mistake = 7.5
+        self.x_eval_inaccuracy = 3.3
+
+        self.x_eval_very_good_depth = 8
+        self.x_eval_good_depth = 5
+        self.x_eval_speculative_depth = 3
+
+        self.x_eval_max_elo = 3300.0
+        self.x_eval_min_elo = 200.0
+
+        self.x_eval_elo_blunder_factor = 12
+        self.x_eval_elo_mistake_factor = 6
+        self.x_eval_elo_inaccuracy_factor = 2
+
+        self.dic_eval_default = self.read_eval()
 
         self.x_sound_beep = False
         self.x_sound_our = False
         self.x_sound_move = False
         self.x_sound_results = False
         self.x_sound_error = False
+        self.x_sound_tournements = False
 
         self.x_interval_replay = 1400
+        self.x_beep_replay = False
 
         self.x_engine_notbackground = False
 
@@ -250,21 +237,52 @@ class Configuration:
 
         self.x_carpeta_gaviota = self.carpeta_gaviota_defecto()
 
-        # Editable directamente en su código
         self.x_captures_showall = True
         self.x_counts_showall = True
 
-        self.palette = {}
-
         self.li_favoritos = None
 
-        self.liPersonalidades = []
+        self.li_personalities = []
 
-        self.relee_engines()
-
-        self.rival = self.buscaRival(self.x_rival_inicial)
+        self.rival = None
 
         self.x_translation_mode = False
+
+        self.x_style = "windowsvista" if Code.is_windows else "fusion"
+        self.x_style_mode = "By default"
+        self.x_style_icons = IconosBase.icons.NORMAL
+        self.style_sheet_default = None  # temporary var
+
+        self.x_mode_select_lc = Code.is_linux
+
+    def read_eval(self):
+        d = {}
+        for key in dir(self):
+            if key.startswith("x_eval_"):
+                d[key[7:]] = getattr(self, key)
+        return d
+
+    @staticmethod
+    def dic_eval_keys():
+        return {
+            "limit_score": (1000, 4000, "int"),
+            "curve_degree": (1, 100, "%"),
+            "difmate_inaccuracy": (1, 99, "int"),
+            "difmate_mistake": (1, 99, "int"),
+            "difmate_blunder": (1, 99, "int"),
+            "mate_human": (10, 99, "int"),
+            "blunder": (1.0, 99.0, "dec"),
+            "mistake": (1.0, 99.0, "dec"),
+            "inaccuracy": (1.0, 99.0, "dec"),
+            "very_good_depth": (1, 128, "int"),
+            "good_depth": (1, 128, "int"),
+            "speculative_depth": (1, 128, "int"),
+            "max_elo": (2000, 4000, "int"),
+            "min_elo": (0, 2000, "int"),
+            "elo_blunder_factor": (1, 99, "dec"),
+            "elo_mistake_factor": (1, 99, "dec"),
+            "elo_inaccuracy_factor": (1, 99, "dec"),
+        }
 
     def folder_translations(self):
         folder = os.path.join(self.carpetaBase, "Translations")
@@ -290,23 +308,17 @@ class Configuration:
     def nom_player(self):
         return _("Player") if not self.x_player else self.x_player
 
-    def pgn_selbackground(self):
-        return self.x_pgn_selbackground if self.x_pgn_selbackground else "#51708C"
-
-    def pgn_headerbackground(self):
-        return self.x_pgn_headerbackground if self.x_pgn_headerbackground else "#EDEDE4"
-
     def carpeta_gaviota_defecto(self):
         return Code.path_resource("Gaviota")
 
-    def carpeta_gaviota(self):
+    def folder_gaviota(self):
         if not Util.exist_file(os.path.join(self.x_carpeta_gaviota, "kbbk.gtb.cp4")):
             self.x_carpeta_gaviota = self.carpeta_gaviota_defecto()
             self.graba()
         return self.x_carpeta_gaviota
 
-    def piezas_gaviota(self):
-        if Util.exist_file(os.path.join(self.carpeta_gaviota(), "kbbkb.gtb.cp4")):
+    def pieces_gaviota(self):
+        if Util.exist_file(os.path.join(self.folder_gaviota(), "kbbkb.gtb.cp4")):
             return 5
         return 4
 
@@ -331,6 +343,8 @@ class Configuration:
 
     def start(self):
         self.lee()
+        self.relee_engines()
+        self.rival = self.buscaRival(self.x_rival_inicial)
         self.leeConfBoards()
 
     def changeActiveFolder(self, nueva):
@@ -354,6 +368,9 @@ class Configuration:
 
     def folder_tournaments_workers(self):
         return self.create_base_folder("Tournaments/Workers")
+
+    def folder_leagues(self):
+        return self.create_base_folder("Leagues")
 
     def folder_openings(self):
         dic = self.read_variables("OPENING_LINES")
@@ -503,6 +520,9 @@ class Configuration:
         self.folder_base_openings = os.path.join(self.carpeta, "OpeningLines")
         Util.create_folder(self.folder_base_openings)
 
+    def file_colors(self):
+        return os.path.join(self.carpeta_config, "personal.colors")
+
     def compruebaBMT(self):
         if not Util.exist_file(self.ficheroBMT):
             self.ficheroBMT = "%s/lucas.bmt" % self.carpeta_results
@@ -512,7 +532,7 @@ class Configuration:
         self.michelo = 1600
         self.fics = 1200
         self.fide = 1600
-        self.x_id = Util.new_id()
+        self.x_id = Util.huella()
         self.x_player = name
         self.x_save_folder = ""
         self.x_save_pgn_folder = ""
@@ -548,12 +568,22 @@ class Configuration:
         li.insert(0, self.x_tutor_clave)
         return li
 
-    def listaCambioTutor(self):
+    def formlayout_combo_analyzer(self, only_multipv):
+        li = []
+        for key, cm in self.dic_engines.items():
+            if not only_multipv or cm.can_be_tutor():
+                li.append((key, cm.nombre_ext()))
+        li = sorted(li, key=operator.itemgetter(1))
+        li.insert(0, ("default", _("Default analyzer")))
+        li.insert(0, "default")
+        return li
+
+    def help_multipv_engines(self):
         li = []
         for key, cm in self.dic_engines.items():
             if cm.can_be_tutor():
                 li.append((cm.nombre_ext(), key))
-        li = sorted(li, key=operator.itemgetter(1))
+        li.sort(key=operator.itemgetter(1))
         return li
 
     def comboMotores(self):
@@ -566,7 +596,7 @@ class Configuration:
     def comboMotoresMultiPV10(self, minimo=10):  # %#
         liMotores = []
         for key, cm in self.dic_engines.items():
-            if cm.maxMultiPV >= minimo:
+            if cm.maxMultiPV >= minimo and not cm.is_maia():
                 liMotores.append((cm.nombre_ext(), key))
 
         li = sorted(liMotores, key=operator.itemgetter(0))
@@ -584,20 +614,13 @@ class Configuration:
         li = [(x, x) for x in QtWidgets.QStyleFactory.keys()]
         return li
 
-    def colores_nags_defecto(self):
-        self.x_color_nag1 = "#0707FF"
-        self.x_color_nag2 = "#FF7F00"
-        self.x_color_nag3 = "#820082"
-        self.x_color_nag4 = "#FF0606"
-        self.x_color_nag5 = "#008500"
-        self.x_color_nag6 = "#BD9F07"
-
     def graba(self):
         dic = {}
         for x in dir(self):
             if x.startswith("x_"):
                 dic[x] = getattr(self, x)
-        dic["PALETTE"] = self.palette
+        # dic["PALETTE"] = self.palette
+        dic["PERSONALITIES"] = self.li_personalities
         Util.save_pickle(self.file, dic)
 
     def lee(self):
@@ -608,9 +631,8 @@ class Configuration:
                     if x in dic:
                         setattr(self, x, dic[x])
 
-            palette = dic.get("PALETTE")
-            if palette:
-                self.palette = palette
+            # self.palette = dic.get("PALETTE", self.palette)
+            self.li_personalities = dic.get("PERSONALITIES", self.li_personalities)
 
         for x in os.listdir("../.."):
             if x.endswith(".pon"):
@@ -621,6 +643,8 @@ class Configuration:
         TrListas.ponPiecesLNG(self.x_pgn_english or self.translator() == "en")
 
         Code.analysis_eval = AnalysisEval.AnalysisEval()
+
+        IconosBase.icons.reset(self.x_style_icons)
 
     def get_last_database(self):
         dic = self.read_variables("DATABASE")
@@ -713,7 +737,9 @@ class Configuration:
 
             for x in li:
                 eng = Engines.Engine()
-                eng.restore(x)
+                if not eng.restore(x):
+                    continue
+
                 if eng.exists():
                     key = eng.key
                     n = 0
@@ -750,14 +776,21 @@ class Configuration:
         return li_resp
 
     def dict_engines_fixed_elo(self):
-        return OSEngines.dict_engines_fixed_elo(Code.folder_engines)
+        d = OSEngines.dict_engines_fixed_elo(Code.folder_engines)
+        for elo, lien in d.items():
+            for cm in lien:
+                cm.type = ENG_FIXED
+                cm.elo = elo
+        return d
 
     def engine_tutor(self):
         if self.x_tutor_clave in self.dic_engines:
             eng = self.dic_engines[self.x_tutor_clave]
             if eng.can_be_tutor() and Util.exist_file(eng.path_exe):
+                eng.reset_uci_options()
                 dic = self.read_variables("TUTOR_ANALYZER")
-                eng.liUCI = dic.get("TUTOR", [])
+                for key, value in dic.get("TUTOR", []):
+                    eng.ordenUCI(key, value)
                 return eng
         self.x_tutor_clave = self.tutor_default
         return self.engine_tutor()
@@ -766,8 +799,10 @@ class Configuration:
         if self.x_analyzer_clave in self.dic_engines:
             eng = self.dic_engines[self.x_analyzer_clave]
             if eng.can_be_tutor() and Util.exist_file(eng.path_exe):
+                eng.reset_uci_options()
                 dic = self.read_variables("TUTOR_ANALYZER")
-                eng.liUCI = dic.get("ANALYZER", [])
+                for key, value in dic.get("TUTOR", []):
+                    eng.ordenUCI(key, value)
                 return eng
         self.x_analyzer_clave = self.analyzer_default
         return self.engine_analyzer()
@@ -800,21 +835,20 @@ class Configuration:
             pass
 
     def read_variables(self, nomVar):
-        db = UtilSQL.DictSQL(self.ficheroVariables)
-        resp = db[nomVar]
-        db.close()
+        with UtilSQL.DictSQL(self.ficheroVariables) as db:
+            resp = db[nomVar]
         return resp if resp else {}
 
-        # "DicMicElos": _("Tourney-Elo")
-        # "ENG_MANAGERSOLO": _("Create your own game")
-        # "FICH_MANAGERSOLO": _("Create your own game")
-        # "ENG_VARIANTES": _("Variations") _("Edition")
-        # "TRANSSIBERIAN": _("Transsiberian Railway")
-        # "STSFORMULA": _("Formula to calculate elo") -  _("STS: Strategic Test Suite")
-        # "WindowColores": _("Colors")
-        # "PCOLORES": _("Colors")
-        # "manual_save": _("Save positions to FNS/PGN")
-        # "FOLDER_ENGINES": _("External engines")
+        # "DicMicElos": Tourney-Elo")
+        # "ENG_MANAGERSOLO": Create your own game")
+        # "FICH_MANAGERSOLO": Create your own game")
+        # "ENG_VARIANTES": Variations") Edition")
+        # "TRANSSIBERIAN": Transsiberian Railway")
+        # "STSFORMULA": Formula to calculate elo") -  STS: Strategic Test Suite")
+        # "WindowColores": Colors")
+        # "PCOLORES": Colors")
+        # "manual_save": Save positions to FNS/PGN")
+        # "FOLDER_ENGINES": External engines")
         # "MICELO":
         # "MICPER":
         # "SAVEPGN":
@@ -828,9 +862,8 @@ class Configuration:
         # "PATH_PO"
 
     def write_variables(self, nomVar, dicValores):
-        db = UtilSQL.DictSQL(self.ficheroVariables)
-        db[nomVar] = dicValores
-        db.close()
+        with UtilSQL.DictSQL(self.ficheroVariables) as db:
+            db[nomVar] = dicValores
 
     def leeConfBoards(self):
         db = UtilSQL.DictSQL(self.ficheroConfBoards)
@@ -906,3 +939,8 @@ class Configuration:
         if self.x_save_pgn_folder != new_folder:
             self.x_save_pgn_folder = new_folder
             self.graba()
+
+    def set_property(self, owner, valor):
+        if self.x_style_mode == "By default":
+            owner.setStyleSheet(self.style_sheet_default)
+        owner.setProperty("type", valor)

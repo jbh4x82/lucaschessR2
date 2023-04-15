@@ -40,10 +40,12 @@ class WTV_Flecha(QtWidgets.QDialog):
 
         # Board
         config_board = owner.board.config_board.copia(owner.board.config_board.id())
-        config_board.anchoPieza(32)
+        config_board.anchoPieza(36)
         self.board = Board.Board(self, config_board, siDirector=False)
         self.board.crea()
         self.board.copiaPosicionDe(owner.board)
+        self.board.permitidoResizeExterno(False)
+        self.board.activaMenuVisual(False)
 
         # Datos generales
         li_gen = []
@@ -54,7 +56,13 @@ class WTV_Flecha(QtWidgets.QDialog):
             li_gen.append((config, regFlecha.name))
 
         # ( "forma", "t", "a" ), # a = abierta -> , c = cerrada la cabeza, p = poligono cuadrado,
-        liFormas = ((_("Opened"), "a"), (_("Head closed"), "c"), (_("Polygon  1"), "1"), (_("Polygon  2"), "2"), (_("Polygon  3"), "3"))
+        liFormas = (
+            (_("Opened"), "a"),
+            (_("Head closed"), "c"),
+            (_("Polygon  1"), "1"),
+            (_("Polygon  2"), "2"),
+            (_("Polygon  3"), "3"),
+        )
         config = FormLayout.Combobox(_("Form"), liFormas)
         li_gen.append((config, regFlecha.forma))
 
@@ -207,7 +215,7 @@ class WTV_Flechas(LCDialog.LCDialog):
 
         # Lista
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUMBER", _("N."), 60, centered=True)
+        o_columns.nueva("NUMBER", _("N."), 60, align_center=True)
         o_columns.nueva("NOMBRE", _("Name"), 256)
 
         self.grid = Grid.Grid(self, o_columns, xid="F", siSelecFilas=True)
@@ -301,7 +309,7 @@ class WTV_Flechas(LCDialog.LCDialog):
         w = WTV_Flecha(self, None, True)
         if w.exec_():
             regFlecha = w.regFlecha
-            regFlecha.id = Util.str_id()
+            regFlecha.id = Util.huella()
             regFlecha.ordenVista = (self.liPFlechas[-1].ordenVista + 1) if self.liPFlechas else 1
             self.dbFlechas[regFlecha.id] = regFlecha.save_dic()
             self.liPFlechas.append(regFlecha)
@@ -350,7 +358,7 @@ class WTV_Flechas(LCDialog.LCDialog):
                 n += 1
                 name = "%s-%d" % (regFlecha.name, n)
             regFlecha.name = name
-            regFlecha.id = Util.str_id()
+            regFlecha.id = Util.huella()
             regFlecha.ordenVista = self.liPFlechas[-1].ordenVista + 1
             self.dbFlechas[regFlecha.id] = regFlecha.save_dic()
             self.liPFlechas.append(regFlecha)

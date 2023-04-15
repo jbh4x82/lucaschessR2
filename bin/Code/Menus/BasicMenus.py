@@ -95,6 +95,10 @@ def menu_tools_savemenu(procesador, dic_data=None):
     menu1.opcion("sts", _("STS: Strategic Test Suite"), Iconos.STS())
     menu1.separador()
     menu1.opcion("kibitzers", _("Kibitzers"), Iconos.Kibitzer())
+    menu1.separador()
+    menu1.opcion("leagues", _("Chess leagues"), Iconos.League())
+    menu1.separador()
+    menu1.opcion("conf_engines", _("Engines configuration"), Iconos.ConfEngines())
 
     savemenu.separador()
 
@@ -107,12 +111,12 @@ def menu_tools(procesador):
 
 
 def menuplay_youngs(menu1):
-    for name, trans, ico in QTVarios.list_irina():
+    for name, trans, ico, elo in QTVarios.list_irina():
         menu1.opcion(("person", name), trans, ico)
     menu1.separador()
 
     menu2 = menu1.submenu(_("Album of animals"), Iconos.Penguin())
-    albumes = Albums.AlbumesAnimales()
+    albumes = Albums.AlbumAnimales()
     dic = albumes.list_menu()
     anterior = None
     for animal in dic:
@@ -124,7 +128,7 @@ def menuplay_youngs(menu1):
     menu1.separador()
 
     menu2 = menu1.submenu(_("Album of vehicles"), Iconos.Wheel())
-    albumes = Albums.AlbumesVehicles()
+    albumes = Albums.AlbumVehicles()
     dic = albumes.list_menu()
     anterior = None
     for character in dic:
@@ -216,7 +220,7 @@ def menu_compete(procesador):
 class WAtajos(LCDialog.LCDialog):
     def __init__(self, procesador, dic_data):
         entrenamientos = procesador.entrenamientos
-        entrenamientos.check()
+        entrenamientos.verify()
         self.entrenamientos = entrenamientos
         self.procesador = procesador
         self.li_favoritos = self.procesador.configuration.get_favoritos()
@@ -242,11 +246,11 @@ class WAtajos(LCDialog.LCDialog):
 
         # Lista
         o_columnas = Columnas.ListaColumnas()
-        o_columnas.nueva("KEY", _("Key"), 80, centered=True)
+        o_columnas.nueva("KEY", _("Key"), 80, align_center=True)
         o_columnas.nueva("OPCION", _("Option"), 300)
-        o_columnas.nueva("LABEL", _("Label"), 300, edicion=Delegados.LineaTextoUTF8(siPassword=False), siEditable=True)
+        o_columnas.nueva("LABEL", _("Label"), 300, edicion=Delegados.LineaTextoUTF8(siPassword=False), is_editable=True)
 
-        self.grid = Grid.Grid(self, o_columnas, siSelecFilas=True, siEditable=True)
+        self.grid = Grid.Grid(self, o_columnas, siSelecFilas=True, is_editable=True)
         self.grid.setMinimumWidth(self.grid.anchoColumnas() + 20)
         f = Controles.TipoLetra(puntos=10, peso=75)
         self.grid.ponFuente(f)
@@ -348,7 +352,7 @@ class WAtajos(LCDialog.LCDialog):
 
 
 def atajos(procesador):
-    procesador.entrenamientos.check()
+    procesador.entrenamientos.verify()
     dic_data = procesador.entrenamientos.dicMenu
     menuplay_savemenu(procesador, dic_data)
     menu_compete_savemenu(procesador, dic_data)
@@ -379,7 +383,7 @@ def atajos(procesador):
 
 
 def atajos_edit(procesador):
-    procesador.entrenamientos.check()
+    procesador.entrenamientos.verify()
     dic_data = procesador.entrenamientos.dicMenu
     menuplay_savemenu(procesador, dic_data)
     menu_compete_savemenu(procesador, dic_data)
@@ -389,7 +393,7 @@ def atajos_edit(procesador):
 
 
 def atajos_alt(procesador, num):
-    procesador.entrenamientos.check()
+    procesador.entrenamientos.verify()
     dic_data = procesador.entrenamientos.dicMenu
     menuplay_savemenu(procesador, dic_data)
     menu_compete_savemenu(procesador, dic_data)
@@ -416,16 +420,17 @@ def menu_information(procesador):
     menu.separador()
     menu.opcion("blog", "Fresh news", Iconos.Blog())
     menu.separador()
-    # menu.opcion("wiki", "Wiki", Iconos.Wiki())
-    # menu.separador()
+    menu.opcion("wiki", "Wiki", Iconos.Wiki())
+    menu.separador()
     menu.opcion("mail", _("Contact") + " (%s)" % "lukasmonk@gmail.com", Iconos.Mail())
     menu.separador()
     if procesador.configuration.is_main:
         menu.separador()
-        submenu = menu.submenu(_("Updates"), Iconos.Update())
-        submenu.opcion("actualiza", _("Check for updates"), Iconos.Actualiza())
-        submenu.separador()
-        submenu.opcion("actualiza_manual", _("Manual update"), Iconos.Zip())
+        menu.opcion("actualiza", _("Check for updates"), Iconos.Update())
+        # submenu = menu.submenu(_("Updates"), Iconos.Update())
+        # submenu.opcion("actualiza", _("Check for updates"), Iconos.Actualiza())
+        # submenu.separador()
+        # submenu.opcion("actualiza_manual", _("Manual update"), Iconos.Zip())
         menu.separador()
 
     menu.opcion("acercade", _("About"), Iconos.Aplicacion64())

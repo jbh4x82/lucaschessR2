@@ -1,3 +1,4 @@
+import os.path
 import datetime
 import random
 
@@ -21,8 +22,6 @@ from Code.Base.Constantes import (
     TB_RESIGN,
     TB_UTILITIES,
     TERMINATION_RESIGN,
-    WHITE,
-    BLACK,
 )
 from Code.Engines import Engines
 from Code.Engines import EnginesMicElo, EngineResponse
@@ -142,7 +141,7 @@ class ManagerMicElo(Manager.Manager):
         else:
             is_white = human_side
 
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         self.lirm_engine = []
@@ -153,31 +152,37 @@ class ManagerMicElo(Manager.Manager):
         self.main_window.set_activate_tutor(False)
         self.ayudas_iniciales = self.hints = 0
 
-        self.vtime = {}
         self.max_seconds = minutos * 60
-        self.secs_move = seconds
+        self.seconds_per_move = seconds
 
-        self.vtime[True] = Util.Timer(self.max_seconds)
-        self.vtime[False] = Util.Timer(self.max_seconds)
-        self.vtime = {WHITE: Util.Timer(self.max_seconds), BLACK: Util.Timer(self.max_seconds)}
+        self.tc_player = self.tc_white if self.is_human_side_white else self.tc_black
+        self.tc_rival = self.tc_white if self.is_engine_side_white else self.tc_black
 
-        cbook = self.engine_rival.book if self.engine_rival.book else Code.tbook
+        if self.engine_rival.book:
+            cbook = self.engine_rival.book
+        else:
+            engine_rodent = Code.configuration.buscaRival("rodentii")
+            path_rodent = os.path.join(os.path.dirname(engine_rodent.path_exe), "rodent.bin")
+            cbook = random.choice([Code.tbook, path_rodent])
+
         self.book = Books.Book("P", cbook, cbook, True)
         self.book.polyglot()
 
         elo = self.engine_rival.elo
-        self.maxMoveBook = (elo // 200) if 0 <= elo <= 1700 else 9999
+        self.maxMoveBook = (elo // 100) if 0 <= elo <= 1700 else 9999
 
         eloengine = self.engine_rival.elo
         eloplayer = self.configuration.miceloActivo()
         self.whiteElo = eloplayer if is_white else eloengine
         self.blackElo = eloplayer if not is_white else eloengine
 
-        self.xrival = self.procesador.creaManagerMotor(self.engine_rival, None, None, siMultiPV=self.engine_rival.multiPV > 0)
+        self.xrival = self.procesador.creaManagerMotor(
+            self.engine_rival, None, None, siMultiPV=self.engine_rival.multiPV > 0
+        )
         self.xrival.check_engine()
 
         self.pte_tool_resigndraw = False
-        if self.human_side:
+        if self.is_human_side_white:
             self.pte_tool_resigndraw = True
             self.maxPlyRendirse = 1
         else:
@@ -209,8 +214,6 @@ class ManagerMicElo(Manager.Manager):
         self.pgnRefresh(True)
         self.ponCapInfoPorDefecto()
 
-        tpBL = self.vtime[True].etiqueta()
-        tpNG = self.vtime[False].etiqueta()
         self.rival = self.engine_rival.alias + " (%d)" % self.engine_rival.elo
         white_name, black_name = self.configuration.nom_player(), self.engine_rival.alias
         white_elo, black_elo = self.configuration.miceloActivo(), self.engine_rival.elo
@@ -226,19 +229,24 @@ class ManagerMicElo(Manager.Manager):
         self.game.set_tag("BlackElo", str(black_elo))
 
         time_control = "%d" % int(self.max_seconds)
-        if self.secs_move:
-            time_control += "+%d" % self.secs_move
+        if self.seconds_per_move:
+            time_control += "+%d" % self.seconds_per_move
         self.game.set_tag("TimeControl", time_control)
+
+        self.tc_player.config_clock(self.max_seconds, self.seconds_per_move, 0, 0)
+        self.tc_rival.config_clock(self.max_seconds, self.seconds_per_move, 0, 0)
 
         white_player = white_name + " (%d)" % white_elo
         black_player = black_name + " (%d)" % black_elo
 
-        self.main_window.ponDatosReloj(white_player, tpBL, black_player, tpNG)
+        tp_bl, tp_ng = self.tc_white.label(), self.tc_black.label()
+        self.main_window.set_data_clock(white_player, tp_bl, black_player, tp_ng)
+        self.main_window.start_clock(self.set_clock, 1000)
         self.refresh()
 
         self.check_boards_setposition()
 
-        self.game.tag_timestart()
+        self.game.add_tag_timestart()
 
     def pon_toolbar(self):
         if self.pte_tool_resigndraw:
@@ -273,21 +281,21 @@ class ManagerMicElo(Manager.Manager):
 
     def save_state(self):
         self.main_window.stop_clock()
-
-        self.vtime[self.human_side].stop_marker(0)
+        self.tc_white.stop()
+        self.tc_black.stop()
 
         dic = {
             "engine_rival": self.engine_rival.save(),
             "minutos": self.minutos,
             "seconds": self.seconds,
             "game_save": self.game.save(),
-            "time_white": self.vtime[WHITE].save(),
-            "time_black": self.vtime[BLACK].save(),
+            "time_white": self.tc_white.save(),
+            "time_black": self.tc_black.save(),
             "pgana": self.engine_rival.pgana,
             "ptablas": self.engine_rival.ptablas,
             "ppierde": self.engine_rival.ppierde,
             "alias": self.engine_rival.alias,
-            "human_side": self.human_side
+            "human_side": self.is_human_side_white,
         }
 
         return dic
@@ -307,8 +315,8 @@ class ManagerMicElo(Manager.Manager):
 
         self.game.restore(dic["game_save"])
 
-        self.vtime[WHITE].restore(dic["time_white"])
-        self.vtime[BLACK].restore(dic["time_black"])
+        self.tc_white.restore(dic["time_white"])
+        self.tc_black.restore(dic["time_black"])
 
         self.goto_end()
 
@@ -339,9 +347,11 @@ class ManagerMicElo(Manager.Manager):
         if self.state == ST_ENDGAME:
             return True
         if (len(self.game) > 0) and not self.pte_tool_resigndraw:
-            if not QTUtil2.pregunta(self.main_window, _("Do you want to resign?") + " (%d)" % self.engine_rival.ppierde):
+            if not QTUtil2.pregunta(
+                self.main_window, _("Do you want to resign?") + " (%d)" % self.engine_rival.ppierde
+            ):
                 return False  # no abandona
-            self.game.resign(self.human_side)
+            self.game.resign(self.is_human_side_white)
             self.show_result()
         else:
             self.procesador.start()
@@ -369,7 +379,7 @@ class ManagerMicElo(Manager.Manager):
         self.refresh()
 
         if siRival:
-            self.start_clock(False)
+            self.tc_rival.start()
             self.thinking(True)
             self.disable_all()
 
@@ -390,18 +400,16 @@ class ManagerMicElo(Manager.Manager):
                     else:
                         self.book = None
             if not siEncontrada:
-                tiempoBlancas = self.vtime[True].pending_time
-                tiempoNegras = self.vtime[False].pending_time
-                mrm = self.xrival.play_time_tourney(self.game, tiempoBlancas, tiempoNegras, self.secs_move)
+                time_white = self.tc_white.pending_time
+                time_black = self.tc_black.pending_time
+                mrm = self.xrival.play_time_tourney(self.game, time_white, time_black, self.seconds_per_move)
                 if mrm is None:
                     self.thinking(False)
                     return False
                 rm_rival = mrm.mejorMov()
 
-            self.stop_clock(False)
-
             self.thinking(False)
-            if self.play_rival(rm_rival):
+            if self.rival_has_moved(rm_rival):
                 self.lirm_engine.append(rm_rival)
                 if self.valoraRMrival():
                     self.play_next_move()
@@ -414,7 +422,7 @@ class ManagerMicElo(Manager.Manager):
                 self.show_result()
                 return
         else:
-            self.start_clock(True)
+            self.tc_player.start()
 
             self.human_is_playing = True
             self.activate_side(is_white)
@@ -424,15 +432,38 @@ class ManagerMicElo(Manager.Manager):
         if not move:
             return False
 
+        time_s = self.stop_clock(True)
+        move.set_time_ms(time_s * 1000)
+        move.set_clock_ms(self.tc_player.pending_time * 1000)
+
         self.move_the_pieces(move.liMovs)
-        self.stop_clock(True)
 
         self.add_move(move, True)
         self.play_next_move()
         return True
 
-    def add_move(self, move, siNuestra):
+    def rival_has_moved(self, engine_response):
+        from_sq = engine_response.from_sq
+        to_sq = engine_response.to_sq
 
+        promotion = engine_response.promotion
+
+        ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
+        if ok:
+            time_s = self.stop_clock(False)
+            move.set_time_ms(time_s * 1000)
+            move.set_clock_ms(self.tc_rival.pending_time * 1000)
+            self.add_move(move, False)
+            self.move_the_pieces(move.liMovs, True)
+
+            self.error = ""
+
+            return True
+        else:
+            self.error = mens
+            return False
+
+    def add_move(self, move, siNuestra):
         self.game.add_move(move)
         self.check_boards_setposition()
 
@@ -447,24 +478,6 @@ class ManagerMicElo(Manager.Manager):
                 self.pte_tool_resigndraw = False
                 self.pon_toolbar()
 
-    def play_rival(self, engine_response):
-        from_sq = engine_response.from_sq
-        to_sq = engine_response.to_sq
-
-        promotion = engine_response.promotion
-
-        ok, mens, move = Move.get_game_move(self.game, self.game.last_position, from_sq, to_sq, promotion)
-        if ok:
-            self.add_move(move, False)
-            self.move_the_pieces(move.liMovs, True)
-
-            self.error = ""
-
-            return True
-        else:
-            self.error = mens
-            return False
-
     def show_result(self):
         if self.showed_result:  # Problema doble asignacion de ptos Thomas
             return
@@ -473,7 +486,7 @@ class ManagerMicElo(Manager.Manager):
         self.human_is_playing = False
         self.main_window.stop_clock()
 
-        mensaje, beep, player_win = self.game.label_resultado_player(self.human_side)
+        mensaje, beep, player_win = self.game.label_resultado_player(self.is_human_side_white)
 
         self.beepResultado(beep)
         self.autosave()
@@ -508,7 +521,7 @@ class ManagerMicElo(Manager.Manager):
         mensaje += "\n\n%s : %d\n" % (_("New Tourney-Elo"), nelo)
 
         self.showed_result = True
-        self.mensajeEnPGN(mensaje)
+        self.message_on_pgn(mensaje)
         self.ponFinJuego()
 
     def historial(self, elo, nelo):
@@ -525,7 +538,7 @@ class ManagerMicElo(Manager.Manager):
 
         dd = UtilSQL.DictSQL(self.configuration.fichEstadMicElo, tabla="color")
         key = self.engine_rival.name
-        dd[key] = self.human_side
+        dd[key] = self.is_human_side_white
         dd.close()
 
     def determinaColor(self, engine_rival):
@@ -541,16 +554,10 @@ class ManagerMicElo(Manager.Manager):
             return
 
         def mira(is_white):
-            ot = self.vtime[is_white]
+            tc = self.tc_white if is_white else self.tc_black
+            tc.set_labels()
 
-            eti, eti2 = ot.etiquetaDif2()
-            if eti:
-                if is_white:
-                    self.main_window.set_clock_white(eti, eti2)
-                else:
-                    self.main_window.set_clock_black(eti, eti2)
-
-            if ot.time_is_consumed():
+            if tc.time_is_consumed():
                 self.game.set_termination_time()
                 self.show_result()
                 return False
@@ -558,35 +565,23 @@ class ManagerMicElo(Manager.Manager):
             return True
 
         if Code.eboard:
-            Code.eboard.writeClocks(self.vtime[True].label_dgt(), self.vtime[False].label_dgt())
+            Code.eboard.writeClocks(self.tc_white.label_dgt(), self.tc_black.label_dgt())
 
         if self.human_is_playing:
-            is_white = self.human_side
+            is_white = self.is_human_side_white
         else:
-            is_white = not self.human_side
+            is_white = not self.is_human_side_white
         return mira(is_white)
 
-    def start_clock(self, siUsuario):
-        self.vtime[siUsuario == self.human_side].start_marker()
-        self.main_window.start_clock(self.set_clock, transicion=1000)
-
-    def stop_clock(self, siUsuario):
-        self.main_window.stop_clock()
-        self.vtime[siUsuario == self.human_side].stop_marker(self.secs_move)
-        self.set_clock()
+    def stop_clock(self, is_player):
+        tc = self.tc_player if is_player else self.tc_rival
+        secs = tc.stop()
         self.show_clocks()
-        self.refresh()
+        return secs
 
     def show_clocks(self):
         if Code.eboard:
-            Code.eboard.writeClocks(self.vtime[True].label_dgt(), self.vtime[False].label_dgt())
+            Code.eboard.writeClocks(self.tc_white.label_dgt(), self.tc_black.label_dgt())
 
-        for is_white in (WHITE, BLACK):
-            ot = self.vtime[is_white]
-
-            eti, eti2 = ot.etiquetaDif2()
-            if eti:
-                if is_white:
-                    self.main_window.set_clock_white(eti, eti2)
-                else:
-                    self.main_window.set_clock_black(eti, eti2)
+        self.tc_white.set_labels()
+        self.tc_black.set_labels()

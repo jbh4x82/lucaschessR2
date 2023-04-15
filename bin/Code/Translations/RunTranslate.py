@@ -87,18 +87,22 @@ class WTranslate(LCDialog.LCDialog):
         self.lb_porcentage = Controles.LB(self, "").ponTipoLetra(puntos=18, peso=300).anchoFijo(114).align_right()
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("CURRENT", self.language, 280, edicion=Delegados.LineaTextoUTF8(), siEditable=True)
+        o_columns.nueva("CURRENT", self.language, 280, edicion=Delegados.LineaTextoUTF8(), is_editable=True)
         o_columns.nueva("BASE", "To translate", 280)
 
         self.grid = None
-        self.grid = Grid.Grid(self, o_columns, altoFila=Code.configuration.x_pgn_rowheight, siEditable=True)
+        self.grid = Grid.Grid(self, o_columns, altoFila=Code.configuration.x_pgn_rowheight, is_editable=True)
         self.grid.tipoLetra(puntos=10)
         self.grid.setAlternatingRowColors(False)
         self.register_grid(self.grid)
 
+        tooltip = "F3 to search forward\nshift F3 to search backward"
+
         self.lb_seek = Controles.LB(self, "Find (Ctrl F):").ponTipoLetra(puntos=10).anchoFijo(74)
         self.ed_seek = Controles.ED(self, "").ponTipoLetra(puntos=10).capture_enter(self.siguiente)
+        self.ed_seek.setToolTip(tooltip)
         self.f3_seek = Controles.PB(self, "F3", self.siguiente, plano=False).ponTipoLetra(puntos=10).anchoFijo(30)
+        self.f3_seek.setToolTip(tooltip)
         ly_seek = Colocacion.H().control(self.lb_seek).control(self.ed_seek).control(self.f3_seek).margen(0)
 
         laytb = Colocacion.H().control(self.tb).control(self.lb_porcentage)
@@ -137,6 +141,7 @@ class WTranslate(LCDialog.LCDialog):
     def change_new(self, key, new_value):
         trans = self.dic_translate[key]["TRANS"]
         self.dic_translate[key]["NEW"] = new_value
+        self.create_po(self.configuration.po_saved())
         if trans == new_value:
             return
         send = new_value if new_value else trans
@@ -198,12 +203,12 @@ class WTranslate(LCDialog.LCDialog):
             ori_porc, ori_dic = calc(key)
             tra_porc, tra_dic = calc(value)
             if ori_porc != tra_porc:
-                QTUtil2.message_error(self, "The % number does not match the English text.")
+                QTUtil2.message_error(self, "The % number does not xmatch the English text.")
                 self.automatic_reorder = auto_reorder
                 return
             for k in li_porc:
                 if ori_dic[k] != tra_dic[k]:
-                    QTUtil2.message_error(self, "The command %s does not match the English text." % k)
+                    QTUtil2.message_error(self, "The command %s does not xmatch the English text." % k)
                     self.automatic_reorder = auto_reorder
                     return
             if "||" in value:
@@ -434,7 +439,7 @@ class WTranslate(LCDialog.LCDialog):
         menu.separador()
         submenu = menu.submenu("Reference language", Iconos.Reference())
         subsubmenu = submenu.submenu("Main reference", Iconos.PuntoMagenta())
-        li_ref = [("Default", "")]
+        li_ref = [("By default", "")]
         li_ref.extend(li_trans)
         for trad, key in li_ref:
             subsubmenu.opcion("main" + key, trad, siChecked=key == self.main_reference)
@@ -474,10 +479,19 @@ class WTranslate(LCDialog.LCDialog):
             self.read_languages()
 
     def siguiente(self):
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        is_shift = modifiers == QtCore.Qt.ShiftModifier
+
         pos = self.grid.recno()
         txt = self.ed_seek.texto().strip().upper()
         mirar = list(range(pos + 1, len(self.li_labels)))
         mirar.extend(range(pos + 1))
+
+        if is_shift:
+            mirar = list(reversed(mirar))
+            m = mirar[0]
+            del mirar[0]
+            mirar.append(m)
 
         for row in mirar:
             key = self.li_labels[row]
@@ -640,6 +654,8 @@ class WTranslate(LCDialog.LCDialog):
         if li_received:
 
             for key, where in li_received:
+                if key not in self.dic_translate:
+                    continue
                 dic = self.dic_translate[key]
                 dic["WHERE"] = where
                 dic["WHEN"] = datetime.datetime.now()
@@ -676,6 +692,9 @@ def run_wtranslation(path_db):
 
     app.setStyle(QtWidgets.QStyleFactory.create(configuration.x_style))
     QtWidgets.QApplication.setPalette(QtWidgets.QApplication.style().standardPalette())
+    path = Code.path_resource("Styles", configuration.x_style_mode + ".qss")
+    with open(path) as f:
+        app.setStyleSheet(f.read())
 
     wtranslate = WTranslate(path_db)
     wtranslate.exec_()

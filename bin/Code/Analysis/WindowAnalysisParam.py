@@ -20,7 +20,7 @@ def read_dic_params():
     alm.engine = dic.get("engine", configuration.x_tutor_clave)
     alm.vtime = dic.get("vtime", configuration.x_tutor_mstime)
     alm.depth = dic.get("depth", configuration.x_tutor_depth)
-    alm.timedepth = dic.get("timedepth", False)
+    # alm.timedepth = dic.get("timedepth", False)
     alm.kblunders = dic.get("kblunders", 50)
     alm.kblunders_porc = dic.get("kblunders_porc", 0)
     alm.ptbrilliancies = dic.get("ptbrilliancies", 100)
@@ -32,6 +32,7 @@ def read_dic_params():
 
     alm.book_name = dic.get("book_name", None)
 
+    alm.analyze_variations = dic.get("analyze_variations", False)
     alm.include_variations = dic.get("include_variations", True)
     alm.limit_include_variations = dic.get("limit_include_variations", 0)
     alm.best_variation = dic.get("best_variation", False)
@@ -120,7 +121,7 @@ def form_blunders_brilliancies(alm, configuration):
     )
     li_brilliancies.append((config, ""))
 
-    li_brilliancies.append((_("Also add complete game to PGN"), False))
+    li_brilliancies.append((_("Also add complete game to PGN") + ":", False))
 
     li_brilliancies.append(SEPARADOR)
 
@@ -132,7 +133,10 @@ def form_blunders_brilliancies(alm, configuration):
 
 def form_variations(alm):
     li_var = [SEPARADOR]
-    li_var.append((_("Add analysis to variations") + ":", alm.include_variations))
+    li_var.append((_("Also analyze variations") + ":", alm.analyze_variations))
+    li_var.append(SEPARADOR)
+    li_var.append(SEPARADOR)
+    li_var.append(("<big><b>" + _("Convert analyses into variations") + ":", alm.include_variations))
     li_var.append(SEPARADOR)
 
     li_var.append((FormLayout.Spinbox(_("Minimum centipawns lost"), 0, 1000, 60), alm.limit_include_variations))
@@ -157,11 +161,11 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
     # Datos
     li_gen = [SEPARADOR]
 
-    # # Tutor
+    # # Engine
     if siTodosMotores:
-        li = configuration.ayudaCambioCompleto(alm.engine)
+        li = configuration.formlayout_combo_analyzer(False)
     else:
-        li = configuration.ayudaCambioTutor()
+        li = configuration.formlayout_combo_analyzer(True)
         li[0] = alm.engine
     li_gen.append((_("Engine") + ":", li))
 
@@ -174,18 +178,19 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
     liDepths = [("--", 0)]
     for x in range(1, 51):
         liDepths.append((str(x), x))
-    config = FormLayout.Combobox(_("Depth"), liDepths)
+    tooltip = _("If time and depth are given, the depth is attempted and the time becomes a maximum.")
+    config = FormLayout.Combobox(_("Depth"), liDepths, tooltip=tooltip)
     li_gen.append((config, alm.depth))
 
     # Time+Depth
-    li_gen.append(("%s+%s:" % (_("Time"), _("Depth")), alm.timedepth))
+    # li_gen.append(("%s+%s:" % (_("Time"), _("Depth")), alm.timedepth))
 
     # MultiPV
     li_gen.append(SEPARADOR)
-    li = [(_("Default"), "PD"), (_("Maximum"), "MX")]
+    li = [(_("By default"), "PD"), (_("Maximum"), "MX")]
     for x in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 40, 50, 75, 100, 150, 200):
         li.append((str(x), str(x)))
-    config = FormLayout.Combobox(_("Number of half-moves evaluated by engine(MultiPV)"), li)
+    config = FormLayout.Combobox(_("Number of variations evaluated by the engine (MultiPV)"), li)
     li_gen.append((config, alm.multiPV))
 
     # Priority
@@ -198,7 +203,7 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
         li_gen.append(SEPARADOR)
 
         liJ = [(_("White"), "WHITE"), (_("Black"), "BLACK"), (_("White & Black"), "BOTH")]
-        config = FormLayout.Combobox(_("Analyze only color"), liJ)
+        config = FormLayout.Combobox(_("Analyze color"), liJ)
         if alm.white and alm.black:
             color = "BOTH"
         elif alm.black:
@@ -218,7 +223,7 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
         list_books = Books.ListBooks()
         list_books.restore_pickle(fvar)
         # Comprobamos que todos esten accesibles
-        list_books.check()
+        list_books.verify()
         li = [("--", None)]
         defecto = list_books.lista[0] if alm.book_name else None
         for book in list_books.lista:
@@ -229,7 +234,13 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
         li_gen.append((config, defecto))
 
         li_gen.append(
-            (_("Automatically assign themes using Lichess/Thibault code") + ":", alm.themes_lichess)
+            (
+                '<div align="right">'
+                + _("Automatically assign themes using Lichess/Thibault code")
+                + ":<br>"
+                + _("It needs further a manual review to eliminate false detections."),
+                alm.themes_lichess,
+            )
         )
 
         li_gen.append((_("Redo any existing prior analysis (if they exist)") + ":", alm.delete_previous))
@@ -266,34 +277,28 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
     reg = Util.Record()
     reg.form = None
 
-    def dispatchR(valor):
+    def dispatch(valor):
+        # Para manejar la incompatibilidad entre analizar variaciones y añadir analysis como variaciones.
         if reg.form is None:
             if isinstance(valor, FormLayout.FormTabWidget):
                 reg.form = valor
-                reg.wtime = valor.getWidget(0, 1)
-                reg.wdepth = valor.getWidget(0, 2)
-                reg.wdt = valor.getWidget(0, 3)
-            elif isinstance(valor, FormLayout.FormWidget):
-                reg.form = valor
-                reg.wtime = valor.getWidget(1)
-                reg.wdepth = valor.getWidget(2)
-                reg.wdt = valor.getWidget(3)
+                reg.cb_variations = valor.getWidget(1, 0)
+                reg.cb_add_variations = valor.getWidget(1, 1)
+                reg.cb_variations_checked = reg.cb_variations.isChecked()
+                reg.cb_add_variations_checked = reg.cb_add_variations.isChecked()
+                if reg.cb_variations_checked is True and reg.cb_add_variations_checked is True:
+                    reg.cb_add_variations.setChecked(False)
         else:
-            sender = reg.form.sender()
-            if not reg.wdt.isChecked():
-                if sender == reg.wtime:
-                    if reg.wtime.textoFloat() > 0:
-                        reg.wdepth.setCurrentIndex(0)
-                elif sender == reg.wdepth:
-                    if reg.wdepth.currentIndex() > 0:
-                        reg.wtime.ponFloat(0.0)
-                elif sender == reg.wdt:
-                    if reg.wtime.textoFloat() > 0:
-                        reg.wdepth.setCurrentIndex(0)
-                    elif reg.wdepth.currentIndex() > 0:
-                        reg.wtime.ponFloat(0.0)
+            if hasattr(reg, "cb_variations"):
+                if reg.cb_variations.isChecked() is True and reg.cb_add_variations.isChecked() is True:
+                    if reg.cb_variations_checked:
+                        reg.cb_variations.setChecked(False)
+                    else:
+                        reg.cb_add_variations.setChecked(False)
+                    reg.cb_variations_checked = reg.cb_variations.isChecked()
+                    reg.cb_add_variations_checked = reg.cb_add_variations.isChecked()
 
-                QTUtil.refresh_gui()
+            QTUtil.refresh_gui()
 
     resultado = FormLayout.fedit(
         lista,
@@ -301,7 +306,7 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
         parent=parent,
         anchoMinimo=460,
         icon=Iconos.Opciones(),
-        dispatch=dispatchR,
+        dispatch=dispatch,
     )
 
     if resultado:
@@ -316,23 +321,24 @@ def analysis_parameters(parent, configuration, siModoAmpliado, siTodosMotores=Fa
         alm.engine = li_gen[0]
         alm.vtime = int(li_gen[1] * 1000)
         alm.depth = li_gen[2]
-        alm.timedepth = li_gen[3]
-        alm.multiPV = li_gen[4]
-        alm.priority = li_gen[5]
+        # alm.timedepth = li_gen[3]
+        alm.multiPV = li_gen[3]
+        alm.priority = li_gen[4]
 
         if siModoAmpliado:
-            color = li_gen[6]
+            color = li_gen[5]
             alm.white = color != "BLACK"
             alm.black = color != "WHITE"
-            alm.num_moves = li_gen[7]
-            alm.book = li_gen[8]
+            alm.num_moves = li_gen[6]
+            alm.book = li_gen[7]
             alm.book_name = alm.book.name if alm.book else None
-            alm.themes_lichess = li_gen[9]
-            alm.delete_previous = li_gen[10]
-            alm.from_last_move = li_gen[11]
-            alm.show_graphs = li_gen[12]
+            alm.themes_lichess = li_gen[8]
+            alm.delete_previous = li_gen[9]
+            alm.from_last_move = li_gen[10]
+            alm.show_graphs = li_gen[11]
 
             (
+                alm.analyze_variations,
                 alm.include_variations,
                 alm.limit_include_variations,
                 alm.best_variation,
@@ -379,8 +385,8 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     # Datos
     li_gen = [SEPARADOR]
 
-    # # Tutor
-    li = configuration.ayudaCambioTutor()
+    # # Analyzer
+    li = configuration.formlayout_combo_analyzer(True)
     li[0] = alm.engine
     li_gen.append((_("Engine") + ":", li))
 
@@ -398,19 +404,19 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     li_gen.append((config, alm.depth))
 
     # Time+Depth
-    li_gen.append(("%s+%s:" % (_("Time"), _("Depth")), alm.timedepth))
+    # li_gen.append(("%s+%s:" % (_("Time"), _("Depth")), alm.timedepth))
 
     # MultiPV
     li_gen.append(SEPARADOR)
-    li = [(_("Default"), "PD"), (_("Maximum"), "MX")]
+    li = [(_("By default"), "PD"), (_("Maximum"), "MX")]
     for x in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 40, 50, 75, 100, 150, 200):
         li.append((str(x), str(x)))
-    config = FormLayout.Combobox(_("Number of half-moves evaluated by engine(MultiPV)"), li)
+    config = FormLayout.Combobox(_("Number of variations evaluated by the engine (MultiPV)"), li)
     li_gen.append((config, alm.multiPV))
     li_gen.append(SEPARADOR)
 
     liJ = [(_("White"), "WHITE"), (_("Black"), "BLACK"), (_("White & Black"), "BOTH")]
-    config = FormLayout.Combobox(_("Analyze only color"), liJ)
+    config = FormLayout.Combobox(_("Analyze color"), liJ)
     if alm.white and alm.black:
         color = "BOTH"
     elif alm.black:
@@ -424,7 +430,7 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     li_gen.append(
         (
             '<div align="right">'
-            + _("Only player moves")
+            + _("Only the following players")
             + ":<br>%s</div>" % _("(You can add multiple aliases separated by ; and wildcards with *)"),
             "",
         )
@@ -439,7 +445,7 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     list_books = Books.ListBooks()
     list_books.restore_pickle(fvar)
     # Comprobamos que todos esten accesibles
-    list_books.check()
+    list_books.verify()
     li = [("--", None)]
     if alm.book_name is None:
         defecto = None
@@ -452,9 +458,7 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     config = FormLayout.Combobox(_("Do not scan the opening moves based on book"), li)
     li_gen.append((config, defecto))
 
-    li_gen.append(
-        (_("Automatically assign themes using Lichess/Thibault code") + ":", alm.themes_lichess)
-    )
+    li_gen.append((_("Automatically assign themes using Lichess/Thibault code") + ":", alm.themes_lichess))
 
     li_gen.append((_("Start from the end of the game") + ":", alm.from_last_move))
 
@@ -477,37 +481,8 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
     reg = Util.Record()
     reg.form = None
 
-    def dispatchR(valor):
-        if reg.form is None:
-            if isinstance(valor, FormLayout.FormTabWidget):
-                reg.form = valor
-                reg.wtime = valor.getWidget(0, 1)
-                reg.wdepth = valor.getWidget(0, 2)
-                reg.wdt = valor.getWidget(0, 3)
-            elif isinstance(valor, FormLayout.FormWidget):
-                reg.form = valor
-                reg.wtime = valor.getWidget(1)
-                reg.wdepth = valor.getWidget(2)
-                reg.wdt = valor.getWidget(3)
-        else:
-            sender = reg.form.sender()
-            if not reg.wdt.isChecked():
-                if sender == reg.wtime:
-                    if reg.wtime.textoFloat() > 0:
-                        reg.wdepth.setCurrentIndex(0)
-                elif sender == reg.wdepth:
-                    if reg.wdepth.currentIndex() > 0:
-                        reg.wtime.ponFloat(0.0)
-                elif sender == reg.wdt:
-                    if reg.wtime.textoFloat() > 0:
-                        reg.wdepth.setCurrentIndex(0)
-                    elif reg.wdepth.currentIndex() > 0:
-                        reg.wtime.ponFloat(0.0)
-
-                QTUtil.refresh_gui()
-
     resultado = FormLayout.fedit(
-        lista, title=_("Mass analysis"), parent=parent, anchoMinimo=460, icon=Iconos.Opciones(), dispatch=dispatchR
+        lista, title=_("Mass analysis"), parent=parent, anchoMinimo=460, icon=Iconos.Opciones()
     )
 
     if resultado:
@@ -519,7 +494,7 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
             alm.engine,
             vtime,
             alm.depth,
-            alm.timedepth,
+            # alm.timedepth,
             alm.multiPV,
             color,
             cjug,
@@ -538,17 +513,33 @@ def massive_analysis_parameters(parent, configuration, siVariosSeleccionados, si
         alm.li_players = cjug.upper().split(";") if cjug else None
         alm.book_name = alm.book.name if alm.book else None
 
-        alm.kblunders, alm.kblunders_porc, alm.tacticblunders, alm.pgnblunders, alm.oriblunders, alm.bmtblunders = (
-            liBlunders
-        )
+        (
+            alm.kblunders,
+            alm.kblunders_porc,
+            alm.tacticblunders,
+            alm.pgnblunders,
+            alm.oriblunders,
+            alm.bmtblunders,
+        ) = liBlunders
 
-        alm.include_variations, alm.limiteinclude_variations, alm.best_variation, alm.info_variation, alm.si_pdt, alm.one_move_variation = (
-            liVar
-        )
+        (
+            alm.analyze_variations,
+            alm.include_variations,
+            alm.limiteinclude_variations,
+            alm.best_variation,
+            alm.info_variation,
+            alm.si_pdt,
+            alm.one_move_variation,
+        ) = liVar
 
-        alm.dpbrilliancies, alm.ptbrilliancies, alm.fnsbrilliancies, alm.pgnbrilliancies, alm.oribrilliancies, alm.bmtbrilliancies = (
-            liBrilliancies
-        )
+        (
+            alm.dpbrilliancies,
+            alm.ptbrilliancies,
+            alm.fnsbrilliancies,
+            alm.pgnbrilliancies,
+            alm.oribrilliancies,
+            alm.bmtbrilliancies,
+        ) = liBrilliancies
 
         dic = {}
         for x in dir(alm):

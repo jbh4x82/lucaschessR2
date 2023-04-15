@@ -25,7 +25,7 @@ class Personalities:
         self.owner = owner
         self.configuration = configuration
 
-    def listaAjustes(self, siTodos):
+    def list_personalities(self, siTodos):
         liAjustes = [
             (_("Best move"), ADJUST_BETTER),
             (_("Somewhat better") + "++", ADJUST_SOMEWHAT_BETTER_MORE_MORE),
@@ -43,14 +43,21 @@ class Personalities:
             ("-" * 30, None),
             (_("Move selected by the player"), ADJUST_SELECTED_BY_PLAYER),
         ]
-        if siTodos and self.configuration.liPersonalidades:
+        if siTodos and self.configuration.li_personalities:
             liAjustes.append(("-" * 30, None))
-            for num, una in enumerate(self.configuration.liPersonalidades):
+            for num, una in enumerate(self.configuration.li_personalities):
                 liAjustes.append((una["NOMBRE"], 1000 + num))
         return liAjustes
 
+    def list_personalities_minimum(self):
+        liAjustes = [
+            (_("Best move"), ADJUST_BETTER),
+            (_("Move selected by the player"), ADJUST_SELECTED_BY_PLAYER),
+        ]
+        return liAjustes
+
     def label(self, nAjuste):
-        for lb, n in self.listaAjustes(True):
+        for lb, n in self.list_personalities(True):
             if n == nAjuste:
                 return lb
         return ""
@@ -102,7 +109,9 @@ class Personalities:
         liMJ = [(None, None)]
 
         # # Ajustar
-        liMJ.append((FormLayout.Combobox(_("Strength"), self.listaAjustes(False)), una.get("ADJUST", ADJUST_BETTER)))
+        liMJ.append(
+            (FormLayout.Combobox(_("Strength"), self.list_personalities(False)), una.get("ADJUST", ADJUST_BETTER))
+        )
 
         # Movimiento siguiente
         liMJ.append((None, _("In the next move")))
@@ -124,7 +133,7 @@ class Personalities:
 
         # Ajustar
         liF.append(
-            (FormLayout.Combobox(_("Strength"), self.listaAjustes(False)), una.get("AJUSTARFINAL", ADJUST_BETTER))
+            (FormLayout.Combobox(_("Strength"), self.list_personalities(False)), una.get("AJUSTARFINAL", ADJUST_BETTER))
         )
 
         liF.append((FormLayout.Spinbox(_("Maximum pieces at this stage"), 0, 32, 50), una.get("MAXPIEZASFINAL", 0)))
@@ -207,15 +216,15 @@ class Personalities:
 
         menu.opcion(("c", None), _("New personality"), icoCrear)
 
-        liPersonalidades = self.configuration.liPersonalidades
-        if liPersonalidades:
+        li_personalities = self.configuration.li_personalities
+        if li_personalities:
             menu.separador()
             menuMod = menu.submenu(_("Edit"), icoEditar)
-            for num, una in enumerate(liPersonalidades):
+            for num, una in enumerate(li_personalities):
                 menuMod.opcion(("e", num), una["NOMBRE"], icoVerde)
             menu.separador()
             menuBor = menu.submenu(_("Delete"), icoBorrar)
-            for num, una in enumerate(liPersonalidades):
+            for num, una in enumerate(li_personalities):
                 menuBor.opcion(("b", num), una["NOMBRE"], icoRojo)
         resp = menu.lanza()
         if resp:
@@ -224,16 +233,16 @@ class Personalities:
             if accion == "c":
                 una = self.edit(None, icoCrear)
                 if una:
-                    liPersonalidades.append(una)
+                    li_personalities.append(una)
                     siRehacer = True
             elif accion == "e":
-                una = self.edit(liPersonalidades[num], icoEditar)
+                una = self.edit(li_personalities[num], icoEditar)
                 if una:
-                    liPersonalidades[num] = una
+                    li_personalities[num] = una
                     siRehacer = True
             elif accion == "b":
-                if QTUtil2.pregunta(self.owner, _X(_("Delete %1?"), liPersonalidades[num]["NOMBRE"])):
-                    del liPersonalidades[num]
+                if QTUtil2.pregunta(self.owner, _X(_("Delete %1?"), li_personalities[num]["NOMBRE"])):
+                    del li_personalities[num]
                     siRehacer = True
 
             if siRehacer:

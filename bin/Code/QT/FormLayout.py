@@ -34,7 +34,6 @@ import os
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
-import Code
 from Code import Util
 from Code.QT import Colocacion
 from Code.QT import Controles
@@ -85,7 +84,7 @@ class FormLayout:
         self.eddefault(label, init_value)
 
     def float(self, label: str, init_value: float):
-        self.eddefault(label, init_value)
+        self.eddefault(label, float(init_value) if init_value else 0.0)
 
     def spinbox(self, label, minimo, maximo, ancho, init_value):
         self.li_gen.append((Spinbox(label, minimo, maximo, ancho), init_value))
@@ -93,8 +92,12 @@ class FormLayout:
     def font(self, label, init_value):
         self.li_gen.append((FontCombobox(label), init_value))
 
-    def file(self, label, extension, siSave, init_value, siRelativo=True, anchoMinimo=None, ficheroDefecto="", li_histo=None):
-        self.li_gen.append((Fichero(label, extension, siSave, siRelativo, anchoMinimo, ficheroDefecto, li_histo), init_value))
+    def file(
+        self, label, extension, siSave, init_value, siRelativo=True, anchoMinimo=None, ficheroDefecto="", li_histo=None
+    ):
+        self.li_gen.append(
+            (Fichero(label, extension, siSave, siRelativo, anchoMinimo, ficheroDefecto, li_histo), init_value)
+        )
 
     def filename(self, label: str, init_value: str):
         self.li_gen.append((Editbox(label, rx="[^\\:/|?*^%><()]*"), init_value))
@@ -135,7 +138,7 @@ class FormLayout:
             icon=self.icon,
             if_default=self.with_default,
             dispatch=self.dispatch,
-            font=self.font_txt
+            font=self.font_txt,
         )
 
     def __enter__(self):
@@ -287,7 +290,9 @@ class LBotonFichero(QtWidgets.QHBoxLayout):
         if config.li_histo and not config.ficheroDefecto:
             config.ficheroDefecto = os.path.dirname(config.li_histo[0])
 
-        self.boton = BotonFichero(file, config.extension, config.siSave, config.siRelativo, config.anchoMinimo, config.ficheroDefecto)
+        self.boton = BotonFichero(
+            file, config.extension, config.siSave, config.siRelativo, config.anchoMinimo, config.ficheroDefecto
+        )
         btCancelar = Controles.PB(parent, "", self.cancelar)
         btCancelar.ponIcono(Iconos.Delete()).anchoFijo(16)
         self.parent = parent
@@ -379,7 +384,10 @@ class BotonColor(QtWidgets.QPushButton):
             color = QtGui.QColor()
             color.setRgba(self.xcolor)
         color = QtWidgets.QColorDialog.getColor(
-            color, self.parentWidget(), _("Color"), QtWidgets.QColorDialog.ShowAlphaChannel | QtWidgets.QColorDialog.DontUseNativeDialog
+            color,
+            self.parentWidget(),
+            _("Color"),
+            QtWidgets.QColorDialog.ShowAlphaChannel | QtWidgets.QColorDialog.DontUseNativeDialog,
         )
         if color.isValid():
             if self.siSTR:
@@ -494,7 +502,7 @@ class DialNum(QtWidgets.QHBoxLayout):
         self.addWidget(self.dial)
         self.addWidget(self.lb)
 
-    def ponValor(self, nvalor):
+    def set_value(self, nvalor):
         self.dial.setValue(nvalor)
         self.ponLB()
 
@@ -596,7 +604,7 @@ class FormWidget(QtWidgets.QWidget):
 
                     elif tipo == DIAL:
                         field = DialNum(self, config, dispatch)
-                        field.ponValor(value)
+                        field.set_value(value)
 
                     elif tipo == EDITBOX:
                         if config.alto == 1:
@@ -733,7 +741,7 @@ class FormWidget(QtWidgets.QWidget):
 
     def getWidget(self, number):
         n = -1
-        for index, (label, value) in enumerate(self.data):
+        for index in range(len(self.data)):
             field = self.widgets[index]
             if field is not None:
                 n += 1
@@ -752,7 +760,12 @@ class FormComboWidget(QtWidgets.QWidget):
 
         self.stackwidget = QtWidgets.QStackWidget(self)
         layout.control(self.stackwidget)
-        self.connect(self.combobox, QtCore.SIGNAL("currentIndexChanged(int)"), self.stackwidget, QtCore.SLOT("setCurrentIndex(int)"))
+        self.connect(
+            self.combobox,
+            QtCore.SIGNAL("currentIndexChanged(int)"),
+            self.stackwidget,
+            QtCore.SLOT("setCurrentIndex(int)"),
+        )
 
         self.widgetlist = []
         for data, title, comment in datalist:
@@ -770,7 +783,6 @@ class FormTabWidget(QtWidgets.QWidget):
         super(FormTabWidget, self).__init__(parent)
         layout = Colocacion.V()
         self.tabwidget = QtWidgets.QTabWidget()
-        self.tabwidget.setFont(Controles.TipoLetra(puntos=Code.configuration.x_pgn_fontpoints))
         layout.control(self.tabwidget)
         self.setLayout(layout)
         self.widgetlist = []
@@ -844,7 +856,9 @@ class FormDialog(QtWidgets.QDialog):
         return self.accion, self.data
 
 
-def fedit(data, title="", comment="", icon=None, parent=None, if_default=False, anchoMinimo=None, dispatch=None, font=None):
+def fedit(
+    data, title="", comment="", icon=None, parent=None, if_default=False, anchoMinimo=None, dispatch=None, font=None
+):
     """
     Create form dialog and return result
     (if Cancel button is pressed, return None)

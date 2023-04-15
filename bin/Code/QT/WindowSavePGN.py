@@ -4,19 +4,18 @@ import os
 import chardet.universaldetector
 from PySide2 import QtWidgets
 
-from Code.Base import Game
+from Code import Util
 from Code.QT import Colocacion
 from Code.QT import Columnas
 from Code.QT import Controles
 from Code.QT import Delegados
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2, SelectFiles
 from Code.QT import QTVarios
 from Code.Translations import TrListas
-from Code import Util
-from Code.QT import LCDialog
 
 
 class WBaseSave(QtWidgets.QWidget):
@@ -31,7 +30,9 @@ class WBaseSave(QtWidgets.QWidget):
 
         lb_file = Controles.LB(self, _("File to save") + ": ")
         bt_history = Controles.PB(self, "", self.history).ponIcono(Iconos.Favoritos(), 24).ponToolTip(_("Previous"))
-        bt_boxrooms = Controles.PB(self, "", self.boxrooms).ponIcono(Iconos.BoxRooms(), 24).ponToolTip(_("Boxrooms PGN"))
+        bt_boxrooms = (
+            Controles.PB(self, "", self.boxrooms).ponIcono(Iconos.BoxRooms(), 24).ponToolTip(_("Boxrooms PGN"))
+        )
         self.bt_file = Controles.PB(self, "", self.file_select, plano=False).anchoMinimo(300)
 
         # Codec
@@ -140,7 +141,9 @@ class WBaseSave(QtWidgets.QWidget):
                     boxrooms.delete(ntras)
 
             elif op == 1:
-                resp = SelectFiles.salvaFichero(self, _("Boxrooms PGN"), self.configuration.x_save_folder + "/", "pgn", False)
+                resp = SelectFiles.salvaFichero(
+                    self, _("Boxrooms PGN"), self.configuration.x_save_folder + "/", "pgn", False
+                )
                 if resp:
                     resp = os.path.realpath(resp)
                     folder, boxroom = os.path.split(resp)
@@ -183,8 +186,6 @@ class WSave(LCDialog.LCDialog):
         self.file = ""
         self.vars_read()
 
-        f = Controles.TipoLetra(puntos=configuration.x_pgn_fontpoints)
-
         # Opciones
         li_options = [
             (_("Save"), Iconos.GrabarFichero(), self.save),
@@ -199,33 +200,48 @@ class WSave(LCDialog.LCDialog):
         tb = QTVarios.LCTB(self, li_options)
 
         tabs = Controles.Tab(self)
-        tabs.ponFuente(f)
 
         # Tab-file -----------------------------------------------------------------------------------------------
-        lb_file = Controles.LB(self, _("File to save") + ": ").ponFuente(f)
-        bt_history = Controles.PB(self, "", self.history).ponIcono(Iconos.Favoritos(), 24).ponToolTip(_("Previous")).ponFuente(f)
-        bt_boxrooms = Controles.PB(self, "", self.boxrooms).ponIcono(Iconos.BoxRooms(), 24).ponToolTip(_("Boxrooms PGN"))
-        self.bt_file = Controles.PB(self, "", self.file_select, plano=False).anchoMinimo(300).ponFuente(f)
+        lb_file = Controles.LB(self, _("File to save") + ": ")
+        bt_history = Controles.PB(self, "", self.history).ponIcono(Iconos.Favoritos(), 24).ponToolTip(_("Previous"))
+        bt_boxrooms = (
+            Controles.PB(self, "", self.boxrooms).ponIcono(Iconos.BoxRooms(), 24).ponToolTip(_("Boxrooms PGN"))
+        )
+        self.bt_file = Controles.PB(self, "", self.file_select, plano=False).anchoMinimo(300)
 
         # Codec
-        lb_codec = Controles.LB(self, _("Encoding") + ": ").ponFuente(f)
+        lb_codec = Controles.LB(self, _("Encoding") + ": ")
         liCodecs = [k for k in set(v for k, v in encodings.aliases.aliases.items())]
         liCodecs.sort()
         liCodecs = [(k, k) for k in liCodecs]
         liCodecs.insert(0, (_("Same as file"), "file"))
         liCodecs.insert(0, ("%s: %s" % (_("By default"), _("UTF-8")), "default"))
-        self.cb_codecs = Controles.CB(self, liCodecs, self.codec).ponFuente(f)
+        self.cb_codecs = Controles.CB(self, liCodecs, self.codec)
 
         # Rest
-        self.chb_overwrite = Controles.CHB(self, _("Overwrite"), False).ponFuente(f)
-        self.chb_remove_c_v = Controles.CHB(self, _("Remove comments and variations"), self.remove_c_v).ponFuente(f)
+        self.chb_overwrite = Controles.CHB(self, _("Overwrite"), False)
+        self.chb_remove_comments = Controles.CHB(self, _("Remove comments"), self.remove_comments)
+        self.chb_remove_variations = Controles.CHB(self, _("Remove variations"), self.remove_variations)
+        self.chb_remove_nags = Controles.CHB(self, _("Remove NAGs"), self.remove_nags)
 
         lyF = Colocacion.H().control(lb_file).control(self.bt_file).control(bt_history).control(bt_boxrooms).relleno(1)
         lyC = Colocacion.H().control(lb_codec).control(self.cb_codecs).relleno(1)
-        ly = Colocacion.V().espacio(15).otro(lyF).otro(lyC).control(self.chb_overwrite).control(self.chb_remove_c_v).relleno(1)
+        ly = (
+            Colocacion.V()
+            .espacio(15)
+            .otro(lyF)
+            .otro(lyC)
+            .espacio(10)
+            .control(self.chb_overwrite)
+            .espacio(10)
+            .control(self.chb_remove_comments)
+            .control(self.chb_remove_variations)
+            .control(self.chb_remove_nags)
+            .relleno(1)
+        )
         w = QtWidgets.QWidget()
         w.setLayout(ly)
-        tabs.nuevaTab(w, _("File"))
+        tabs.new_tab(w, _("File"))
         self.chb_overwrite.hide()
 
         # Tab-labels -----------------------------------------------------------------------------------------------
@@ -246,8 +262,7 @@ class WSave(LCDialog.LCDialog):
         o_columns.nueva("ETIQUETA", _("Label"), 150, edicion=Delegados.LineaTextoUTF8())
         o_columns.nueva("VALOR", _("Value"), 420, edicion=Delegados.LineaTextoUTF8())
 
-        self.grid_labels = Grid.Grid(self, o_columns, siEditable=True)
-        self.grid_labels.ponFuente(f)
+        self.grid_labels = Grid.Grid(self, o_columns, is_editable=True)
         n = self.grid_labels.anchoColumnas()
         self.grid_labels.setFixedWidth(n + 20)
 
@@ -255,11 +270,11 @@ class WSave(LCDialog.LCDialog):
         ly = Colocacion.V().control(tb_labels).control(self.grid_labels).margen(3)
         w = QtWidgets.QWidget()
         w.setLayout(ly)
-        tabs.nuevaTab(w, _("Labels"))
+        tabs.new_tab(w, _("PGN labels"))
 
         # Tab-Body -----------------------------------------------------------------------------------------------
-        self.em_body = Controles.EM(self, self.body, siHTML=False).ponFuente(f)
-        tabs.nuevaTab(self.em_body, _("Body"))
+        self.em_body = Controles.EM(self, self.body, siHTML=False)
+        tabs.new_tab(self.em_body, _("Body"))
 
         layout = Colocacion.V().control(tb).control(tabs)
 
@@ -285,7 +300,7 @@ class WSave(LCDialog.LCDialog):
 
         if not last_dir:
             last_dir = self.configuration.carpeta
-        fich = SelectFiles.leeCreaFichero(self, last_dir, "pgn")
+        fich = SelectFiles.salvaFichero(self, _("File to save"), last_dir, "pgn", confirm_overwrite=False)
         if fich:
             if not fich.lower().endswith(".pgn"):
                 fich += ".pgn"
@@ -303,13 +318,17 @@ class WSave(LCDialog.LCDialog):
         dicVariables = self.configuration.read_variables("SAVEPGN")
         self.history_list = dicVariables.get("LIHISTORICO", [])
         self.codec = dicVariables.get("CODEC", "default")
-        self.remove_c_v = dicVariables.get("REMCOMMENTSVAR", False)
+        self.remove_comments = dicVariables.get("REMCOMMENTS", False)
+        self.remove_variations = dicVariables.get("REMVARIATIONS", False)
+        self.remove_nags = dicVariables.get("REMNAGS", False)
 
     def vars_save(self):
         dicVariables = {}
         dicVariables["LIHISTORICO"] = self.history_list
         dicVariables["CODEC"] = self.cb_codecs.valor()
-        dicVariables["REMCOMMENTSVAR"] = self.chb_remove_c_v.isChecked()
+        dicVariables["REMCOMMENTS"] = self.chb_remove_comments.isChecked()
+        dicVariables["REMVARIATIONS"] = self.chb_remove_variations.isChecked()
+        dicVariables["REMNAGS"] = self.chb_remove_nags.isChecked()
         self.configuration.write_variables("SAVEPGN", dicVariables)
 
     def history(self):
@@ -352,7 +371,9 @@ class WSave(LCDialog.LCDialog):
                     boxrooms.delete(ntras)
 
             elif op == 1:
-                resp = SelectFiles.salvaFichero(self, _("Boxrooms PGN"), self.configuration.x_save_folder + "/", "pgn", False)
+                resp = SelectFiles.salvaFichero(
+                    self, _("Boxrooms PGN"), self.configuration.x_save_folder + "/", "pgn", False
+                )
                 if resp:
                     resp = os.path.realpath(resp)
                     folder, boxroom = os.path.split(resp)
@@ -372,44 +393,52 @@ class WSave(LCDialog.LCDialog):
         body = self.em_body.texto().strip()
         if not body:
             body = "*"
-        elif self.chb_remove_c_v.isChecked():
-            lic = []
-            npar = 0
-            nkey = 0
-            for c in body:
-                if nkey:
-                    if c == "}":
-                        nkey -= 1
-                    elif c == "{":
+        else:
+
+            def remove(xbody, ini, end):
+                lic = []
+                nkey = 0
+                for c in xbody:
+                    if nkey:
+                        if c == end:
+                            nkey -= 1
+                        elif c == ini:
+                            nkey += 1
+                        continue
+                    if c == ini:
                         nkey += 1
-                    continue
-                if npar:
-                    if c == ")":
-                        npar -= 1
-                    elif c == "(":
-                        npar += 1
-                    continue
-                if c == "{":
-                    nkey += 1
-                    continue
-                if c == "(":
-                    npar += 1
-                    continue
-                lic.append(c)
-            body = "".join(lic)
+                        continue
+                    lic.append(c)
+                return "".join(lic)
+
+            if self.chb_remove_comments.isChecked():
+                body = remove(body, "{", "}")
+
+            if self.chb_remove_variations.isChecked():
+                body = remove(body, "(", ")")
+
+            if self.chb_remove_nags.isChecked():
+                lic = []
+                nag = False
+                for c in body:
+                    if nag:
+                        if c.isdigit():
+                            continue
+                        nag = False
+                    if c in "?!":
+                        continue
+                    if c == "$":
+                        nag = True
+                        continue
+                    if c == " ":
+                        if lic and lic[-1] == " ":
+                            continue
+                    lic.append(c)
+                body = "".join(lic)
 
         pgn += "\n%s\n" % body
         if "\r\n" in pgn:
             pgn = pgn.replace("\r\n", "\n")
-
-        if self.chb_remove_c_v.isChecked():
-            ok, p = Game.pgn_game(pgn)
-
-            pgn = ""
-            for k, v in p.li_tags:
-                pgn += '[%s "%s"]\n' % (k, v)
-            pgn += "\n\n"
-            pgn += p.pgnBase()
 
         return pgn
 
@@ -533,7 +562,12 @@ class WSaveVarios(LCDialog.LCDialog):
         self.configuration = configuration
 
         # Opciones
-        li_options = [(_("Save"), Iconos.GrabarFichero(), self.aceptar), None, (_("Cancel"), Iconos.Cancelar(), self.reject), None]
+        li_options = [
+            (_("Save"), Iconos.GrabarFichero(), self.aceptar),
+            None,
+            (_("Cancel"), Iconos.Cancelar(), self.reject),
+            None,
+        ]
         self.tb = QTVarios.LCTB(self, li_options)
 
         self.wbase = WBaseSave(self, configuration)
@@ -547,7 +581,7 @@ class WSaveVarios(LCDialog.LCDialog):
         self.check_toolbar()
 
     def check_toolbar(self):
-        self.tb.setPosVisible(0, len(self.wbase.file) > 0)
+        self.tb.set_pos_visible(0, len(self.wbase.file) > 0)
 
     def aceptar(self):
         if self.wbase.file:

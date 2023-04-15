@@ -82,11 +82,7 @@ padding: 2px;"""
         )
 
         lb_info = (
-            Controles.LB(
-                self,
-                "<b>%s<br>%s - %s</b>"
-                % (_("[ENTER] to add line"), _("F10 to check"), _("F1 help")),
-            )
+            Controles.LB(self, "<b>%s<br>%s - %s</b>" % (_("[ENTER] to add line"), _("F10 to check"), _("F1 help")))
             .align_center()
             .ponTipoLetra(puntos=7)
         )
@@ -115,7 +111,7 @@ padding: 2px;"""
         nmoves = len(game)
         self.is_white = first_position.is_white
         num_jugada = first_position.num_moves
-        rows = (nmoves-1) // 2 + 1
+        rows = (nmoves - 1) // 2 + 1
         for row, lb in enumerate(self.li_labels):
             if row < rows:
                 lb.setText("%3d." % (row + num_jugada))
@@ -148,7 +144,7 @@ padding: 2px;"""
         k = event.key()
 
         if k == QtCore.Qt.Key_F10:
-            self.check()
+            self.verify()
         elif k == QtCore.Qt.Key_F1:
             self.help()
         else:
@@ -160,7 +156,7 @@ padding: 2px;"""
         pos = self.li_current_moves.index(ed) + 1
         if pos == len(self.li_current_moves):
             if pos == 1:
-                self.check()
+                self.verify()
             else:
                 self.check_line()
         else:
@@ -251,11 +247,11 @@ padding: 2px;"""
                         ed.setText(pgn[: pos_c + 1])
                         ed.setFocus()
                         break
-                for ed in self.li_current_moves[pos + 1 :]:
+                for ed in self.li_current_moves[pos + 1:]:
                     ed.setText("")
                 break
 
-    def check(self):
+    def verify(self):
         self.check_line()
 
         solution = None

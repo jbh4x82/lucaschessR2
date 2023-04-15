@@ -9,7 +9,7 @@ from PySide2 import QtCore, QtWidgets
 
 import Code
 from Code.Translations import Translate
-from Code.QT import Iconos, Controles, Colocacion, QTUtil, QTUtil2
+from Code.QT import Iconos, IconosBase, Controles, Colocacion, QTUtil, QTUtil2
 
 FONDO = "#5e6983"
 COLOR_TITULO = "black"
@@ -406,6 +406,8 @@ class Data:
     def has_launcher(self):
         return os.path.isfile(self.path_desktop)
 
+
+IconosBase.icons.reset(0)
 
 app = QtWidgets.QApplication([])
 Translate.install("en")

@@ -235,7 +235,12 @@ class Pieza(Bloque):
     column: int
 
     def __init__(self):
-        li_vars = [("physical_pos", "o", Physicalphysical_pos(0, 0, 80, 1, 0)), ("pieza", "t", "p"), ("row", "n", 1), ("column", "n", 1)]
+        li_vars = [
+            ("physical_pos", "o", Physicalphysical_pos(0, 0, 80, 1, 0)),
+            ("pieza", "t", "p"),
+            ("row", "n", 1),
+            ("column", "n", 1),
+        ]
         Bloque.__init__(self, li_vars)
 
 
@@ -418,7 +423,7 @@ class Marker(Bloque):
 
 class Pizarra(QtWidgets.QWidget):
     def __init__(self, guion, board, ancho, edit_mode=False, with_continue=False):
-        QtWidgets.QWidget.__init__(self)
+        QtWidgets.QWidget.__init__(self, board)
 
         self.guion = guion
         self.tarea = None
@@ -427,6 +432,7 @@ class Pizarra(QtWidgets.QWidget):
 
         self.pb = None
         self.chb = None
+        self.bloqueada = False
         if edit_mode:
             self.chb = Controles.CHB(self, _("With continue button"), False).capture_changes(self, self.save)
             self.mensaje.capturaCambios(self.save)
@@ -504,7 +510,7 @@ class Pizarra(QtWidgets.QWidget):
         self.tarea = tarea
         if self.chb:
             ok = self.tarea.continuar()
-            self.chb.ponValor(False if ok is None else ok)
+            self.chb.set_value(False if ok is None else ok)
 
     def save(self):
         if not self.tarea:

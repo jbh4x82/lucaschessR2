@@ -2,22 +2,11 @@ import time
 
 from PySide2 import QtCore
 
-import Code
-from Code.TrainBMT import BMT
-from Code.ForcingMoves import ForcingMoves
-
-Code.BMT = BMT
 from Code import ControlPGN
 from Code import Util
 from Code.Analysis import Analysis
 from Code.Base import Game, Position
-from Code.Base.Constantes import (
-    GT_BMT,
-    GO_BACK,
-    GO_END,
-    GO_FORWARD,
-    GO_START,
-)
+from Code.Base.Constantes import GT_BMT, GO_BACK, GO_END, GO_FORWARD, GO_START
 from Code.Board import Board
 from Code.QT import Colocacion
 from Code.QT import Columnas
@@ -26,9 +15,9 @@ from Code.QT import Delegados
 from Code.QT import FormLayout
 from Code.QT import Grid
 from Code.QT import Iconos
+from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2
-from Code.QT import LCDialog
 
 
 class WTrainBMT(LCDialog.LCDialog):
@@ -86,6 +75,7 @@ class WTrainBMT(LCDialog.LCDialog):
         self.board = Board.Board(self, config_board)
         self.board.crea()
         self.board.set_dispatcher(self.player_has_moved)
+        self.board.dbvisual_set_show_always(False)
 
         # Info -------------------------------------------------------------------
         colorFondo = QTUtil.qtColor(config_board.colorNegras())
@@ -103,7 +93,7 @@ class WTrainBMT(LCDialog.LCDialog):
 
         # Grid-PGN ---------------------------------------------------------------
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("NUMBER", _("N."), 35, centered=True)
+        o_columns.nueva("NUMBER", _("N."), 35, align_center=True)
         with_figurines = self.configuration.x_pgn_withfigurines
         o_columns.nueva("WHITE", _("White"), 100, edicion=Delegados.EtiquetaPGN(True if with_figurines else None))
         o_columns.nueva("BLACK", _("Black"), 100, edicion=Delegados.EtiquetaPGN(False if with_figurines else None))
@@ -180,7 +170,6 @@ class WTrainBMT(LCDialog.LCDialog):
             (_("Start"), Iconos.Empezar(), "empezar"),
             (_("Actual game"), Iconos.PartidaOriginal(), "original"),
             (_("Next"), Iconos.Siguiente(), "seguir"),
-            (_("Hint"), Iconos.Thinking(), "hint"),
         )
         self.tb = Controles.TB(self, li_acciones)
 
@@ -254,16 +243,6 @@ class WTrainBMT(LCDialog.LCDialog):
         self.ponPuntos(0)
         self.pon_toolbar()
 
-    def hint(self):
-
-        if self.bmt_uno.puntos > 1:
-            self.bmt_uno.puntos = 1
-        self.ponPuntos(0)
-        mrm = self.bmt_uno.mrm
-
-        forcingMoves = ForcingMoves.ForcingMoves(self.board, mrm, self)
-        forcingMoves.fm_show_checklist()
-
     def borrar(self):
         if QTUtil2.pregunta(self, _("Do you want to delete this position?")):
             self.borrar_fen_lista.add(self.bmt_uno.fen)
@@ -291,8 +270,6 @@ class WTrainBMT(LCDialog.LCDialog):
             self.original()
         elif accion == "opciones":
             self.opciones()
-        elif accion == "hint":
-            self.hint()
 
     def closeEvent(self, event):
         self.terminar()
@@ -581,7 +558,6 @@ class WTrainBMT(LCDialog.LCDialog):
                 if self.bmt_uno.cl_game:
                     li.append("original")
             li.append("seguir")
-            li.append("hint")
 
         self.tb.clear()
         for k in li:
@@ -662,7 +638,7 @@ class WTrainBMT(LCDialog.LCDialog):
             self.bmt_uno.finished = True
             diferenciaPtsPrimero = self.ptsPrimero - self.ptsMejor
             self.lbPrimera.set_text(
-                "%s (%s %s)" % (self.texto_lbPrimera, "%0.2f" % (-diferenciaPtsPrimero / 100.0),  _("pws lost"))
+                "%s (%s %s)" % (self.texto_lbPrimera, "%0.2f" % (-diferenciaPtsPrimero / 100.0), _("pws lost"))
             )
             self.muestra(num)
             self.ponPuntos(0)
@@ -724,7 +700,7 @@ class WTrainBMT(LCDialog.LCDialog):
         self.lb_game.set_text("")
         self.lbPrimera.set_text(self.texto_lbPrimera)
 
-        self.board.dbvisual_set_show_allways(False)
+        self.board.dbvisual_set_show_always(False)
         self.board.set_position(self.position)
 
         self.liBT[self.actualP].ponPlano(True)
@@ -921,7 +897,4 @@ class WTrainBMT(LCDialog.LCDialog):
         if move.is_mate:
             return
 
-        max_recursion = 9999
-        Analysis.show_analysis(
-            self.procesador, self.procesador.XTutor(), move, is_white, max_recursion, pos, main_window=self
-        )
+        Analysis.show_analysis(self.procesador, self.procesador.XTutor(), move, is_white, pos, main_window=self)

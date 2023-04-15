@@ -4,15 +4,26 @@ from PySide2 import QtCore, QtWidgets
 
 import Code
 from Code import Util
-from Code.Base import Position
-from Code.Base.Constantes import FEN_INITIAL, ADJUST_BETTER, ADJUST_HIGH_LEVEL
-from Code.Engines import WEngines, SelectEngines, WConfEngines
-from Code.Openings import WindowOpenings
+from Code.Base import Position, Game
+from Code.Base.Constantes import (
+    FEN_INITIAL,
+    ADJUST_BETTER,
+    ADJUST_HIGH_LEVEL,
+    ENG_INTERNAL,
+    ENG_EXTERNAL,
+    ENG_MICGM,
+    ENG_MICPER,
+    ENG_FIXED,
+    ENG_IRINA,
+    ENG_ELO,
+    ENG_RODENT,
+)
+from Code.Engines import SelectEngines, WConfEngines
+from Code.Openings import WindowOpeningLines, WindowOpenings, OpeningsStd
 from Code.PlayAgainstEngine import Personalities
 from Code.Polyglots import Books
 from Code.QT import Colocacion
 from Code.QT import Columnas
-from Code.QT import Common
 from Code.QT import Controles
 from Code.QT import Delegados
 from Code.QT import FormLayout
@@ -22,8 +33,8 @@ from Code.QT import LCDialog
 from Code.QT import QTUtil
 from Code.QT import QTUtil2, SelectFiles
 from Code.QT import QTVarios
-from Code.QT import Voyager
 from Code.SQL import UtilSQL
+from Code.Voyager import Voyager
 
 
 class WPlayAgainstEngine(LCDialog.LCDialog):
@@ -31,23 +42,23 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         LCDialog.LCDialog.__init__(self, procesador.main_window, titulo, Iconos.Libre(), "entMaquina")
 
-        font = Controles.TipoLetra(puntos=procesador.configuration.x_menu_points)
+        font = Controles.TipoLetra(puntos=procesador.configuration.x_font_points)
 
         self.direct_option = direct_option
 
-        self.setFont(font)
+        # self.setFont(font)
 
         self.configuration = procesador.configuration
         self.procesador = procesador
 
         self.personalidades = Personalities.Personalities(self, self.configuration)
 
-        self.motores = SelectEngines.SelectEngines(self.configuration)
+        self.motores = SelectEngines.SelectEngines(procesador.main_window)
 
         fvar = self.configuration.file_books
         self.list_books = Books.ListBooks()
         self.list_books.restore_pickle(fvar)
-        self.list_books.check()
+        self.list_books.verify()
         li_books = [(x.name, x) for x in self.list_books.lista]
 
         # Toolbar
@@ -65,10 +76,12 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         # Tab
         tab = Controles.Tab()
+        tab.ponTipoLetra(puntos=self.configuration.x_menu_points, peso=700)
         tab.dispatchChange(self.cambiada_tab)
 
         self.tab_advanced = 4
         self.tab_advanced_active = False
+
         # Para no tener que leer las options uci to_sq que no sean necesarias, afecta a gridNumDatos
 
         def nueva_tab(layout, titulo):
@@ -78,7 +91,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             w = QtWidgets.QWidget(self)
             w.setLayout(ly)
             w.setFont(font)
-            tab.nuevaTab(w, titulo)
+            tab.new_tab(w, titulo)
 
         def nuevoG() -> Colocacion.G:
             ly_g = Colocacion.G()
@@ -86,15 +99,13 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             ly_g.margen(10)
             return ly_g
 
-        gb_style = Common.gb_style()
-
         def _label(ly_g: Colocacion.G, txt, xlayout, checkable: object = False):
             groupbox = Controles.GB(self, txt, xlayout)
             if checkable:
                 groupbox.setCheckable(True)
                 groupbox.setChecked(False)
 
-            groupbox.setStyleSheet(gb_style)
+            self.configuration.set_property(groupbox, "1")
             groupbox.setMinimumWidth(640)
             groupbox.setFont(font)
             ly_g.controlc(groupbox, ly_g.filaActual, 0)
@@ -110,44 +121,47 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         # # Motores
 
         # ## Rival
-        self.rivalTipo, self.rival = self.motores.busca(SelectEngines.INTERNO, self.configuration.x_rival_inicial)
-        self.btRival = Controles.PB(self, "", self.cambiaRival, plano=False).ponFuente(font).altoFijo(48)
+        self.rival = self.motores.busca(ENG_INTERNAL, self.configuration.x_rival_inicial)
+        self.btRival = Controles.PB(self, "", self.select_engine, plano=False).ponFuente(font).altoFijo(48)
 
-        lbTiempoSegundosR = Controles.LB2P(self, _("Fixed time in seconds")).ponFuente(font)
+        self.lbTiempoSegundosR = Controles.LB2P(self, _("Fixed time in seconds")).ponFuente(font)
         self.edRtiempo = (
             Controles.ED(self).tipoFloat().anchoMaximo(50).ponFuente(font).capture_changes(self.change_time)
         )
-        bt_cancelar_tiempo = Controles.PB(self, "", rutina=self.cancelar_tiempo).ponIcono(Iconos.S_Cancelar())
-        ly_tiempo = Colocacion.H().control(self.edRtiempo).control(bt_cancelar_tiempo).relleno(1)
+        self.bt_cancelar_tiempo = Controles.PB(self, "", rutina=self.cancelar_tiempo).ponIcono(Iconos.S_Cancelar())
+        ly_tiempo = Colocacion.H().control(self.edRtiempo).control(self.bt_cancelar_tiempo).relleno(1)
 
         lb_depth = Controles.LB2P(self, _("Fixed depth")).ponFuente(font)
         self.edRdepth = Controles.ED(self).tipoInt().anchoMaximo(50).ponFuente(font).capture_changes(self.change_depth)
         bt_cancelar_depth = Controles.PB(self, "", rutina=self.cancelar_depth).ponIcono(Iconos.S_Cancelar())
         ly_depth = Colocacion.H().control(self.edRdepth).control(bt_cancelar_depth).relleno(1)
 
-        self.lb_unlimited = Controles.LB2P(self, _("The engine's thinking has no limit, select its response")).ponFuente(font)
+        self.lb_unlimited = Controles.LB2P(
+            self, _("The engine's thinking has no limit, select its response")
+        ).ponFuente(font)
         li_unlimited = ((_("Very slow"), 12), (_("Slow"), 8), (_("Normal"), 3), (_("Fast"), 1), (_("Very fast"), 0.5))
         self.cb_unlimited = Controles.CB(self, li_unlimited, 3).ponFuente(font)
 
         ly = Colocacion.G()
-        ly.controld(lbTiempoSegundosR, 0, 0).otro(ly_tiempo, 0, 1)
+        ly.controld(self.lbTiempoSegundosR, 0, 0).otro(ly_tiempo, 0, 1)
         ly.controld(lb_depth, 1, 0).otro(ly_depth, 1, 1)
         lyu = Colocacion.H().control(self.lb_unlimited).control(self.cb_unlimited)
         lyt = Colocacion.V().otro(ly).otro(lyu)
 
         self.gb_thinks = Controles.GB(self, _("Limits of engine thinking"), lyt)
-        self.gb_thinks.setStyleSheet(Common.gb_style_sub(procesador.configuration.x_menu_points))
+        self.configuration.set_property(self.gb_thinks, "1")
 
         lyV = Colocacion.V().espacio(20).control(self.btRival).espacio(20).control(self.gb_thinks)
 
         _label(lyG, _("Opponent"), lyV)
 
         # # Side
+        nom_pieces = procesador.main_window.board.config_board.nomPiezas()
         self.rb_white = Controles.RB(self, "").activa()
-        self.rb_white.setIcon(Iconos.PeonBlanco())
+        self.rb_white.setIcon(Code.all_pieces.icono("P", nom_pieces))
         self.rb_white.setIconSize(QtCore.QSize(32, 32))
         self.rb_black = Controles.RB(self, "")
-        self.rb_black.setIcon(Iconos.PeonNegro())
+        self.rb_black.setIcon(Code.all_pieces.icono("p", nom_pieces))
         self.rb_black.setIconSize(QtCore.QSize(32, 32))
         self.rbRandom = Controles.RB(self, _("Random"))
         self.rbRandom.setFont(Controles.TipoLetra(puntos=14))
@@ -188,7 +202,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         # # Tutor
         lbAyudas = Controles.LB2P(self, _("Available hints")).ponFuente(font)
-        liAyudas = [(_("Maximum"), 999)]
+        liAyudas = [(_("Always"), 999)]
         for i in range(1, 21):
             liAyudas.append((str(i), i))
         for i in range(25, 51, 5):
@@ -196,8 +210,15 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         self.cbAyudas = Controles.CB(self, liAyudas, 999).ponFuente(font)
         self.chbChance = Controles.CHB(self, _("Second chance"), True).ponFuente(font)
 
-        li_thinks = [(_("Nothing"), -1), (_("Score"), 0), (_("1 movement"), 1), (_("2 movements"), 2),
-                    (_("3 movements"), 3), (_("4 movements"), 4), (_("All"), 9999)]
+        li_thinks = [
+            (_("Nothing"), -1),
+            (_("Score"), 0),
+            (_("1 movement"), 1),
+            (_("2 movements"), 2),
+            (_("3 movements"), 3),
+            (_("4 movements"), 4),
+            (_("All"), 9999),
+        ]
         lbThoughtTt = Controles.LB(self, _("Show") + ":").ponFuente(font)
         self.cbThoughtTt = Controles.CB(self, li_thinks, -1).ponFuente(font)
 
@@ -211,9 +232,25 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         ly = Colocacion.V().otro(lyT1).espacio(16).otro(lyT3).relleno()
 
-        self.gbTutor = Controles.GB(self, _("Activate the tutor's help"), ly)
-        self.gbTutor.setCheckable(True)
-        self.gbTutor.setStyleSheet(gb_style)
+        self.gb_tutor = Controles.GB(self, _("Activate the tutor's help"), ly)
+        self.gb_tutor.to_connect(self.gb_tutor_pressed)
+        self.configuration.set_property(self.gb_tutor, "1")
+
+        # --- Play while Win
+        lb = Controles.LB(
+            self,
+            "%s:<br><small>%s.</small>"
+            % (
+                _("Maximum lost centipawns for having to repeat active game"),
+                _("The game also ends after playing a bad move"),
+            ),
+        ).ponFuente(font)
+        self.ed_limit_pww = Controles.ED(self).tipoIntPositive(90).ponFuente(font).anchoFijo(50)
+
+        ly = Colocacion.H().control(lb).control(self.ed_limit_pww).relleno()
+        self.gb_pww = Controles.GB(self, _("Play as long as you make no mistakes"), ly)
+        self.gb_pww.to_connect(self.gb_pww_pressed)
+        self.configuration.set_property(self.gb_pww, "1")
 
         lb = Controles.LB(self, _("Show") + ":").ponFuente(font)
         self.cbThoughtOp = Controles.CB(self, li_thinks, -1).ponFuente(font)
@@ -222,14 +259,14 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         ly = Colocacion.H().control(lb).control(self.cbThoughtOp).relleno()
         ly.control(lbArrows).control(self.sbArrows)
         gbThoughtOp = Controles.GB(self, _("Opponent's thought information"), ly)
-        gbThoughtOp.setStyleSheet(gb_style)
+        self.configuration.set_property(gbThoughtOp, "1")
 
         self.lbBoxHeight = Controles.LB2P(self, _("Height of displaying box")).ponFuente(font)
         self.sbBoxHeight = Controles.SB(self, 0, 0, 999).tamMaximo(50).ponFuente(font)
 
         lyBox = Colocacion.H().control(self.lbBoxHeight).control(self.sbBoxHeight).relleno()
 
-        ly = Colocacion.V().espacio(16).control(self.gbTutor).control(gbThoughtOp)
+        ly = Colocacion.V().espacio(16).control(self.gb_tutor).control(self.gb_pww).control(gbThoughtOp)
         ly.espacio(16).otro(lyBox).control(self.chbSummary).control(self.chbTakeback).margen(6)
 
         nueva_tab(ly, _("Help configuration"))
@@ -288,21 +325,36 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         _label(lyG, _("Start position"), hbox)
 
         # Openings
-        self.btOpening = (
-            Controles.PB(self, " " * 5 + _("Undetermined") + " " * 5, self.editOpening).ponPlano(False).ponFuente(font)
+        self.bt_opening = (
+            Controles.PB(self, " " * 5 + _("Undetermined") + " " * 5, self.opening_edit).ponPlano(False).ponFuente(font)
         )
         self.opening_block = None
-        self.btOpeningsFavoritas = Controles.PB(self, "", self.preferred_openings).ponIcono(Iconos.Favoritos())
-        self.btOpeningsQuitar = Controles.PB(self, "", self.aperturasQuitar).ponIcono(Iconos.Motor_No())
+        self.bt_openings_fav = Controles.PB(self, "", self.openings_preferred).ponIcono(Iconos.Favoritos())
+        self.bt_opening_remove = Controles.PB(self, "", self.opening_remove).ponIcono(Iconos.Motor_No())
+        self.bt_opening_paste = (
+            Controles.PB(self, "", self.opening_paste).ponIcono(Iconos.Pegar16()).ponToolTip(_("Paste PGN"))
+        ).ponFuente(font)
         hbox = (
             Colocacion.H()
             .relleno()
-            .control(self.btOpeningsQuitar)
-            .control(self.btOpening)
-            .control(self.btOpeningsFavoritas)
+            .control(self.bt_opening_remove)
+            .control(self.bt_opening)
+            .control(self.bt_openings_fav)
+            .control(self.bt_opening_paste)
             .relleno()
         )
         _label(lyG, _("Opening"), hbox)
+
+        # Opening_line
+        self.bt_opening_line = (
+            Controles.PB(self, " " * 5 + _("Undetermined") + " " * 5, self.opening_line_edit)
+            .ponPlano(False)
+            .ponFuente(font)
+        )
+        self.opening_line = None
+        self.bt_opening_line_remove = Controles.PB(self, "", self.opening_line_remove).ponIcono(Iconos.Motor_No())
+        hbox = Colocacion.H().relleno().control(self.bt_opening_line_remove).control(self.bt_opening_line).relleno()
+        _label(lyG, _("Opening lines"), hbox)
 
         # Libros
         libInicial = li_books[0][1] if li_books else None
@@ -314,9 +366,9 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             (_("Always the highest percentage"), "mp"),
         ]
 
-        ## Rival
+        # #Rival
         self.cbBooksR = QTUtil2.comboBoxLB(self, li_books, libInicial).ponFuente(font)
-        self.btNuevoBookR = Controles.PB(self, "", self.nuevoBook, plano=True).ponIcono(Iconos.Mas(), icon_size=16)
+        self.btNuevoBookR = Controles.PB(self, "", self.nuevoBook).ponIcono(Iconos.Mas())
         self.cbBooksRR = QTUtil2.comboBoxLB(self, li_resp_book, "mp").ponFuente(font)
         self.lbDepthBookR = Controles.LB2P(self, _("Max depth")).ponFuente(font)
         self.edDepthBookR = Controles.ED(self).ponFuente(font).tipoInt(0).anchoFijo(30)
@@ -335,7 +387,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         ## Player
         self.cbBooksP = QTUtil2.comboBoxLB(self, li_books, libInicial).ponFuente(font)
-        self.btNuevoBookP = Controles.PB(self, "", self.nuevoBook, plano=True).ponIcono(Iconos.Mas(), icon_size=16)
+        self.btNuevoBookP = Controles.PB(self, "", self.nuevoBook).ponIcono(Iconos.Mas())
         self.lbDepthBookP = Controles.LB2P(self, _("Max depth")).ponFuente(font)
         self.edDepthBookP = Controles.ED(self).ponFuente(font).tipoInt(0).anchoFijo(30)
         hbox = (
@@ -357,9 +409,10 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         # ##################################################################################################################################
         lyG = nuevoG()
 
-        liAjustes = self.personalidades.listaAjustes(True)
         self.cbAjustarRival = (
-            Controles.CB(self, liAjustes, ADJUST_BETTER).capture_changes(self.ajustesCambiado).ponFuente(font)
+            Controles.CB(self, self.personalidades.list_personalities(True), ADJUST_BETTER)
+            .capture_changes(self.ajustesCambiado)
+            .ponFuente(font)
         )
         lbAjustarRival = Controles.LB2P(self, _("Set strength")).ponFuente(font)
         self.btAjustarRival = (
@@ -383,9 +436,9 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         self.lb_path_engine = Controles.LB(self, "").set_wrap()
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("OPTION", _("UCI option"), 240, centered=True)
-        o_columns.nueva("VALUE", _("Value"), 200, centered=True, edicion=Delegados.MultiEditor(self))
-        self.grid_uci = Grid.Grid(self, o_columns, siEditable=True)
+        o_columns.nueva("OPTION", _("UCI option"), 240, align_center=True)
+        o_columns.nueva("VALUE", _("Value"), 200, align_center=True, edicion=Delegados.MultiEditor(self))
+        self.grid_uci = Grid.Grid(self, o_columns, is_editable=True)
         self.grid_uci.setFixedHeight(320)
         self.grid_uci.ponFuente(font)
         self.register_grid(self.grid_uci)
@@ -404,7 +457,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         self.setLayout(layout)
 
         self.li_preferred_openings = []
-        self.btOpeningsFavoritas.hide()
+        self.bt_openings_fav.hide()
 
         file = self.configuration.ficheroEntMaquina if self.direct_option else self.configuration.ficheroEntMaquinaPlay
         if not os.path.isfile(file):
@@ -415,16 +468,23 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         self.restore_dic(dic)
 
         self.ajustesCambiado()
-        # self.ayudasCambiado()
-        self.ponRival()
+        self.show_rival()
 
         self.restore_video(shrink=True)
+
+    def gb_tutor_pressed(self):
+        if self.gb_tutor.isChecked():
+            self.gb_pww.setChecked(False)
+
+    def gb_pww_pressed(self):
+        if self.gb_pww.isChecked():
+            self.gb_tutor.setChecked(False)
 
     def conf_engines(self):
         w = WConfEngines.WConfEngines(self)
         w.exec_()
         self.ajustesCambiado()
-        self.motores.rehazMotoresExternos()
+        self.motores.redo_external_engines()
 
     def grid_num_datos(self, grid):
         return len(self.rival.li_uci_options_editable()) if self.tab_advanced_active else 0
@@ -485,11 +545,11 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             return Controles.SB(parent, value, minimo, maximo)
         return None
 
-    def me_ponValor(self, editor, valor):
+    def me_set_value(self, editor, valor):
         if self.me_control == "ed":
             editor.setText(str(valor))
         elif self.me_control in ("cb", "sb"):
-            editor.ponValor(valor)
+            editor.set_value(valor)
 
     def me_leeValor(self, editor):
         if self.me_control == "ed":
@@ -524,7 +584,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
                 dic = dbc[k]
                 self.restore_dic(dic)
             elif op == BORRA:
-                if QTUtil2.pregunta(self, _X(_("Delete %1 ?"), k)):
+                if QTUtil2.pregunta(self, _X(_("Delete %1?"), k)):
                     del dbc[k]
             elif op == AGREGA:
                 li_gen = [(None, None)]
@@ -541,69 +601,90 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         dbc.close()
 
-    def cambiaRival(self):
+    def select_engine(self):
         resp = self.motores.menu(self)
         if resp:
-            tp, cm = resp
-            if tp == SelectEngines.MICPER:
-                cm = WEngines.select_engine_entmaq(self)
-                if not cm:
-                    return
-            self.rivalTipo = tp
+            cm = resp
             self.rival = cm
-            self.ponRival()
+            if self.rival.type == ENG_RODENT:
+                self.rival.name = self.rival.menu
+            self.show_rival()
 
-    def ponRival(self):
+    def show_rival(self):
         if self.rival.is_external:
             name = self.rival.key
+        elif self.rival.type == ENG_MICPER:
+            name = Util.primera_mayuscula(
+                self.rival.alias + " (%d, %s)" % (self.rival.elo, self.rival.id_info.replace("\n", "-"))
+            )
         else:
             name = self.rival.name
+        if len(name) > 70:
+            name = name[:70] + "..."
+
         self.btRival.set_text("   %s   " % name)
-        self.btRival.ponIcono(self.motores.dicIconos[self.rivalTipo])
+        self.btRival.ponIcono(self.motores.dicIconos[self.rival.type])
         self.si_edit_uci = False
         si_multi = False
         limpia_time_depth = True
         hide_time_depth = False
 
-        if self.rivalTipo == SelectEngines.IRINA:
+        if self.rival.type == ENG_IRINA:
             hide_time_depth = False
 
-        elif self.rivalTipo == SelectEngines.FIXED:
+        elif self.rival.type == ENG_FIXED:
             hide_time_depth = True
 
-        elif self.rivalTipo == SelectEngines.ELO:
+        elif self.rival.type == ENG_ELO:
             self.edRtiempo.ponFloat(0.0)
-            self.edRdepth.ponInt(self.rival.fixed_depth)
+            self.edRdepth.ponInt(self.rival.max_depth)
             limpia_time_depth = False
             hide_time_depth = True
 
-        elif self.rivalTipo == SelectEngines.MICGM:
+        elif self.rival.type == ENG_MICGM:
             hide_time_depth = True
 
-        elif self.rivalTipo == SelectEngines.MICPER:
+        # elif self.rival.type == ENG_RODENT:
+        #     hide_time_depth = True
+
+        elif self.rival.type == ENG_MICPER:
             hide_time_depth = True
 
-        elif self.rivalTipo == SelectEngines.INTERNO:
+        elif self.rival.type == ENG_INTERNAL:
             si_multi = self.rival.has_multipv()
             limpia_time_depth = False
 
-        elif self.rivalTipo == SelectEngines.EXTERNO:
+        elif self.rival.type == ENG_EXTERNAL:
             si_multi = self.rival.has_multipv()
+            if self.rival.max_depth or self.rival.max_time:
+                self.edRdepth.ponInt(self.rival.max_depth)
+                self.edRtiempo.ponFloat(self.rival.max_time)
             limpia_time_depth = False
 
         if limpia_time_depth:
             self.edRtiempo.ponFloat(0.0)
             self.edRdepth.ponInt(0)
 
+        emulate_movetime = self.rival.emulate_movetime
+        self.edRtiempo.setVisible(not emulate_movetime)
+        self.lbTiempoSegundosR.setVisible(not emulate_movetime)
+        self.bt_cancelar_tiempo.setVisible(not emulate_movetime)
+        if emulate_movetime:
+            self.edRtiempo.ponFloat(0.0)
+
         self.gb_thinks.setVisible(not hide_time_depth)
 
-        if not si_multi:
-            self.cbAjustarRival.ponValor(ADJUST_BETTER)
+        if si_multi:
+            li_elements = self.personalidades.list_personalities(True)
+        else:
+            li_elements = self.personalidades.list_personalities_minimum()
+        self.cbAjustarRival.rehacer(li_elements, ADJUST_BETTER)
         self.btAjustarRival.setVisible(si_multi)
-        self.cbAjustarRival.setEnabled(si_multi)
 
         self.lb_path_engine.set_text(Util.relative_path(self.rival.path_exe))
         self.tab_advanced_active = False
+
+        self.test_unlimited()
 
     def cambiada_tab(self, num):
         if num == self.tab_advanced:
@@ -614,12 +695,12 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         siRehacer = self.personalidades.lanzaMenu()
         if siRehacer:
             actual = self.cbAjustarRival.valor()
-            self.cbAjustarRival.rehacer(self.personalidades.listaAjustes(True), actual)
+            self.cbAjustarRival.rehacer(self.personalidades.list_personalities(True), actual)
 
     def ajustesCambiado(self):
         resp = self.cbAjustarRival.valor()
         if resp is None:
-            self.cbAjustarRival.ponValor(ADJUST_HIGH_LEVEL)
+            self.cbAjustarRival.set_value(ADJUST_HIGH_LEVEL)
 
     def change_depth(self):
         num = self.edRdepth.textoInt()
@@ -651,9 +732,9 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
     def posicionEditar(self):
         cp = Position.Position()
         cp.read_fen(self.fen)
-        resp = Voyager.voyager_position(self, cp, wownerowner=self.procesador.main_window)
-        if resp is not None:
-            self.fen = resp.fen()
+        position, is_white_bottom = Voyager.voyager_position(self, cp, wownerowner=self.procesador.main_window)
+        if position is not None:
+            self.fen = position.fen()
             self.muestraPosicion()
 
     def posicionPegar(self):
@@ -675,7 +756,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             self.btPosicionQuitar.show()
             self.btPosicionPegar.show()
             self.opening_block = None
-            self.muestraOpening()
+            self.opening_show()
         else:
             label = _("Change")
             self.btPosicionQuitar.hide()
@@ -683,17 +764,17 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         label = " " * 5 + label + " " * 5
         self.btPosicion.set_text(label)
 
-    def editOpening(self):
-        self.btOpening.setDisabled(True)  # Puede tardar bastante vtime
+    def opening_edit(self):
+        self.bt_opening.setDisabled(True)  # Puede tardar bastante vtime
         me = QTUtil2.unMomento(self)
         w = WindowOpenings.WOpenings(self, self.configuration, self.opening_block)
         me.final()
-        self.btOpening.setDisabled(False)
+        self.bt_opening.setDisabled(False)
         if w.exec_():
             self.opening_block = w.resultado()
-            self.muestraOpening()
+            self.opening_show()
 
-    def preferred_openings(self):
+    def openings_preferred(self):
         if len(self.li_preferred_openings) == 0:
             return
         menu = QTVarios.LCMenu(self)
@@ -705,35 +786,80 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             if type(bloque) == tuple:  # compatibilidad con versiones anteriores
                 bloque = bloque[0]
                 self.li_preferred_openings[nli] = bloque
-            menu.opcion((nli, bloque), bloque.tr_name, Iconos.PuntoVerde())
+            menu.opcion((nli, bloque), bloque.tr_name + " (%s)" % bloque.pgn, Iconos.PuntoVerde())
             n_pos += 1
 
         resp = menu.lanza()
         if resp:
             if menu.siIzq:
                 pos, self.opening_block = resp
-                self.muestraOpening()
+                self.opening_show()
             elif menu.siDer:
                 pos, opening_block = resp
                 if QTUtil2.pregunta(
-                    self,
-                    _X(
-                        _("Do you want to delete the opening %1 from the list of favourite openings?"),
-                        opening_block.tr_name,
-                    ),
+                        self,
+                        _X(
+                            _("Do you want to delete the opening %1 from the list of favourite openings?"),
+                            opening_block.tr_name,
+                        ),
                 ):
                     del self.li_preferred_openings[pos]
 
-    def muestraOpening(self):
+    def opening_show(self):
         if self.opening_block:
             label = self.opening_block.tr_name + "\n" + self.opening_block.pgn
-            self.btOpeningsQuitar.show()
-            self.fen = ""
-            self.muestraPosicion()
+            self.bt_opening_remove.show()
         else:
             label = " " * 3 + _("Undetermined") + " " * 3
-            self.btOpeningsQuitar.hide()
-        self.btOpening.set_text(label)
+            self.bt_opening_remove.hide()
+        self.bt_opening.set_text(label)
+
+    def opening_line_edit(self):
+        dic_opening = WindowOpeningLines.select_line(self)
+        if dic_opening:
+            self.opening_line = dic_opening
+            self.opening_line_show()
+
+    def opening_line_remove(self):
+        self.opening_line = None
+        self.opening_line_show()
+
+    def opening_line_show(self):
+        if self.opening_line:
+            label = self.opening_line["title"]
+            if "folder" in self.opening_line:
+                label = "%s/%s" % (self.opening_line["folder"], label)
+            self.bt_opening_line_remove.show()
+        else:
+            label = _("Undetermined")
+            self.bt_opening_line_remove.hide()
+        label = " " * 3 + label + " " * 3
+        self.bt_opening_line.set_text(label)
+
+    def opening_paste(self):
+        texto = QTUtil.traePortapapeles()
+        if texto:
+            ok, game = Game.pgn_game(texto)
+            if not ok:
+                QTUtil2.message_error(
+                    self, _("The text from the clipboard does not contain a chess game in PGN format")
+                )
+                return
+            if len(game) == 0:
+                return None
+            ap = game.opening
+            if ap is None:
+                ap = OpeningsStd.Opening(_("Unknown"))
+                ap.a1h8 = game.pv()
+            else:
+                p = Game.Game()
+                p.read_pv(ap.a1h8)
+                ap.a1h8 = game.pv()
+
+            ap.pgn = game.pgn_translated()
+            self.opening_block = ap
+            self.opening_show()
+
 
     def save_dic(self):
         dic = {}
@@ -743,7 +869,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         dr = dic["RIVAL"] = {}
         dr["ENGINE"] = self.rival.key
-        dr["TYPE"] = self.rivalTipo
+        dr["TYPE"] = self.rival.type
         dr["ALIAS"] = self.rival.alias
         dr["LIUCI"] = self.rival.liUCI
 
@@ -756,7 +882,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             dic["ACTIVATE_EBOARD"] = self.chb_eboard.valor()
 
         # Ayudas
-        dic["HINTS"] = self.cbAyudas.valor() if self.gbTutor.isChecked() else 0
+        dic["HINTS"] = self.cbAyudas.valor() if self.gb_tutor.isChecked() else 0
         dic["ARROWS"] = self.sbArrows.valor()
         dic["BOXHEIGHT"] = self.sbBoxHeight.valor()
         dic["THOUGHTOP"] = self.cbThoughtOp.valor()
@@ -765,6 +891,9 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         dic["2CHANCE"] = self.chbChance.isChecked()
         dic["SUMMARY"] = self.chbSummary.isChecked()
         dic["TAKEBACK"] = self.chbTakeback.isChecked()
+
+        dic["WITH_LIMIT_PWW"] = self.gb_pww.isChecked()
+        dic["LIMIT_PWW"] = self.ed_limit_pww.textoInt()
 
         # Tiempo
         dic["WITHTIME"] = self.chbTiempo.isChecked()
@@ -778,6 +907,8 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         dic["OPENIGSFAVORITES"] = self.li_preferred_openings
         dic["OPENING"] = self.opening_block
         dic["FEN"] = self.fen
+
+        dic["OPENING_LINE"] = self.opening_line
 
         is_book = self.chbBookR.isChecked()
         dic["BOOKR"] = self.cbBooksR.valor() if is_book else None
@@ -803,33 +934,37 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
 
         dr = dic.get("RIVAL", {})
         engine = dr.get("ENGINE", self.configuration.x_rival_inicial)
-        tipo = dr.get("TYPE", SelectEngines.INTERNO)
+        tipo = dr.get("TYPE", ENG_INTERNAL)
         alias = dr.get("ALIAS", None)
-        self.rivalTipo, self.rival = self.motores.busca(tipo, engine, alias=alias)
+        self.rival = self.motores.busca(tipo, engine, alias=alias)
         if dr.get("LIUCI"):
             self.rival.liUCI = dr.get("LIUCI")
-        self.ponRival()
+        self.show_rival()
 
         tm_s = float(dr.get("ENGINE_TIME", 0)) / 10.0
         self.edRtiempo.ponFloat(tm_s)
         self.edRdepth.ponInt(dr.get("ENGINE_DEPTH", 0))
 
-        self.cb_unlimited.ponValor(dr.get("ENGINE_UNLIMITED", 3))
+        self.cb_unlimited.set_value(dr.get("ENGINE_UNLIMITED", 3))
 
-        self.chb_humanize.ponValor(dic.get("HUMANIZE", False))
+        self.chb_humanize.set_value(dic.get("HUMANIZE", False))
         if Code.eboard:
-            self.chb_eboard.ponValor(dic.get("ACTIVATE_EBOARD", False))
+            self.chb_eboard.set_value(dic.get("ACTIVATE_EBOARD", False))
 
         # Ayudas
         hints = dic.get("HINTS", 7)
-
-        self.gbTutor.setChecked(hints > 0)
-        self.cbAyudas.ponValor(hints)
-        self.sbArrows.ponValor(dic.get("ARROWS", 0))
-        self.sbBoxHeight.ponValor(dic.get("BOXHEIGHT", 64))
-        self.cbThoughtOp.ponValor(dic.get("THOUGHTOP", -1))
-        self.cbThoughtTt.ponValor(dic.get("THOUGHTTT", -1))
-        self.sbArrowsTt.ponValor(dic.get("ARROWSTT", 0))
+        self.gb_tutor.setChecked(hints > 0)
+        self.cbAyudas.set_value(hints)
+        self.sbArrows.set_value(dic.get("ARROWS", 0))
+        self.sbBoxHeight.set_value(dic.get("BOXHEIGHT", 64))
+        if self.gb_tutor.isChecked():
+            self.gb_pww.setChecked(False)
+        else:
+            self.gb_pww.setChecked(dic.get("WITH_LIMIT_PWW", False))
+        self.ed_limit_pww.ponInt(dic.get("LIMIT_PWW", 90))
+        self.cbThoughtOp.set_value(dic.get("THOUGHTOP", -1))
+        self.cbThoughtTt.set_value(dic.get("THOUGHTTT", -1))
+        self.sbArrowsTt.set_value(dic.get("ARROWSTT", 0))
         self.chbChance.setChecked(dic.get("2CHANCE", True))
         self.chbSummary.setChecked(dic.get("SUMMARY", False))
         self.chbTakeback.setChecked(dic.get("TAKEBACK", True))
@@ -847,14 +982,16 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
         # Mov. iniciales
         if dic.get("BOOKR"):
             self.chbBookR.setChecked(True)
-            self.cbBooksR.ponValor(dic["BOOKR"])
-            self.cbBooksRR.ponValor(dic["BOOKRR"])
+            self.cbBooksR.set_value(dic["BOOKR"])
+            self.cbBooksRR.set_value(dic["BOOKRR"])
             self.edDepthBookR.ponInt(dic["BOOKRDEPTH"])
 
         if dic.get("BOOKP"):
             self.chbBookP.setChecked(True)
-            self.cbBooksP.ponValor(dic["BOOKP"])
+            self.cbBooksP.set_value(dic["BOOKP"])
             self.edDepthBookP.ponInt(dic["BOOKPDEPTH"])
+
+        self.opening_line = dic.get("OPENING_LINE", None)
 
         self.li_preferred_openings = dic.get("OPENIGSFAVORITES", [])
         self.opening_block = dic.get("OPENING", None)
@@ -873,7 +1010,7 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             while len(self.li_preferred_openings) > 10:
                 del self.li_preferred_openings[10]
         if len(self.li_preferred_openings):
-            self.btOpeningsFavoritas.show()
+            self.bt_openings_fav.show()
 
         bookR = dic.get("BOOKR", None)
         bookRR = dic.get("BOOKRR", None)
@@ -883,8 +1020,8 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
                 if bk.path == bookR.path:
                     bookR = bk
                     break
-            self.cbBooksR.ponValor(bookR)
-            self.cbBooksRR.ponValor(bookRR)
+            self.cbBooksR.set_value(bookR)
+            self.cbBooksRR.set_value(bookRR)
             self.edDepthBookR.ponInt(dic.get("BOOKRDEPTH", 0))
 
         bookP = dic.get("BOOKP", None)
@@ -894,14 +1031,15 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
                 if bk.path == bookP.path:
                     bookP = bk
                     break
-            self.cbBooksP.ponValor(bookP)
+            self.cbBooksP.set_value(bookP)
             self.edDepthBookP.ponInt(dic.get("BOOKPDEPTH", 0))
 
         # Avanzado
-        self.cbAjustarRival.ponValor(dic.get("ADJUST", ADJUST_BETTER))
-        self.cbResign.ponValor(dic.get("RESIGN", -800))
+        self.cbAjustarRival.set_value(dic.get("ADJUST", ADJUST_BETTER))
+        self.cbResign.set_value(dic.get("RESIGN", -800))
 
-        self.muestraOpening()
+        self.opening_show()
+        self.opening_line_show()
         self.muestraPosicion()
         self.test_unlimited()
 
@@ -938,9 +1076,9 @@ class WPlayAgainstEngine(LCDialog.LCDialog):
             self.cbBooksR.rehacer(li, b if sender == self.btNuevoBookR else book_R)
             self.cbBooksP.rehacer(li, b if sender == self.btNuevoBookP else book_P)
 
-    def aperturasQuitar(self):
+    def opening_remove(self):
         self.opening_block = None
-        self.muestraOpening()
+        self.opening_show()
 
     def posicionQuitar(self):
         self.fen = ""
@@ -970,7 +1108,7 @@ def play_position(procesador, titulo, is_white):
 
 
 class WCambioRival(QtWidgets.QDialog):
-    def __init__(self, w_parent, configuration, dic, siManagerSolo):
+    def __init__(self, w_parent, configuration, dic, si_manager_solo):
         super(WCambioRival, self).__init__(w_parent)
 
         if not dic:
@@ -997,25 +1135,24 @@ class WCambioRival(QtWidgets.QDialog):
         self.rb_black = Controles.RB(self, _("Black"))
 
         # Motores
-        self.motores = SelectEngines.SelectEngines(configuration)
+        self.motores = SelectEngines.SelectEngines(w_parent)
 
         liDepths = [("--", 0)]
         for x in range(1, 31):
             liDepths.append((str(x), x))
 
         # # Rival
-        self.rival = configuration.x_rival_inicial
-        self.rivalTipo = SelectEngines.INTERNO
+        self.rival = self.motores.busca(ENG_INTERNAL, configuration.x_rival_inicial)
         self.btRival = Controles.PB(self, "", self.cambiaRival, plano=False)
         self.edRtiempo = Controles.ED(self).tipoFloat().anchoMaximo(50)
         self.cbRdepth = Controles.CB(self, liDepths, 0).capture_changes(self.change_depth)
-        lbTiempoSegundosR = Controles.LB2P(self, _("Time"))
+        self.lbTiempoSegundosR = Controles.LB2P(self, _("Time"))
         lbNivel = Controles.LB2P(self, _("Depth"))
 
         # # Ajustar rival
-        liAjustes = self.personalidades.listaAjustes(True)
+        liAjustes = self.personalidades.list_personalities(True)
         self.cbAjustarRival = Controles.CB(self, liAjustes, ADJUST_BETTER).capture_changes(self.ajustesCambiado)
-        lbAjustarRival = Controles.LB2P(self, _("Set strength"))
+        self.lbAjustarRival = Controles.LB2P(self, _("Set strength"))
         self.btAjustarRival = Controles.PB(self, "", self.cambiaPersonalidades, plano=False).ponIcono(
             Iconos.Nuevo(), icon_size=16
         )
@@ -1033,9 +1170,15 @@ class WCambioRival(QtWidgets.QDialog):
         # Rival
         ly = Colocacion.G()
         ly.controlc(self.btRival, 0, 0, 1, 4)
-        ly.controld(lbTiempoSegundosR, 1, 0).controld(self.edRtiempo, 1, 1)
+        ly.controld(self.lbTiempoSegundosR, 1, 0).controld(self.edRtiempo, 1, 1)
         ly.controld(lbNivel, 1, 2).control(self.cbRdepth, 1, 3)
-        lyH = Colocacion.H().control(lbAjustarRival).control(self.cbAjustarRival).control(self.btAjustarRival).relleno()
+        lyH = (
+            Colocacion.H()
+            .control(self.lbAjustarRival)
+            .control(self.cbAjustarRival)
+            .control(self.btAjustarRival)
+            .relleno()
+        )
         ly.otroc(lyH, 2, 0, 1, 4)
         gbR = Controles.GB(self, _("Opponent"), ly)
 
@@ -1052,24 +1195,26 @@ class WCambioRival(QtWidgets.QDialog):
         self.restore_dic()
 
         self.ajustesCambiado()
-        self.ponRival()
+        if si_manager_solo:
+            self.lbAjustarRival.setVisible(False)
+            self.cbAjustarRival.setVisible(False)
+            self.btAjustarRival.setVisible(False)
+        self.show_rival()
 
     def cambiaRival(self):
         resp = self.motores.menu(self)
         if resp:
-            tp, cm = resp
-            self.rivalTipo = tp
-            self.rival = cm
-            self.ponRival()
+            self.rival = resp
+            self.show_rival()
 
-    def ponRival(self):
+    def show_rival(self):
         self.btRival.set_text("   %s   " % self.rival.name)
-        self.btRival.ponIcono(self.motores.dicIconos[self.rivalTipo])
+        self.btRival.ponIcono(self.motores.dicIconos[self.rival.type])
 
     def ajustesCambiado(self):
         resp = self.cbAjustarRival.valor()
         if resp is None:
-            self.cbAjustarRival.ponValor(ADJUST_HIGH_LEVEL)
+            self.cbAjustarRival.set_value(ADJUST_HIGH_LEVEL)
 
     def change_depth(self, num):
         if num > 0:
@@ -1093,7 +1238,7 @@ class WCambioRival(QtWidgets.QDialog):
         dr["TIME"] = int(self.edRtiempo.textoFloat() * 10)
         dr["DEPTH"] = self.cbRdepth.valor()
         dr["CM"] = self.rival
-        dr["TYPE"] = self.rivalTipo
+        dr["TYPE"] = self.rival.type
 
         dic["ADJUST"] = self.cbAjustarRival.valor()
 
@@ -1107,23 +1252,23 @@ class WCambioRival(QtWidgets.QDialog):
 
         dr = dic.get("RIVAL", {})
         engine = dr.get("ENGINE", self.configuration.x_tutor_clave)
-        tipo = dr.get("TYPE", SelectEngines.INTERNO)
-        self.rivalTipo, self.rival = self.motores.busca(tipo, engine)
-        self.ponRival()
+        tipo = dr.get("TYPE", ENG_INTERNAL)
+        self.rival = self.motores.busca(tipo, engine)
+        self.show_rival()
 
         self.edRtiempo.ponFloat(float(dr.get("TIME", self.configuration.x_tutor_mstime / 100)) / 10.0)
-        self.cbRdepth.ponValor(dr.get("DEPTH", 0))
-        self.cbAjustarRival.ponValor(dic.get("ADJUST", ADJUST_BETTER))
+        self.cbRdepth.set_value(dr.get("DEPTH", 0))
+        self.cbAjustarRival.set_value(dic.get("ADJUST", ADJUST_BETTER))
 
     def cambiaPersonalidades(self):
         siRehacer = self.personalidades.lanzaMenu()
         if siRehacer:
             actual = self.cbAjustarRival.valor()
-            self.cbAjustarRival.rehacer(self.personalidades.listaAjustes(True), actual)
+            self.cbAjustarRival.rehacer(self.personalidades.list_personalities(True), actual)
 
 
-def cambioRival(parent, configuration, dic, siManagerSolo=False):
-    w = WCambioRival(parent, configuration, dic, siManagerSolo)
+def change_rival(parent, configuration, dic, is_create_own_game=False):
+    w = WCambioRival(parent, configuration, dic, is_create_own_game)
 
     if w.exec_():
         return w.dic

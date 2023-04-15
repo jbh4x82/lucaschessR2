@@ -1,7 +1,7 @@
 import os
 
 import polib
-from PySide2 import QtCore
+from PySide2 import QtCore, QtWidgets
 
 import Code
 from Code.QT import Colocacion
@@ -31,7 +31,6 @@ class WTranslateOpenings(LCDialog.LCDialog):
         self.read_po_openings()
         self.li_labels = list(self.dic_translate.keys())
 
-
         self.color_new = QTUtil.qtColor("#840C24")
 
         li_acciones = (
@@ -45,18 +44,22 @@ class WTranslateOpenings(LCDialog.LCDialog):
         self.lb_porcentage = Controles.LB(self, "").ponTipoLetra(puntos=18, peso=300).anchoFijo(114).align_right()
 
         o_columns = Columnas.ListaColumnas()
-        o_columns.nueva("CURRENT", self.language, 480, edicion=Delegados.LineaTextoUTF8(), siEditable=True)
+        o_columns.nueva("CURRENT", self.language, 480, edicion=Delegados.LineaTextoUTF8(), is_editable=True)
         o_columns.nueva("BASE", "To translate", 480)
 
         self.grid = None
-        self.grid = Grid.Grid(self, o_columns, altoFila=Code.configuration.x_pgn_rowheight+14, siEditable=True)
+        self.grid = Grid.Grid(self, o_columns, altoFila=Code.configuration.x_pgn_rowheight + 14, is_editable=True)
         self.grid.tipoLetra(puntos=10)
         self.grid.setAlternatingRowColors(True)
         self.register_grid(self.grid)
 
+        tooltip = "F3 to search forward\nshift F3 to search backward"
+
         self.lb_seek = Controles.LB(self, "Find (Ctrl F):").ponTipoLetra(puntos=10).anchoFijo(74)
         self.ed_seek = Controles.ED(self, "").ponTipoLetra(puntos=10).capture_enter(self.siguiente)
+        self.ed_seek.setToolTip(tooltip)
         self.f3_seek = Controles.PB(self, "F3", self.siguiente, plano=False).ponTipoLetra(puntos=10).anchoFijo(30)
+        self.f3_seek.setToolTip(tooltip)
         ly_seek = Colocacion.H().control(self.lb_seek).control(self.ed_seek).control(self.f3_seek).margen(0)
 
         laytb = Colocacion.H().control(self.tb).control(self.lb_porcentage)
@@ -76,14 +79,8 @@ class WTranslateOpenings(LCDialog.LCDialog):
         path = Code.path_resource("Openings", "openings.lkop")
         with open(path, "rt", encoding="utf-8") as q:
             for linea in q:
-                name, a1h8, pgn, eco, basic, fenm2, hijos, parent = linea.strip().split("|")
-                dic[name] = {
-                    "A1H8": a1h8,
-                    "PGN": pgn,
-                    "ECO": eco,
-                    "TRANS": "",
-                    "NEW": ""
-                }
+                name, a1h8, pgn, eco, basic, fenm2, hijos, parent, lifenm2 = linea.strip().split("|")
+                dic[name] = {"A1H8": a1h8, "PGN": pgn, "ECO": eco, "TRANS": "", "NEW": ""}
         return dic
 
     def path_current_pofile(self):
@@ -235,10 +232,19 @@ class WTranslateOpenings(LCDialog.LCDialog):
         self.order_by_type(key_col)
 
     def siguiente(self):
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        is_shift = modifiers == QtCore.Qt.ShiftModifier
+
         pos = self.grid.recno()
         txt = self.ed_seek.texto().strip().upper()
         mirar = list(range(pos + 1, len(self.li_labels)))
         mirar.extend(range(pos + 1))
+
+        if is_shift:
+            mirar = list(reversed(mirar))
+            m = mirar[0]
+            del mirar[0]
+            mirar.append(m)
 
         for row in mirar:
             key = self.li_labels[row]
@@ -333,4 +339,3 @@ class WTranslateOpenings(LCDialog.LCDialog):
             num = self.add_po_file(path_po, "NEW")
 
             QTUtil2.message(self, "Imported %d labels\n%s" % (num, path_po))
-

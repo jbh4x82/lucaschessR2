@@ -31,12 +31,14 @@ class ManagerTactics(Manager.Manager):
         self.ayudas_iniciales = 0
         self.is_competitive = True
         self.game_obj, self.game_base = self.tactic.work_read_position()
-        self.reinicia()
+        self.reiniciar()
 
-    def reinicia(self):
+    def reiniciar(self):
         if self.reiniciando:
             return
         self.reiniciando = True
+
+        self.main_window.activaInformacionPGN(False)
 
         self.pointView = self.tactic.pointView()
 
@@ -48,7 +50,7 @@ class ManagerTactics(Manager.Manager):
         is_white = cp.is_white
         if self.pointView:
             is_white = self.pointView == 1
-        self.human_side = is_white
+        self.is_human_side_white = is_white
         self.is_engine_side_white = not is_white
 
         if self.game_base:
@@ -64,6 +66,7 @@ class ManagerTactics(Manager.Manager):
         self.main_window.set_activate_tutor(False)
         self.main_window.activaJuego(True, False, siAyudas=False)
         self.main_window.remove_hints(True, True)
+        self.informacionActivable = True
         self.set_dispatcher(self.player_has_moved)
         self.set_position(self.game.last_position)
         self.show_side_indicator(True)
@@ -85,11 +88,11 @@ class ManagerTactics(Manager.Manager):
         self.show_label_positions()
         self.state = ST_PLAYING
         self.reiniciando = False
-        self.board.dbvisual_set_show_allways(False)
+        self.board.dbvisual_set_show_always(False)
 
         self.num_bad_tries = 0
         if self.tactic.advanced:
-            self.board.showCoordenadas(False)
+            self.board.show_coordinates(False)
 
             self.ini_clock = time.time()
             self.wsolve = self.main_window.base.wsolve
@@ -99,9 +102,9 @@ class ManagerTactics(Manager.Manager):
             self.play_next_move()
 
     def advanced_return(self, solved):
-        self.tactic.masSegundos(time.time()-self.ini_clock)
+        self.tactic.masSegundos(time.time() - self.ini_clock)
         self.wsolve.hide()
-        self.board.showCoordenadas(True)
+        self.board.show_coordinates(True)
         more_errors = self.wsolve.errors
         more_helps = self.wsolve.helps
         if more_errors > 0 or more_helps > 0:
@@ -110,7 +113,7 @@ class ManagerTactics(Manager.Manager):
             for move in self.game_obj.li_moves:
                 self.game.add_move(move)
             self.goto_end()
-            self.pgnRefresh(self.human_side)
+            self.pgnRefresh(self.is_human_side_white)
             self.end_line()
 
         else:
@@ -164,13 +167,13 @@ class ManagerTactics(Manager.Manager):
             elif resp == "lmo_advanced":
                 self.tactic.advanced = not self.tactic.advanced
                 self.tactic.set_advanced(self.tactic.advanced)
-                self.reinicia()
+                self.reiniciar()
 
         elif key == TB_REINIT:
-            self.reinicia()
+            self.reiniciar()
 
         elif key == TB_UTILITIES:
-            self.utilidades()
+            self.utilities()
 
         elif key == TB_NEXT:
             self.ent_siguiente()
@@ -199,7 +202,7 @@ class ManagerTactics(Manager.Manager):
             self.start(self.tactic)
 
     def end_game(self):
-        self.board.showCoordenadas(True)
+        self.board.show_coordinates(True)
         self.procesador.start()
         self.procesador.entrenamientos.entrenaTactica(self.tactic)
 
@@ -254,7 +257,9 @@ class ManagerTactics(Manager.Manager):
             self.set_label1(self.tactic.w_label)
             self.set_toolbar("end")
             if self.configuration.x_director_icon is not None:
-                self.board.dbvisual_set_show_allways(True)
+                self.board.dbvisual_set_show_always(True)
+            self.game = self.game_obj.copia()
+            self.pgnRefresh(self.game.last_position.is_white)
 
         return True
 
@@ -312,7 +317,10 @@ class ManagerTactics(Manager.Manager):
     def cambiar(self):
         if self.tactic.w_next_position >= 0:
             pos = WCompetitionWithTutor.edit_training_position(
-                self.main_window, self.tactic.title_extended(), self.tactic.w_next_position, pos=self.tactic.w_next_position
+                self.main_window,
+                self.tactic.title_extended(),
+                self.tactic.w_next_position,
+                pos=self.tactic.w_next_position,
             )
             if pos is not None:
                 self.tactic.w_next_position = pos - 1
@@ -323,5 +331,5 @@ class ManagerTactics(Manager.Manager):
     def end_training(self):
         self.tactic.end_training()
         mensaje = "<big>%s<br>%s</big>" % (_("Congratulations, goal achieved"), _("GAME OVER"))
-        self.mensajeEnPGN(mensaje)
+        self.message_on_pgn(mensaje)
         self.end_game()

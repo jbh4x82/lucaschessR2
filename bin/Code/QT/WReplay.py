@@ -9,16 +9,28 @@ from Code.Base.Constantes import (
     TB_PGN_REPLAY,
     TB_REPEAT_REPLAY,
     TB_SLOW_REPLAY,
+    TB_CHANGE,
 )
 from Code.QT import FormLayout
 from Code.QT import Iconos
 from Code.QT import QTUtil
 
 
+def read_params(configuration):
+    nomVar = "PARAMPELICULA"
+    dic = configuration.read_variables(nomVar)
+    if len(dic) == 0:
+        dic["SECONDS"] = 2.0
+        dic["START"] = True
+        dic["PGN"] = True
+        dic["BEEP"] = False
+        dic["SECONDS_BEFORE"] = 0.0
+    return dic
+
+
 def param_replay(configuration, parent):
 
-    nomVar = "PARAMPELICULA"
-    dicVar = configuration.read_variables(nomVar)
+    dicVar = read_params(configuration)
 
     # Datos
     form = FormLayout.FormLayout(parent, _("Replay game"), Iconos.Pelicula(), anchoMinimo=460)
@@ -50,6 +62,7 @@ def param_replay(configuration, parent):
         dicVar["START"] = if_start
         dicVar["PGN"] = if_pgn
         dicVar["BEEP"] = if_beep
+        nomVar = "PARAMPELICULA"
         configuration.write_variables(nomVar, dicVar)
         return seconds, if_start, if_pgn, if_beep, seconds_before
     else:
@@ -81,6 +94,7 @@ class Replay:
             TB_FAST_REPLAY,
             TB_REPEAT_REPLAY,
             TB_PGN_REPLAY,
+            TB_CHANGE,
         )
 
         self.antAcciones = self.main_window.get_toolbar()
@@ -94,6 +108,7 @@ class Replay:
 
         self.li_moves = self.manager.game.li_moves
         self.current_position = 0 if if_start else self.jugInicial
+        self.initial_position = self.current_position
 
         self.siStop = False
 
@@ -137,8 +152,8 @@ class Replay:
 
         move = self.li_moves[self.current_position]
         self.board.set_position(move.position_before)
-        if self.current_position > 0:
-            if not self.sleep_refresh(self.seconds/self.rapidez):
+        if self.current_position > self.initial_position:
+            if not self.sleep_refresh(self.seconds / self.rapidez):
                 return
 
         liMovs = [("b", move.to_sq), ("m", move.from_sq, move.to_sq)]
@@ -169,7 +184,7 @@ class Replay:
                     dc = ord(from_sq[0]) - ord(to_sq[0])
                     df = int(from_sq[1]) - int(to_sq[1])
                     # Maxima distancia = 9.9 ( 9,89... sqrt(7**2+7**2)) = 4 seconds
-                    dist = (dc ** 2 + df ** 2) ** 0.5
+                    dist = (dc**2 + df**2) ** 0.5
                     rp = self.rapidez if self.rapidez > 1.0 else 1.0
                     secs = 4.0 * dist / (9.9 * rp)
                 cpu.muevePieza(from_sq, to_sq, secs)
@@ -196,13 +211,14 @@ class Replay:
 
         self.manager.put_view()
 
-        cpu.reset()
-        cpu.duerme(self.seconds / self.rapidez)
-        cpu.runLineal()
+        # cpu.reset()
+        # cpu.duerme(self.seconds / self.rapidez)
+        # cpu.runLineal()
 
     def muestraPausa(self, si_pausa, si_continue):
         self.main_window.show_option_toolbar(TB_PAUSE_REPLAY, si_pausa)
         self.main_window.show_option_toolbar(TB_CONTINUE_REPLAY, si_continue)
+        self.main_window.show_option_toolbar(TB_CHANGE, not si_pausa)
 
     def process_toolbar(self, key):
         if key == TB_END_REPLAY:
@@ -220,6 +236,11 @@ class Replay:
         elif key == TB_PGN_REPLAY:
             self.siPGN = not self.siPGN
             self.show_information()
+
+        elif key == TB_CHANGE:
+            resp = param_replay(self.procesador.configuration, self.main_window)
+            if resp is not None:
+                self.seconds, self.if_start, self.siPGN, self.if_beep, seconds_before = resp
 
     def terminar(self):
         self.siStop = True

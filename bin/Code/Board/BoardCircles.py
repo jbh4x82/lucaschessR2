@@ -62,14 +62,17 @@ class CircleSC(BoardBlocks.BloqueEspSC):
         ac = self.board.width_square
         tf = self.board.tamFrontera
 
-        f = lambda xy: int(round(float(xy) / float(ac), 0))
+        def f(xy):
+            return int(round(float(xy) / float(ac), 0))
 
-        dc = f(physical_pos.x-tf/2) + 1
-        df = f(physical_pos.y-tf/2) + 1
+        dc = f(physical_pos.x - tf / 2) + 1
+        df = f(physical_pos.y - tf / 2) + 1
         hc = f(physical_pos.x + physical_pos.ancho)
         hf = f(physical_pos.y + physical_pos.alto)
 
-        bien = lambda fc: (fc < 9) and (fc > 0)
+        def bien(fc):
+            return (fc < 9) and (fc > 0)
+
         if bien(dc) and bien(df) and bien(hc) and bien(hf):
             bm.a1h8 = self.board.fc_a1h8(df, dc, hf, hc)
 
@@ -210,10 +213,10 @@ class CircleSC(BoardBlocks.BloqueEspSC):
         p = bm.physical_pos
 
         # bm.grosor *= 2
-        p.x = bm.grosor*2
-        p.y = bm.grosor*2
+        p.x = bm.grosor * 2
+        p.y = bm.grosor * 2
 
-        pm = QtGui.QPixmap(p.ancho+bm.grosor*3, p.alto+bm.grosor*3)
+        pm = QtGui.QPixmap(p.ancho + bm.grosor * 3, p.alto + bm.grosor * 3)
         pm.fill(QtCore.Qt.transparent)
 
         painter = QtGui.QPainter()
@@ -264,6 +267,15 @@ class CircleSC(BoardBlocks.BloqueEspSC):
                 painter.setBrush(color)
 
         painter.drawEllipse(self.rect)
+
+        if self.siActivo:
+            pen = QtGui.QPen()
+            pen.setColor(QtGui.QColor("blue"))
+            pen.setWidth(2)
+            pen.setStyle(QtCore.Qt.DashLine)
+            painter.setPen(pen)
+            painter.setBrush(QtGui.QBrush())
+            painter.drawRect(self.rect)
 
     def boundingRect(self):
         x = self.bloqueDatos.grosor

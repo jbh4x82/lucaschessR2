@@ -16,6 +16,7 @@ from Code.Base.Constantes import (
     ADJUST_INTERMEDIATE_LEVEL,
     ADJUST_HIGH_LEVEL,
     NO_RATING,
+    INTERESTING_MOVE,
     GOOD_MOVE,
     VERY_GOOD_MOVE,
 )
@@ -60,9 +61,18 @@ class EngineResponse:
         return li
 
     def restore(self, li):
-        self.mate, self.puntos, self.pv, self.from_sq, self.to_sq, self.promotion, self.depth, self.nodes, self.nps, self.seldepth = (
-            li
-        )
+        (
+            self.mate,
+            self.puntos,
+            self.pv,
+            self.from_sq,
+            self.to_sq,
+            self.promotion,
+            self.depth,
+            self.nodes,
+            self.nps,
+            self.seldepth,
+        ) = li
         self.sinInicializar = False
 
     def movimiento(self):
@@ -679,6 +689,13 @@ class MultiEngineResponse:
                     break
         return li
 
+    def is_pos_bestmove(self, pos):
+        if pos == 0:
+            return True
+        cp0 = self.li_rm[0].centipawns_abs()
+        cpuser = self.li_rm[pos].centipawns_abs()
+        return cp0 == cpuser
+
     def getdepth0(self):
         return self.li_rm[0].depth if self.li_rm else 0
 
@@ -824,9 +841,7 @@ class MultiEngineResponse:
                         if not cp.is_white:
                             p0 = -p0
                             pZ = -pZ
-                        fdbg.write(
-                            "    %s (%s) : %d -> %d [%d => %d]\n" % (_("Advance"), dpr, xAvPR, rm.puntos, p0, pZ)
-                        )
+                        fdbg.write("    %s (%s) : %d -> %d [%d ≥ %d]\n" % (_("Advance"), dpr, xAvPR, rm.puntos, p0, pZ))
 
             if xJPR:
                 n = True
@@ -1050,7 +1065,7 @@ class MultiEngineResponse:
 
             if siPersonalidad:
                 nTipo, mindifpuntos, maxmate, dbg, aterrizaje = self.ajustaPersonalidad(
-                    self.liPersonalidades[nTipo - 1000]
+                    self.li_personalities[nTipo - 1000]
                 )
 
             if nTipo == ADJUST_BETTER:
@@ -1136,7 +1151,7 @@ class MultiEngineResponse:
                 elif dif < minpuntos:  # primeras depths ya se sabia que era buena move
                     return
 
-    def set_nag_color(self, configuration, rm):
+    def set_nag_color(self, rm):
         mj_pts = self.li_rm[0].centipawns_abs()
         rm_pts = rm.centipawns_abs()
         nb = mj_pts - rm_pts
@@ -1159,34 +1174,34 @@ class MultiEngineResponse:
         if dic:
             li = list(dic.keys())
             li.sort()
-            firstDepth = 0
+            first_depth = 0
             mv = rm.movimiento()
             for depth in li:
-                dicDepth = dic[depth]
-                if mv in dicDepth:
-                    pts = dicDepth[mv]
+                dic_depth = dic[depth]
+                if mv in dic_depth:
+                    pts = dic_depth[mv]
                     ok = True
-                    for m, v in dicDepth.items():
-                        if v > pts+5:
+                    for m, v in dic_depth.items():
+                        if v > pts + 5:
                             ok = False
                             break
                     if ok:
-                        firstDepth = depth
+                        first_depth = depth
                         break
-            if firstDepth >= Code.analysis_eval.very_good_depth:
+            color = GOOD_MOVE
+            if first_depth >= Code.configuration.x_eval_very_good_depth:
                 if len(libest) == 1 and (mj_pts - self.li_rm[1].centipawns_abs()) > 70:
                     nag = VERY_GOOD_MOVE
                     color = VERY_GOOD_MOVE
                 else:
                     nag = GOOD_MOVE
-                    color = GOOD_MOVE
-            elif firstDepth >= Code.analysis_eval.good_depth:
+            elif first_depth >= Code.configuration.x_eval_good_depth:
                 nag = GOOD_MOVE
-                color = GOOD_MOVE
+            elif first_depth >= Code.configuration.x_eval_speculative_depth:
+                nag = INTERESTING_MOVE
+                color = INTERESTING_MOVE
             else:
                 nag = NO_RATING
-                color = GOOD_MOVE
             return nag, color
 
-        return GOOD_MOVE, GOOD_MOVE
-
+        return NO_RATING, GOOD_MOVE

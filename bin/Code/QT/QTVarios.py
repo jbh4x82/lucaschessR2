@@ -12,141 +12,13 @@ from Code.QT import QTUtil
 from Code.QT import QTUtil2
 
 
-class WDialogo(QtWidgets.QDialog):
-    def __init__(self, main_window, titulo, icono, extparam):
-        QtWidgets.QDialog.__init__(self, main_window)
-        self.key_video = extparam
-        self.liGrids = []
-        self.liSplitters = []
-        self.setWindowTitle(titulo)
-        self.setWindowIcon(icono)
-        self.setWindowFlags(
-            QtCore.Qt.Dialog
-            | QtCore.Qt.WindowTitleHint
-            | QtCore.Qt.WindowMinimizeButtonHint
-            | QtCore.Qt.WindowMaximizeButtonHint
-            | QtCore.Qt.WindowCloseButtonHint
-        )
-
-    def register_grid(self, grid):
-        self.liGrids.append(grid)
-
-    def register_splitter(self, splitter, name):
-        self.liSplitters.append((splitter, name))
-
-    def save_video(self, dic_extended=None):
-        dic = {} if dic_extended is None else dic_extended
-
-        pos = self.pos()
-        dic["_POSICION_"] = "%d,%d" % (pos.x(), pos.y())
-
-        tam = self.size()
-        dic["_SIZE_"] = "%d,%d" % (tam.width(), tam.height())
-        dic["MAXIMIZED"] = self.isMaximized()
-
-        for grid in self.liGrids:
-            grid.save_video(dic)
-
-        for sp, name in self.liSplitters:
-            dic["SP_%s" % name] = sp.sizes()
-
-        Code.configuration.save_video(self.key_video, dic)
-        return dic
-
-    def restore_dicvideo(self):
-        return Code.configuration.restore_video(self.key_video)
-
-    def restore_video(self, siTam=True, anchoDefecto=None, altoDefecto=None, dicDef=None, shrink=False):
-        dic = self.restore_dicvideo()
-        if not dic:
-            dic = dicDef
-
-        if QtWidgets.QDesktopWidget().screenCount() > 1:
-            wE = hE = 1024 * 1024
-        else:
-            wE, hE = QTUtil.tamEscritorio()
-        if dic:
-            if siTam:
-                if not ("_SIZE_" in dic):
-                    w, h = self.width(), self.height()
-                    for k in dic:
-                        if k.startswith("_TAMA"):
-                            w, h = dic[k].split(",")
-                else:
-                    w, h = dic["_SIZE_"].split(",")
-                w = int(w)
-                h = int(h)
-                if w > wE:
-                    w = wE
-                elif w < 20:
-                    w = 20
-                if h > (hE - 40):
-                    h = hE - 40
-                elif h < 20:
-                    h = 20
-                if dic.get("MAXIMIZED"):
-                    self.showMaximized()
-                else:
-                    self.resize(w, h)
-            for grid in self.liGrids:
-                grid.restore_video(dic)
-                grid.releerColumnas()
-            for sp, name in self.liSplitters:
-                k = "SP_%s" % name
-                if k in dic:
-                    sp.setSizes(dic[k])
-            if shrink:
-                QTUtil.shrink(self)
-            if "_POSICION_" in dic:
-                x, y = dic["_POSICION_"].split(",")
-                x = int(x)
-                y = int(y)
-                if not (0 <= x <= (wE - 50)):
-                    x = 0
-                if not (0 <= y <= (hE - 50)):
-                    y = 0
-                self.move(x, y)
-            return True
-        else:
-            if anchoDefecto or altoDefecto:
-                if anchoDefecto is None:
-                    anchoDefecto = self.width()
-                if altoDefecto is None:
-                    altoDefecto = self.height()
-                if anchoDefecto > wE:
-                    anchoDefecto = wE
-                if altoDefecto > (hE - 40):
-                    altoDefecto = hE - 40
-                self.resize(anchoDefecto, altoDefecto)
-
-        return False
-
-    def accept(self):
-        self.save_video()
-        super().accept()
-        # self.close()
-        # Evita excepción al salir del programa
-        # ver: https://stackoverflow.com/a/36826593/3324704
-        self.deleteLater()
-
-    def reject(self):
-        self.save_video()
-        super().reject()
-        self.deleteLater()
-
-    def closeEvent(self, event):  # Cierre con X
-        # Evita excepción al salir del programa
-        # ver: https://stackoverflow.com/a/36826593/3324704
-        self.deleteLater()
-
-
 class BlancasNegras(QtWidgets.QDialog):
     def __init__(self, parent):
         super(BlancasNegras, self).__init__(parent)
         self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.Dialog | QtCore.Qt.WindowTitleHint)
 
-        icoP = Code.todasPiezas.default_icon("K")
-        icop = Code.todasPiezas.default_icon("k")
+        icoP = Code.all_pieces.default_icon("K")
+        icop = Code.all_pieces.default_icon("k")
         self.setWindowTitle(_("Choose a color"))
         self.setWindowIcon(icoP)
 
@@ -176,8 +48,8 @@ class BlancasNegrasTiempo(QtWidgets.QDialog):
         QtWidgets.QDialog.__init__(self, parent)
         self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint | QtCore.Qt.Dialog | QtCore.Qt.WindowTitleHint)
 
-        icoP = Code.todasPiezas.default_icon("K")
-        icop = Code.todasPiezas.default_icon("k")
+        icoP = Code.all_pieces.default_icon("K")
+        icop = Code.all_pieces.default_icon("k")
         self.setWindowTitle(_("Choose a color"))
         self.setWindowIcon(icoP)
         self.key_saved = "BLANCASNEGRASTIEMPO"
@@ -214,9 +86,9 @@ class BlancasNegrasTiempo(QtWidgets.QDialog):
         fast_moves = dic.get("FAST_MOVES", False)
         self.gbT.setChecked(with_time)
         if with_time:
-            self.edMinutos.ponValor(minutes)
-            self.edSegundos.ponValor(seconds)
-        self.chb_fastmoves.ponValor(fast_moves)
+            self.edMinutos.set_value(minutes)
+            self.edSegundos.set_value(seconds)
+        self.chb_fastmoves.set_value(fast_moves)
         self.muestra_tiempo(with_time)
 
     def save(self):
@@ -349,7 +221,7 @@ def lyBotonesMovimiento(
         x("MoverJugar", _("Play"), Iconos.MoverJugar())
         li_acciones.append(None)
     if siTiempo:
-        x("MoverTiempo", _("Timed movement"), Iconos.MoverTiempo())
+        x("MoverTiempo", _("Timed movement") + "\n%s" % _("Right click to change the interval"), Iconos.MoverTiempo())
     li_acciones.append(None)
     if must_save:
         x("MoverGrabar", _("Save"), Iconos.MoverGrabar())
@@ -582,10 +454,10 @@ class LCMenuRondo(LCMenu):
         LCMenu.__init__(self, parent, puntos)
         self.rondo = rondoPuntos()
 
-    def opcion(self, key, label, icono=None, is_disabled=False, tipoLetra=None, siChecked=None):
+    def opcion(self, key, label, icono=None, is_disabled=False, tipoLetra=None, siChecked=None, toolTip: str = ""):
         if icono is None:
             icono = self.rondo.otro()
-        LCMenu.opcion(self, key, label, icono, is_disabled, tipoLetra, siChecked)
+        LCMenu.opcion(self, key, label, icono, is_disabled, tipoLetra, siChecked, toolTip)
 
     # def submenu(self, label, icono=None, is_disabled=False):
     #     if icono is None:
@@ -607,11 +479,6 @@ class LCMenuPiezas(Controles.Menu):
         self.addMenu(menu)
         return menu
 
-
-class LCTab(Controles.Tab):
-    def __init__(self, parent):
-        Controles.Tab.__init__(self, parent)
-        self.ponTipoLetra(peso=100, puntos=Code.configuration.x_pgn_fontpoints)
 
 class ImportarFichero(QtWidgets.QDialog):
     def __init__(self, parent, titulo, siErroneos, siWorkDone, icono):
@@ -717,7 +584,7 @@ class ImportarFichero(QtWidgets.QDialog):
 
 class ImportarFicheroPGN(ImportarFichero):
     def __init__(self, parent):
-        ImportarFichero.__init__(self, parent, _("PGN file"), True, True, Iconos.PGN())
+        ImportarFichero.__init__(self, parent, _("A PGN file"), True, True, Iconos.PGN())
 
 
 class ImportarFicheroFNS(ImportarFichero):
@@ -827,14 +694,15 @@ class MensajeFide(QtWidgets.QDialog):
 
 def list_irina():
     return (
-        ("Monkey", _("Monkey"), Iconos.Monkey()),
-        ("Donkey", _("Donkey"), Iconos.Donkey()),
-        ("Bull", _("Bull"), Iconos.Bull()),
-        ("Wolf", _("Wolf"), Iconos.Wolf()),
-        ("Lion", _("Lion"), Iconos.Lion()),
-        ("Rat", _("Rat"), Iconos.Rat()),
-        ("Snake", _("Snake"), Iconos.Snake()),
-        ("Steven", _("Steven"), Iconos.Steven()),
+        ("Monkey", _("Monkey"), Iconos.Monkey(), 108 * 1 + 50),
+        ("Donkey", _("Donkey"), Iconos.Donkey(), 108 * 2 + 50),
+        ("Bull", _("Bull"), Iconos.Bull(), 108 * 3 + 50),
+        ("Wolf", _("Wolf"), Iconos.Wolf(), 108 * 4 + 50),
+        ("Lion", _("Lion"), Iconos.Lion(), 108 * 5 + 50),
+        ("Rat", _("Rat"), Iconos.Rat(), 108 * 6 + 50),
+        ("Snake", _("Snake"), Iconos.Snake(), 108 * 7 + 50),
+        ("Knight", _("Knight || Medieval knight"), Iconos.KnightMan(), 1200),
+        ("Steven", _("Steven"), Iconos.Steven(), 1400),
     )
 
 
@@ -930,13 +798,19 @@ def select_db(owner, configuration, siAll, siNew, remove_autosave=False):
     return menu.lanza()
 
 
-def menuDB(submenu, configuration, siAll, indicador_previo=None, remove_autosave=False):
+def menuDB(submenu, configuration, siAll, indicador_previo=None, remove_autosave=False, siNew=False):
     lista = lista_db(configuration, siAll, remove_autosave=remove_autosave)
-    if lista.is_empty():
+    if lista.is_empty() and not siNew:
         return None
 
     rp = rondoPuntos()
     lista.add_submenu(submenu, rp, indicador_previo=indicador_previo)
+    if siNew:
+        submenu.separador()
+        indicador = ":n"
+        if indicador_previo:
+            indicador = indicador_previo + indicador
+        submenu.opcion(indicador, _("Create new"), Iconos.DatabaseMas())
 
 
 class ReadAnnotation(QtWidgets.QDialog):
@@ -947,7 +821,7 @@ class ReadAnnotation(QtWidgets.QDialog):
         self.edAnotacion = Controles.ED(self, "").ponTipoLetra(puntos=Code.configuration.x_menu_points).anchoFijo(70)
         btAceptar = Controles.PB(self, "", rutina=self.aceptar).ponIcono(Iconos.Aceptar(), 32)
         btCancelar = Controles.PB(self, "", rutina=self.cancelar).ponIcono(Iconos.MainMenu(), 32)
-        btAyuda = Controles.PB(self, "", rutina=self.ayuda).ponIcono(Iconos.AyudaGR(), 32)
+        btAyuda = Controles.PB(self, "", rutina=self.get_help).ponIcono(Iconos.AyudaGR(), 32)
 
         self.objetivo = objetivo
         self.conAyuda = False
@@ -985,7 +859,7 @@ class ReadAnnotation(QtWidgets.QDialog):
     def cancelar(self):
         self.reject()
 
-    def ayuda(self):
+    def get_help(self):
         self.conAyuda = True
         self.edAnotacion.set_text(self.objetivo)
 
@@ -1010,15 +884,18 @@ class LCTB(Controles.TBrutina):
 def change_interval(owner, configuration):
     form = FormLayout.FormLayout(owner, _("Replay game"), Iconos.Pelicula_Repetir(), anchoMinimo=250)
     form.separador()
-    form.float(_("Duration of interval (secs)"), configuration.x_interval_replay / 1000)
+    form.float(_("Number of seconds between moves"), configuration.x_interval_replay / 1000)
+    form.separador()
+    form.checkbox(_("Beep after each move"), configuration.x_beep_replay)
     form.separador()
     resultado = form.run()
     if resultado is None:
         return None
     accion, liResp = resultado
-    vtime = liResp[0]
+    vtime, beep = liResp
     if vtime > 0.01:
         configuration.x_interval_replay = int(vtime * 1000)
+        configuration.x_beep_replay = beep
         configuration.graba()
 
 
@@ -1030,7 +907,7 @@ def tbAcceptCancel(parent, if_default=False, siReject=True):
     ]
     if if_default:
         li_acciones.append(None)
-        li_acciones.append((_("Default"), Iconos.Defecto(), parent.defecto))
+        li_acciones.append((_("By default"), Iconos.Defecto(), parent.defecto))
     li_acciones.append(None)
 
     return LCTB(parent, li_acciones)
